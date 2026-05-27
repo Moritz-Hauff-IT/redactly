@@ -1,0 +1,87 @@
+---
+title: "@de-pii/core API"
+description: Das headless Core-Paket für programmatische Nutzung.
+---
+
+<svelte:head>
+  <title>@de-pii/core API – de-pii Dokumentation</title>
+</svelte:head>
+
+<DocLayout title="@de-pii/core API" backHref="/docs">
+
+# @de-pii/core API
+
+`@de-pii/core` ist das headless Detection- und Masking-Engine-Paket, das in der de-pii App verwendet wird. Es ist framework-agnostisch und kann in jeder TypeScript/JavaScript-Umgebung eingesetzt werden.
+
+> **Status:** Das Paket ist derzeit als Workspace-Package im Monorepo verfügbar. Eine Veröffentlichung auf npm ist geplant — verfolge den Status im [GitHub-Repository](https://github.com/moritz-hauff/de-pii).
+
+## Installation (Monorepo)
+
+```bash
+pnpm add @de-pii/core
+```
+
+## Masker
+
+```typescript
+import { mask } from '@de-pii/core/masker';
+import { regexDetect } from '@de-pii/core/regex';
+
+const detections = await regexDetect(text);
+const { masked, mapping } = mask(text, detections);
+// masked:  "[NAME_1] hat die E-Mail [EMAIL_1]"
+// mapping: Map { "[NAME_1]" => "Max Mustermann", ... }
+```
+
+## Restorer
+
+```typescript
+import { restore } from '@de-pii/core/restorer';
+
+const original = restore(llmResponse, mapping);
+```
+
+## Pipeline
+
+```typescript
+import { runPipeline } from '@de-pii/core/pipeline';
+
+const result = await runPipeline({
+  text,
+  mode: 'regex', // | 'ner' | 'llm'
+});
+```
+
+## Typen
+
+```typescript
+import type { Detection, MaskingMap, PipelineResult } from '@de-pii/core/types';
+```
+
+## Detektoren
+
+`@de-pii/core/regex` — Pattern-basiert, kein Download.
+
+`@de-pii/core/ner` — transformers.js, einmaliger Download.
+
+`@de-pii/core/llm` — LLM im Browser, GPU empfohlen.
+
+## Parser
+
+```typescript
+import { parseFile } from '@de-pii/core/parsers';
+
+const text = await parseFile(file); // File object
+```
+
+Unterstützte Formate: `.txt`, `.md`, `.eml`, `.pdf`, `.docx`.
+
+## Lizenz
+
+MIT — frei für kommerzielle und private Nutzung.
+
+</DocLayout>
+
+<script>
+  import DocLayout from '$lib/components/DocLayout.svelte';
+</script>

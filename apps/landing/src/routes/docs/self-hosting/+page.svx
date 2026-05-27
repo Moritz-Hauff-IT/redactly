@@ -1,0 +1,72 @@
+---
+title: Self-Hosting
+description: de-pii auf eigener Infrastruktur betreiben.
+---
+
+<svelte:head>
+  <title>Self-Hosting – de-pii Dokumentation</title>
+</svelte:head>
+
+<DocLayout title="Self-Hosting" backHref="/docs">
+
+# Self-Hosting
+
+de-pii ist eine statische Single-Page-Application. Das macht Self-Hosting einfach — du brauchst lediglich einen Webserver, der statische Dateien ausliefert.
+
+## Optionen
+
+### Option 1: Statischer Webserver
+
+```bash
+git clone https://github.com/moritz-hauff/de-pii.git
+cd de-pii
+pnpm install
+pnpm -F @de-pii/app build
+npx serve apps/app/build
+```
+
+### Option 2: Docker
+
+Im `deploy/`-Verzeichnis findest du fertige Dockerfiles:
+
+```bash
+docker build -f deploy/Dockerfile.app -t de-pii-app .
+docker run -p 8080:8080 de-pii-app
+```
+
+### Option 3: Kubernetes
+
+Das `deploy/`-Verzeichnis enthält Kubernetes-Manifeste:
+
+```bash
+kubectl apply -f deploy/k8s/
+```
+
+Details und Konfiguration: [deploy/ auf GitHub](https://github.com/moritz-hauff/de-pii/tree/main/deploy).
+
+## Umgebungsvariablen
+
+`PUBLIC_APP_URL` (Standard: `/app`) — URL der App-Instanz für den CTA-Button auf der Landing Page.
+
+## Content Security Policy
+
+Die App setzt eine strikte CSP für HuggingFace-CDN-Requests (NER-Modelle). Anpassen in `apps/app/src/app.html`.
+
+## Updates
+
+```bash
+git pull
+pnpm install
+pnpm -F @de-pii/app build
+# Dann neu deployen / Container neu bauen
+```
+
+## Support
+
+Fragen und Issues: [github.com/moritz-hauff/de-pii/issues](https://github.com/moritz-hauff/de-pii/issues)
+
+</DocLayout>
+
+<script>
+  import DocLayout from '$lib/components/DocLayout.svelte';
+</script>

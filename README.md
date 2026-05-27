@@ -62,6 +62,22 @@ pnpm -F @de-pii/app build
 pnpm -F @de-pii/app preview
 ```
 
+### Running the landing
+
+```bash
+# Start the landing dev server (http://localhost:5174)
+pnpm -F @de-pii/landing dev
+
+# Build the landing for production (outputs to apps/landing/build/)
+pnpm -F @de-pii/landing build
+
+# Preview the production build locally
+pnpm -F @de-pii/landing preview
+```
+
+Set `PUBLIC_APP_URL` to point the landing's "Zur App" CTA at your app instance
+(defaults to `https://app.de-pii.dev` when unset).
+
 ## Deployment
 
 Both apps build to a static `build/` directory (adapter-static) and are served by a minimal nginx container.

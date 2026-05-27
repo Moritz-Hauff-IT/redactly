@@ -2,9 +2,24 @@
   "name": "@de-pii/landing",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "echo 'TODO: SvelteKit landing scaffolded in task 11'",
-    "build": "echo 'TODO: SvelteKit landing scaffolded in task 11'",
-    "typecheck": "echo 'TODO: SvelteKit landing scaffolded in task 11'"
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "typecheck": "pnpm check"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.61.1",
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@tailwindcss/vite": "^4.3.0",
+    "mdsvex": "^0.11.2",
+    "svelte": "^5.55.9",
+    "svelte-check": "^4.1.7",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.3.0"
   }
 }
