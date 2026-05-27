@@ -1,4 +1,6 @@
 <script lang="ts">
+  import SeoHead from '$lib/components/SeoHead.svelte';
+
   const guarantees = [
     {
       icon: '🚫',
@@ -33,13 +35,11 @@
   ];
 </script>
 
-<svelte:head>
-  <title>Privacy – de-pii</title>
-  <meta
-    name="description"
-    content="de-pii verarbeitet keine Nutzerdaten auf Servern. Alles läuft lokal im Browser."
-  />
-</svelte:head>
+<SeoHead
+  title="Privacy"
+  description="Redactly verarbeitet keine Nutzerdaten auf Servern. Alles läuft lokal im Browser. So kannst du es selbst prüfen."
+  path="/privacy"
+/>
 
 <div class="bg-white py-16 sm:py-20">
   <div class="mx-auto max-w-3xl px-4 sm:px-6">

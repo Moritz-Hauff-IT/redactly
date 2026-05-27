@@ -3,9 +3,11 @@ title: Getting Started
 description: Wie du de-pii in wenigen Schritten nutzt.
 ---
 
-<svelte:head>
-  <title>Getting Started – de-pii Dokumentation</title>
-</svelte:head>
+<SeoHead
+  title="Getting Started"
+  description="Schritt-für-Schritt: Redactly im Browser öffnen, Text maskieren, LLM-Antwort restaurieren."
+  path="/docs/getting-started"
+/>
 
 <DocLayout title="Getting Started" backHref="/docs">
 
@@ -62,4 +64,5 @@ Das PII-Mapping ist session-scoped. Wenn du den Tab schließt, geht es verloren.
 
 <script>
   import DocLayout from '$lib/components/DocLayout.svelte';
+  import SeoHead from '$lib/components/SeoHead.svelte';
 </script>

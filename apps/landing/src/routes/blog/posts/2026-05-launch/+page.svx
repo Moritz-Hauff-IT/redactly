@@ -6,10 +6,13 @@ slug: 2026-05-launch
 description: Der Ausgangspunkt — warum PII-Masking vor dem LLM sinnvoller ist als danach, und warum Browser-native der richtige Ansatz ist.
 ---
 
-<svelte:head>
-  <title>Warum wir de-pii bauen – de-pii Blog</title>
-  <meta name="description" content="Der Ausgangspunkt — warum PII-Masking vor dem LLM sinnvoller ist als danach, und warum Browser-native der richtige Ansatz ist." />
-</svelte:head>
+<SeoHead
+  title="Warum wir Redactly bauen"
+  description="Der Ausgangspunkt — warum PII-Masking vor dem LLM sinnvoller ist als danach, und warum Browser-native der richtige Ansatz ist."
+  path="/blog/posts/2026-05-launch"
+  ogType="article"
+  publishedTime="2026-05-27"
+/>
 
 <DocLayout title="Warum wir de-pii bauen" backHref="/blog" backLabel="Blog">
 
@@ -53,4 +56,5 @@ Wir bauen das als Open-Source-Projekt. Vertrauen durch Transparenz — nicht dur
 
 <script>
   import DocLayout from '$lib/components/DocLayout.svelte';
+  import SeoHead from '$lib/components/SeoHead.svelte';
 </script>

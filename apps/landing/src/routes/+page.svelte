@@ -3,10 +3,51 @@
   import FeatureGrid from '$lib/components/FeatureGrid.svelte';
   import HowItWorks from '$lib/components/HowItWorks.svelte';
   import CtaButton from '$lib/components/CtaButton.svelte';
+  import SeoHead from '$lib/components/SeoHead.svelte';
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': 'https://redactly.dev/#website',
+        url: 'https://redactly.dev',
+        name: 'Redactly',
+        description: 'Browser-only PII und Secret Masking für sichere LLM-Eingaben',
+        inLanguage: 'de',
+      },
+      {
+        '@type': 'SoftwareApplication',
+        name: 'Redactly',
+        applicationCategory: 'SecurityApplication',
+        operatingSystem: 'Web',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
+        url: 'https://app.redactly.dev',
+        downloadUrl: 'https://github.com/moritz-hauff-it/redactly',
+        license: 'https://opensource.org/licenses/MIT',
+        description:
+          'Reversibles Maskieren von PII und Secrets vor dem Versand an ChatGPT, Claude und andere LLMs. 100 % lokal im Browser.',
+      },
+      {
+        '@type': 'Organization',
+        '@id': 'https://redactly.dev/#org',
+        name: 'Redactly',
+        url: 'https://redactly.dev',
+        sameAs: ['https://github.com/moritz-hauff-it/redactly'],
+      },
+    ],
+  };
 </script>
 
+<SeoHead
+  title="Sichere LLM-Eingaben ohne Datenweitergabe"
+  description="Maskiere PII und Secrets, bevor sie deinen Browser verlassen. 100 % lokal. Open Source. Reversibel."
+  path="/"
+/>
+
 <svelte:head>
-  <title>de-pii – Sichere LLM-Eingaben ohne Datenweitergabe</title>
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+  {@html `<script type="application/ld+json">${JSON.stringify(jsonLd)}</` + `script>`}
 </svelte:head>
 
 <Hero />

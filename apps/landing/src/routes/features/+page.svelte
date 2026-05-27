@@ -1,4 +1,6 @@
 <script lang="ts">
+  import SeoHead from '$lib/components/SeoHead.svelte';
+
   const categories = [
     {
       icon: '👤',
@@ -77,13 +79,11 @@
   ];
 </script>
 
-<svelte:head>
-  <title>Features – de-pii</title>
-  <meta
-    name="description"
-    content="Alle Features von de-pii: Erkennungskategorien, Dateiformate, Masking-Modi und mehr."
-  />
-</svelte:head>
+<SeoHead
+  title="Features"
+  description="Alle Features von Redactly: Erkennungskategorien, Dateiformate, Masking-Modi und Reversibilität."
+  path="/features"
+/>
 
 <div class="bg-white py-16 sm:py-20">
   <div class="mx-auto max-w-5xl px-4 sm:px-6">

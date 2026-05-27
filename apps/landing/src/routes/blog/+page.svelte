@@ -1,4 +1,6 @@
 <script lang="ts">
+  import SeoHead from '$lib/components/SeoHead.svelte';
+
   interface Post {
     slug: string;
     title: string;
@@ -27,13 +29,11 @@
   }
 </script>
 
-<svelte:head>
-  <title>Blog – de-pii</title>
-  <meta
-    name="description"
-    content="Der de-pii Blog: Hintergrundinfos, Release Notes und mehr zu Privacy-First LLM-Nutzung."
-  />
-</svelte:head>
+<SeoHead
+  title="Blog"
+  description="Der Redactly Blog: Hintergrundinfos, Release Notes und Gedanken zu Privacy-First LLM-Nutzung."
+  path="/blog"
+/>
 
 <div class="bg-white py-16 sm:py-20">
   <div class="mx-auto max-w-3xl px-4 sm:px-6">

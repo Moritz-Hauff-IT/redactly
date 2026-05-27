@@ -1,4 +1,6 @@
 <script lang="ts">
+  import SeoHead from '$lib/components/SeoHead.svelte';
+
   const docLinks = [
     {
       href: '/docs/getting-started',
@@ -23,10 +25,11 @@
   ];
 </script>
 
-<svelte:head>
-  <title>Dokumentation – de-pii</title>
-  <meta name="description" content="de-pii Dokumentation: Getting Started, Self-Hosting, API." />
-</svelte:head>
+<SeoHead
+  title="Dokumentation"
+  description="Redactly Dokumentation: Getting Started, Self-Hosting, API-Referenz."
+  path="/docs"
+/>
 
 <div class="bg-white py-16 sm:py-20">
   <div class="mx-auto max-w-4xl px-4 sm:px-6">

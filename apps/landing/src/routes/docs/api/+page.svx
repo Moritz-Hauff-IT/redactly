@@ -3,9 +3,11 @@ title: "@de-pii/core API"
 description: Das headless Core-Paket für programmatische Nutzung.
 ---
 
-<svelte:head>
-  <title>@de-pii/core API – de-pii Dokumentation</title>
-</svelte:head>
+<SeoHead
+  title="@de-pii/core API"
+  description="Das headless Detection- und Masking-Engine-Paket — framework-agnostisch, für eigene Apps."
+  path="/docs/api"
+/>
 
 <DocLayout title="@de-pii/core API" backHref="/docs">
 
@@ -84,4 +86,5 @@ MIT — frei für kommerzielle und private Nutzung.
 
 <script>
   import DocLayout from '$lib/components/DocLayout.svelte';
+  import SeoHead from '$lib/components/SeoHead.svelte';
 </script>

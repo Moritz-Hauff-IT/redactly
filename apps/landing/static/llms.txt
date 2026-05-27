@@ -1,0 +1,31 @@
+# Redactly
+
+> Redactly is an open-source, browser-only tool that masks personally identifiable information (PII) and secrets in text and files before they are sent to large language models like ChatGPT or Claude. The masking is reversible: the LLM's response can be pasted back and the placeholders restored to the original values, all locally in the browser.
+
+## Key facts
+
+- 100% client-side. No server processing of user input. No telemetry.
+- Reversible masking with session-scoped mapping (per browser tab).
+- Hybrid detection: regex patterns (always on) + optional NER (Transformers.js, ~140 MB) + optional WebLLM (1–3 GB, opt-in, WebGPU required).
+- Supports plain text, Markdown, .eml, .pdf, and .docx file upload.
+- Detects: persons, organizations, locations, emails, phone numbers, IBANs, credit cards, tax IDs, plus secrets like API keys (AWS, GCP, Azure, GitHub, Slack, Stripe, OpenAI, Anthropic), JWTs, SSH/PGP private keys, and .env values.
+- MIT licensed, self-hostable via Docker + Kubernetes.
+
+## Pages
+
+- [Home](https://redactly.dev/): Overview and call to action.
+- [Features](https://redactly.dev/features): Detection categories, file formats, and detection modes (Regex/NER/WebLLM).
+- [Privacy](https://redactly.dev/privacy): Privacy guarantees and how to verify them.
+- [FAQ](https://redactly.dev/faq): Common questions about scope, languages, and data handling.
+- [Docs: Getting started](https://redactly.dev/docs/getting-started): Step-by-step usage guide.
+- [Docs: Self-hosting](https://redactly.dev/docs/self-hosting): Deploying Redactly on your own infrastructure.
+- [Docs: API](https://redactly.dev/docs/api): Programmatic use of the @de-pii/core npm package.
+- [Blog: Launch post](https://redactly.dev/blog/posts/2026-05-launch): Motivation behind the project.
+
+## App
+
+- [App](https://app.redactly.dev): The actual masking tool — paste or upload text, see what gets detected, copy the masked version to your LLM, paste the response back to restore.
+
+## Source
+
+- [GitHub](https://github.com/moritz-hauff-it/redactly): Source code, issues, contributing.

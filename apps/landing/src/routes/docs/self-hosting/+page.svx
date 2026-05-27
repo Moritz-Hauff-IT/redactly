@@ -3,9 +3,11 @@ title: Self-Hosting
 description: de-pii auf eigener Infrastruktur betreiben.
 ---
 
-<svelte:head>
-  <title>Self-Hosting – de-pii Dokumentation</title>
-</svelte:head>
+<SeoHead
+  title="Self-Hosting"
+  description="Redactly auf deiner eigenen Infrastruktur betreiben — Docker, Kubernetes, Static Host."
+  path="/docs/self-hosting"
+/>
 
 <DocLayout title="Self-Hosting" backHref="/docs">
 
@@ -63,10 +65,11 @@ pnpm -F @de-pii/app build
 
 ## Support
 
-Fragen und Issues: [github.com/moritz-hauff/de-pii/issues](https://github.com/moritz-hauff/de-pii/issues)
+Fragen und Issues: [github.com/moritz-hauff-it/redactly/issues](https://github.com/moritz-hauff-it/redactly/issues)
 
 </DocLayout>
 
 <script>
   import DocLayout from '$lib/components/DocLayout.svelte';
+  import SeoHead from '$lib/components/SeoHead.svelte';
 </script>

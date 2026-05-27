@@ -1,4 +1,6 @@
 <script lang="ts">
+  import SeoHead from '$lib/components/SeoHead.svelte';
+
   interface FaqItem {
     question: string;
     answer: string;
@@ -62,11 +64,27 @@
   function toggle(i: number) {
     openIndex = openIndex === i ? null : i;
   }
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.question,
+      acceptedAnswer: { '@type': 'Answer', text: f.answer },
+    })),
+  };
 </script>
 
+<SeoHead
+  title="FAQ"
+  description="Häufig gestellte Fragen zu Redactly — Datenschutz, Sprachen, Dateiformate, Modi."
+  path="/faq"
+/>
+
 <svelte:head>
-  <title>FAQ – de-pii</title>
-  <meta name="description" content="Häufig gestellte Fragen zu de-pii." />
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+  {@html `<script type="application/ld+json">${JSON.stringify(faqJsonLd)}</` + `script>`}
 </svelte:head>
 
 <div class="bg-white py-16 sm:py-20">
