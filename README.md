@@ -49,6 +49,19 @@ pnpm format
 pnpm build
 ```
 
+### Running the app
+
+```bash
+# Start the SvelteKit dev server (http://localhost:5173)
+pnpm -F @de-pii/app dev
+
+# Build the app for production (outputs to apps/app/build/)
+pnpm -F @de-pii/app build
+
+# Preview the production build locally
+pnpm -F @de-pii/app preview
+```
+
 ## Privacy guarantee
 
 All processing happens in the browser session. No server endpoint receives user content.

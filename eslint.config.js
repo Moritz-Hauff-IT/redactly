@@ -32,11 +32,14 @@ export default [
   },
   // Svelte files (for when svelte packages are added later)
   ...sveltePlugin.configs['flat/recommended'],
-  // Override Svelte files with browser globals (Svelte components run in the browser)
+  // Override Svelte files with browser globals and TypeScript parser for script blocks
   {
     files: ['**/*.svelte'],
     languageOptions: {
       globals: { ...globals.browser },
+      parserOptions: {
+        parser: tsParser,
+      },
     },
   },
   // Disable ESLint rules that conflict with Prettier (must be last)
