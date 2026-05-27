@@ -1,0 +1,22 @@
+{
+  "name": "@de-pii/core",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p .",
+    "typecheck": "tsc -p . --noEmit",
+    "test": "echo 'Run tests from root: pnpm test'",
+    "test:watch": "vitest --project @de-pii/core"
+  }
+}
