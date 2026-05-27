@@ -1,26 +1,35 @@
 /**
  * PDF parser using pdfjs-dist (legacy build).
  *
- * Worker setup notes:
- * - In Node / Vitest: we configure `GlobalWorkerOptions.workerSrc` to point to
- *   the legacy worker bundle path so pdfjs can set up its inline "fake worker".
- *   The `standardFontDataUrl` is also configured to point to the font data
- *   bundled with pdfjs-dist.
- * - In SvelteKit / Vite production builds, configure the worker via:
- *   ```ts
- *   import { GlobalWorkerOptions } from 'pdfjs-dist';
- *   GlobalWorkerOptions.workerSrc = new URL(
- *     'pdfjs-dist/legacy/build/pdf.worker.mjs',
- *     import.meta.url,
- *   ).toString();
- *   ```
- * - The legacy build (`pdfjs-dist/legacy/build/pdf.mjs`) is used here because
- *   it works in both Node.js and browsers without additional polyfills.
+ * ## Worker setup — REQUIRED by the consuming application
+ *
+ * This library does NOT configure `GlobalWorkerOptions.workerSrc`. The
+ * consuming application MUST set it before calling `parsePdfBlob`, otherwise
+ * a `PdfWorkerNotConfiguredError` is thrown.
+ *
+ * ### SvelteKit / Vite apps
+ * ```ts
+ * // In the consuming app (e.g. src/lib/pdfWorker.ts, imported once at startup):
+ * import { GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
+ * import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
+ * GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+ * ```
+ *
+ * ### Node.js / Vitest tests
+ * ```ts
+ * import { GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
+ * import { createRequire } from 'node:module';
+ * const require = createRequire(import.meta.url);
+ * const workerPath = require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs');
+ * GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
+ * ```
+ *
+ * - The legacy build (`pdfjs-dist/legacy/build/pdf.mjs`) is used because it
+ *   works in both Node.js and browsers without additional polyfills.
  * - Note: pdfjs-dist transfers the data ArrayBuffer to the worker thread,
  *   which detaches it. Always pass a copy if you need the original buffer after parsing.
  */
 
-import { createRequire } from 'node:module';
 import type { ParseResult } from './txt.js';
 
 export interface PdfParseResult extends ParseResult {
@@ -28,19 +37,19 @@ export interface PdfParseResult extends ParseResult {
 }
 
 /**
- * Resolve the pdfjs-dist package root directory.
- * Returns a file:// URL ending with '/' suitable for standardFontDataUrl.
+ * Thrown when `parsePdfBlob` is called without a configured PDF.js worker.
+ *
+ * Set `GlobalWorkerOptions.workerSrc` before calling this function.
+ * See the module-level JSDoc for the recommended setup snippet.
  */
-function resolvePdfjsRoot(): string {
-  try {
-    const require = createRequire(import.meta.url);
-    const pdfjsMain = require.resolve('pdfjs-dist/legacy/build/pdf.mjs');
-    // pdfjsMain is something like /.../pdfjs-dist/legacy/build/pdf.mjs
-    // We want /.../pdfjs-dist/ as a URL
-    const root = pdfjsMain.replace(/legacy\/build\/pdf\.mjs$/, '');
-    return `file://${root}`;
-  } catch {
-    return '';
+export class PdfWorkerNotConfiguredError extends Error {
+  constructor() {
+    super(
+      'GlobalWorkerOptions.workerSrc is not set. ' +
+        'The consuming application must configure the PDF.js worker before calling parsePdfBlob. ' +
+        'See the pdfjs-dist documentation or the @de-pii/core README for the recommended setup.'
+    );
+    this.name = 'PdfWorkerNotConfiguredError';
   }
 }
 
@@ -57,12 +66,11 @@ export async function parsePdfBlob(
   // module load time.
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
-  // Configure workerSrc so pdfjs can load its worker (or inline fake-worker).
+  // The consuming application is responsible for setting workerSrc.
+  // We do not set it here because a bare-specifier URL cannot be reliably
+  // resolved by Vite when this library is inside node_modules.
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/legacy/build/pdf.worker.mjs',
-      import.meta.url
-    ).href;
+    throw new PdfWorkerNotConfiguredError();
   }
 
   let bytes: number;
@@ -82,13 +90,7 @@ export async function parsePdfBlob(
     bytes = (input as Blob).size;
   }
 
-  const pdfjsRoot = resolvePdfjsRoot();
-  const standardFontDataUrl = pdfjsRoot ? `${pdfjsRoot}standard_fonts/` : undefined;
-
-  const loadingTask = pdfjsLib.getDocument({
-    data: dataCopy,
-    ...(standardFontDataUrl ? { standardFontDataUrl } : {}),
-  });
+  const loadingTask = pdfjsLib.getDocument({ data: dataCopy });
 
   const pdfDocument = await loadingTask.promise;
   const numPages = pdfDocument.numPages;

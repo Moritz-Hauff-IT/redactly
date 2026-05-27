@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { parsePdfBlob } from './pdf.js';
+import { createRequire } from 'node:module';
+import { parsePdfBlob, PdfWorkerNotConfiguredError } from './pdf.js';
+
+// Configure the PDF.js worker for the Node/Vitest test environment.
+// In browser/SvelteKit apps the consumer sets this via the ?url import.
+const require = createRequire(import.meta.url);
+const workerPath = require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs');
+const { GlobalWorkerOptions } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
 
 let pdfBytes: Uint8Array;
 
@@ -69,5 +77,15 @@ describe('parsePdfBlob', () => {
 
   it('throws when given a string', async () => {
     await expect(parsePdfBlob('not a pdf' as unknown as Uint8Array)).rejects.toThrow(TypeError);
+  });
+
+  it('throws PdfWorkerNotConfiguredError when workerSrc is not set', async () => {
+    const saved = GlobalWorkerOptions.workerSrc;
+    try {
+      GlobalWorkerOptions.workerSrc = '';
+      await expect(parsePdfBlob(pdfBytes)).rejects.toThrow(PdfWorkerNotConfiguredError);
+    } finally {
+      GlobalWorkerOptions.workerSrc = saved;
+    }
   });
 });

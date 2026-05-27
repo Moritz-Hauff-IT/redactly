@@ -14,7 +14,7 @@ export interface MdParseOptions {
   stripFrontmatter?: boolean;
 }
 
-const FRONTMATTER_RE = /^---\r?\n[\s\S]*?\n---\r?\n/;
+const FRONTMATTER_RE = /^---\r?\n[\s\S]*?\n---(\r?\n|$)/;
 
 export async function parseMdBlob(
   input: Blob | ArrayBuffer | Uint8Array | string,

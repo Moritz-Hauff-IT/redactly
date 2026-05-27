@@ -86,4 +86,32 @@ describe('parseEmlBlob', () => {
     const result = await parseEmlBlob(SAMPLE_EML);
     expect(result.meta.bytes).toBeGreaterThan(0);
   });
+
+  it('strips <script> block content from HTML-only emails', async () => {
+    const emlWithScript = `From: sender@test.com
+To: receiver@test.com
+Subject: Script test
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<html><head><script>alert("secret token");</script></head><body><p>Visible text</p></body></html>`.trim();
+    const result = await parseEmlBlob(emlWithScript);
+    expect(result.text).not.toContain('secret token');
+    expect(result.text).not.toContain('alert');
+    expect(result.text).toContain('Visible text');
+  });
+
+  it('strips <style> block content from HTML-only emails', async () => {
+    const emlWithStyle = `From: sender@test.com
+To: receiver@test.com
+Subject: Style test
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+
+<html><head><style>.secret { color: red; font-family: Arial; }</style></head><body><p>Real content</p></body></html>`.trim();
+    const result = await parseEmlBlob(emlWithStyle);
+    expect(result.text).not.toContain('.secret');
+    expect(result.text).not.toContain('font-family');
+    expect(result.text).toContain('Real content');
+  });
 });

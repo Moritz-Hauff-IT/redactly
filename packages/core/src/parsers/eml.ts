@@ -18,6 +18,8 @@ import type { ParseResult } from './txt.js';
  */
 function stripHtml(html: string): string {
   return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/?(p|div|li|tr|h[1-6]|blockquote)[^>]*>/gi, '\n')
     .replace(/<[^>]+>/g, '')

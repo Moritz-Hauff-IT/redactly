@@ -46,4 +46,11 @@ describe('parseMdBlob', () => {
     const result = await parseMdBlob(blob);
     expect(result.text).toContain('# markdown');
   });
+
+  it('strips frontmatter even when file ends with --- without a trailing newline', async () => {
+    const docWithoutTrailingNewline = '---\ntitle: Test\nauthor: Alice\n---';
+    const result = await parseMdBlob(docWithoutTrailingNewline);
+    expect(result.text).not.toContain('title: Test');
+    expect(result.text.trim()).toBe('');
+  });
 });

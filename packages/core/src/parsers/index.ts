@@ -7,7 +7,7 @@ export type { ParseResult } from './txt.js';
 export { parseTxtBlob } from './txt.js';
 export { parseMdBlob } from './md.js';
 export { parseEmlBlob } from './eml.js';
-export { parsePdfBlob } from './pdf.js';
+export { parsePdfBlob, PdfWorkerNotConfiguredError } from './pdf.js';
 export { parseDocxBlob } from './docx.js';
 
 import { parseTxtBlob } from './txt.js';
