@@ -8,6 +8,34 @@ const config = {
     adapter: adapter({
       fallback: 'index.html',
     }),
+    csp: {
+      mode: 'hash',
+      directives: {
+        'default-src': ['self'],
+        // 'wasm-unsafe-eval' for ONNX/WebLLM WASM execution.
+        // jsdelivr is used by @huggingface/transformers to dynamic-import the ONNX-Runtime-Web WASM backend modules.
+        'script-src': ['self', 'wasm-unsafe-eval', 'https://cdn.jsdelivr.net'],
+        'style-src': ['self', 'unsafe-inline'],
+        'img-src': ['self', 'data:'],
+        'connect-src': [
+          'self',
+          'https://huggingface.co',
+          'https://*.huggingface.co',
+          'https://cdn-lfs.huggingface.co',
+          'https://cdn-lfs-us-1.huggingface.co',
+          'https://cas-bridge.xethub.hf.co',
+          'https://raw.githubusercontent.com',
+          'https://s3.amazonaws.com',
+          'https://*.s3.amazonaws.com',
+          // ONNX-Runtime-Web WASM binaries + transformers.js modules
+          'https://cdn.jsdelivr.net',
+        ],
+        'worker-src': ['self', 'blob:'],
+        'object-src': ['none'],
+        'base-uri': ['self'],
+        'form-action': ['none'],
+      },
+    },
     alias: {
       // Specific sub-path entries (resolved first by Vite since they're strings).
       // The '@de-pii/core/*' entry below causes SvelteKit to wrap '@de-pii/core'

@@ -6,10 +6,22 @@ export const financialRules: RegexRule[] = [
     type: 'IBAN',
     category: 'financial',
     // Country code + check digits + BBAN (11-30 alphanumeric chars)
-    // Spaces allowed (common human-readable format)
+    // Spaces allowed (common human-readable format).
+    // High-confidence rule: requires valid ISO 7064 mod-97 checksum.
     pattern: /\b[A-Z]{2}\d{2}[A-Z0-9 ]{11,34}\b/g,
     confidence: 0.99,
     validate: (match) => ibanMod97(match),
+  },
+  {
+    type: 'IBAN',
+    category: 'financial',
+    // Lenient fallback: IBAN-shaped strings that fail mod-97 (e.g. typos in
+    // source documents). Restricted to common SEPA + selected ISO country
+    // codes so random uppercase-digit strings don't false-positive. Lower
+    // confidence than the strict rule, so the strict rule wins on dedup.
+    pattern:
+      /\b(?:DE|AT|CH|LI|FR|IT|ES|NL|BE|LU|PT|IE|FI|EE|LV|LT|SK|SI|CZ|PL|HU|DK|SE|NO|GB|MT|CY|GR|BG|RO|HR|IS|MC|SM|AD|VA)\d{2}[A-Z0-9 ]{11,34}\b/g,
+    confidence: 0.5,
   },
   {
     type: 'BIC',

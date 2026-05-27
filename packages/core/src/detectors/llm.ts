@@ -303,6 +303,11 @@ export class WebLlmDetector implements Detector {
 
     const prompt = buildPrompt(text);
 
+    // Note: previously this called the WebLLM JSON-schema mode via
+    // `response_format: { type: 'json_object' }`, but that triggers
+    // `BindingError: Cannot pass non-string to std::string` in MLC's
+    // GrammarCompiler for some model builds. Prompt-driven JSON is
+    // reliable across all supported models and we parse defensively below.
     let rawContent: string;
     try {
       const response = await eng.chat.completions.create({
@@ -310,30 +315,14 @@ export class WebLlmDetector implements Detector {
           {
             role: 'system',
             content:
-              'Du bist ein präziser PII-Detektor. Antworte ausschließlich mit gültigem JSON gemäß dem vorgegebenen Format.',
+              'Du bist ein präziser PII-Detektor. Antworte ausschließlich mit gültigem JSON gemäß dem vorgegebenen Format, ohne Code-Fences und ohne Erklärtext.',
           },
           { role: 'user', content: prompt },
         ],
-        response_format: { type: 'json_object' },
       });
       rawContent = response.choices[0]?.message?.content ?? '';
     } catch {
-      // If response_format is not supported, retry without it
-      try {
-        const response = await eng.chat.completions.create({
-          messages: [
-            {
-              role: 'system',
-              content:
-                'Du bist ein präziser PII-Detektor. Antworte ausschließlich mit gültigem JSON gemäß dem vorgegebenen Format.',
-            },
-            { role: 'user', content: prompt },
-          ],
-        });
-        rawContent = response.choices[0]?.message?.content ?? '';
-      } catch {
-        return [];
-      }
+      return [];
     }
 
     const rawEntities = parseJsonResponse(rawContent);

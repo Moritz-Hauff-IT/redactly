@@ -145,11 +145,17 @@ describe('IBAN detection', () => {
     expect(hasMatch('IBAN: DE89 3704 0044 0532 0130 00', 'IBAN')).toBe(true);
   });
 
-  it('does NOT match IBAN with bad checksum', () => {
-    expect(noMatch('DE00370400440532013000', 'IBAN')).toBe(true);
+  it('matches bad-checksum DE IBAN with low confidence (lenient fallback)', () => {
+    // Strict rule rejects (mod-97 fails), lenient rule still surfaces it
+    // because IBAN-shaped real-country-code strings are often source-document typos.
+    const matches = findType('DE00370400440532013000', 'IBAN');
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches[0]?.confidence).toBeLessThan(0.6);
   });
 
-  it('does NOT match a random uppercase+digit string of similar length', () => {
+  it('does NOT match a random uppercase+digit string with non-ISO country code', () => {
+    // 'XX' is not a real ISO 3166-1 alpha-2 country code, so the lenient rule
+    // (which whitelists real country codes) still rejects it.
     expect(noMatch('XX00XXXX0000000000000000', 'IBAN')).toBe(true);
   });
 

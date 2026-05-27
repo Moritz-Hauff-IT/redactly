@@ -1,12 +1,219 @@
 @import 'tailwindcss';
 
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,500;8..60,600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@theme {
+  /* Editorial palette — warm cream paper with deep ink and one rust accent */
+  --color-paper: #f5f1e8;
+  --color-paper-deep: #ebe5d3;
+  --color-ink: #161311;
+  --color-ink-soft: #3d3833;
+  --color-ink-mute: #7a736a;
+  --color-rule: #d4cdc0;
+  --color-rust: #b1431b;
+  --color-rust-deep: #8a3214;
+  --color-redaction: #0a0807;
+
+  --font-display: 'Instrument Serif', 'Source Serif 4', Georgia, serif;
+  --font-body: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+html,
 body {
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-feature-settings: 'kern', 'liga', 'onum';
   margin: 0;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle paper grain overlay — drawn via SVG noise, very low opacity */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.85'/%3E%3C/svg%3E");
+}
+
+/* The redaction bar — a recognizable brand element */
+.redact {
+  display: inline-block;
+  background: var(--color-redaction);
+  color: transparent;
+  padding: 0 0.18em;
+  border-radius: 1px;
+  user-select: none;
+  position: relative;
+}
+
+.redact-hover {
+  cursor: pointer;
+  transition: background 200ms ease;
+}
+.redact-hover:hover {
+  background: var(--color-rust);
+}
+
+/* Animated redaction sweep used on hero */
+.redact-sweep {
+  position: relative;
+  display: inline-block;
+  color: var(--color-ink);
+}
+.redact-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0.1em -0.18em 0.1em -0.18em;
+  background: var(--color-redaction);
+  transform-origin: left center;
+  animation: redact-in 1.6s cubic-bezier(0.86, 0, 0.07, 1) 0.6s forwards;
+  transform: scaleX(0);
+}
+@keyframes redact-in {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+/* Decorative rule with a small dot */
+.editorial-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-ink-mute);
+}
+.editorial-rule::before,
+.editorial-rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-rule);
+}
+
+/* Small caps label used for section markers */
+.label-caps {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-mute);
+  font-weight: 500;
+}
+
+/* Marginalia (small numbered side-notes) */
+.marginalia {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--color-ink-mute);
+  letter-spacing: 0.04em;
+}
+
+/* Prose styles for mdsvex content — reads like a printed essay */
+.prose-editorial {
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  max-width: 65ch;
+}
+.prose-editorial p {
+  margin: 1.2em 0;
+}
+.prose-editorial p:first-of-type::first-line {
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+}
+.prose-editorial h1,
+.prose-editorial h2,
+.prose-editorial h3 {
+  font-family: var(--font-display);
+  color: var(--color-ink);
+  font-weight: 400;
+}
+.prose-editorial h1 {
+  font-size: 2.5rem;
+  font-style: italic;
+  line-height: 1.05;
+  margin: 0 0 1.5rem;
+  letter-spacing: -0.02em;
+}
+.prose-editorial h2 {
+  font-size: 1.625rem;
+  margin: 2rem 0 0.5rem;
+  font-style: italic;
+  letter-spacing: -0.01em;
+}
+.prose-editorial h3 {
+  font-size: 1.25rem;
+  margin: 1.5rem 0 0.4rem;
+}
+.prose-editorial a {
+  color: var(--color-rust);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--color-rust) 40%, transparent);
+}
+.prose-editorial a:hover {
+  text-decoration-color: var(--color-rust);
+}
+.prose-editorial code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--color-paper-deep);
+  padding: 0.1em 0.4em;
+  border-radius: 2px;
+  color: var(--color-ink);
+}
+.prose-editorial pre {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  padding: 1.25rem 1.5rem;
+  border-radius: 2px;
+  overflow-x: auto;
+  line-height: 1.55;
+  margin: 1.5rem 0;
+}
+.prose-editorial pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+.prose-editorial blockquote {
+  border-left: 2px solid var(--color-rust);
+  margin: 1.5rem 0;
+  padding: 0.25rem 0 0.25rem 1.25rem;
+  font-style: italic;
+  color: var(--color-ink-soft);
+}
+.prose-editorial ul,
+.prose-editorial ol {
+  margin: 1rem 0 1rem 1.5rem;
+}
+.prose-editorial li {
+  margin: 0.4em 0;
+}
+.prose-editorial hr {
+  border: none;
+  border-top: 1px solid var(--color-rule);
+  margin: 2.5rem 0;
+}
+
+/* Focus styling */
+:focus-visible {
+  outline: 2px solid var(--color-rust);
+  outline-offset: 2px;
 }

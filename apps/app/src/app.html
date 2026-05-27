@@ -4,10 +4,7 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%sveltekit.assets%/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cas-bridge.xethub.hf.co https://raw.githubusercontent.com https://cdn-lfs-us-1.huggingface.co https://s3.amazonaws.com https://*.s3.amazonaws.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'"
-    />
+    <!-- CSP is set via kit.csp in svelte.config.js (per-build hashes for prod; dev mode skips it). -->
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

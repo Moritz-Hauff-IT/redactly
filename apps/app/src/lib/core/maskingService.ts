@@ -8,12 +8,15 @@ import { mappingStore } from '../stores/mappingStore.svelte.js';
 /**
  * Mask text using the currently active (enabled) entities from detectionStore.
  * Stores the resulting mapping into mappingStore and returns the mask result.
+ *
+ * Note: we intentionally do NOT read mappingStore here. Reading + writing the
+ * same Svelte $state inside one effect tick triggers Svelte 5's
+ * effect_update_depth_exceeded loop guard. The masker is deterministic on
+ * (text, entities) so rebuilding from scratch produces identical placeholders.
  */
 export function maskText(text: string): MaskResult {
   const activeEntities = detectionStore.activeEntities;
-  const existing = mappingStore.get() ?? undefined;
-
-  const result = mask(text, activeEntities, { existing });
+  const result = mask(text, activeEntities);
   mappingStore.set(result.mapping);
   return result;
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import InputPane from '$lib/components/InputPane.svelte';
   import MaskedPane from '$lib/components/MaskedPane.svelte';
   import EngineStatus from '$lib/components/EngineStatus.svelte';
@@ -23,9 +24,7 @@
     try {
       const entities = await analyze(text);
       detectionStore.setEntities(entities);
-      // Mask uses activeEntities from store
-      const result = maskText(text);
-      maskedText = result.maskedText;
+      // Don't mask here — the $effect below picks up the entity change and masks once.
     } catch (err) {
       console.error('Analysis failed:', err);
     }
@@ -38,11 +37,12 @@
     }, 300);
   }
 
-  // When active entities change (user toggles), re-run masking without re-analysis
+  // Single mask-on-entity-change effect. Reads activeEntities (tracked) and
+  // pulls text untracked so character-by-character typing doesn't mask before
+  // the debounced analyze has refreshed entities.
   $effect(() => {
-    // Access activeEntities to track changes
     const _active = detectionStore.activeEntities;
-    const text = inputStore.text;
+    const text = untrack(() => inputStore.text);
     if (!text.trim()) {
       maskedText = '';
       return;
