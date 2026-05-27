@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write   # needed to push to ghcr.io
+      packages: write # needed to push to ghcr.io
 
     strategy:
       fail-fast: false
@@ -47,17 +47,19 @@ jobs:
           push: true
           # Tags: latest + git SHA + run number for traceability
           tags: |
-            ghcr.io/${{ github.repository_owner }}/de-pii-${{ matrix.target }}:latest
-            ghcr.io/${{ github.repository_owner }}/de-pii-${{ matrix.target }}:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/de-pii-${{ matrix.target }}:run-${{ github.run_number }}
+            ghcr.io/moritz-hauff-it/redactly-${{ matrix.target }}:latest
+            ghcr.io/moritz-hauff-it/redactly-${{ matrix.target }}:${{ github.sha }}
+            ghcr.io/moritz-hauff-it/redactly-${{ matrix.target }}:run-${{ github.run_number }}
           # Cache layers from the registry to speed up rebuilds
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/de-pii-${{ matrix.target }}:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/de-pii-${{ matrix.target }}:buildcache,mode=max
+          cache-from: type=registry,ref=ghcr.io/moritz-hauff-it/redactly-${{ matrix.target }}:buildcache
+          cache-to: type=registry,ref=ghcr.io/moritz-hauff-it/redactly-${{ matrix.target }}:buildcache,mode=max
           # Build-time labels for traceability
           labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.source=https://github.com/moritz-hauff-it/redactly
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ steps.ts.outputs.created }}
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.description=Redactly — browser-only PII/secret masking
 
 # NOTE: This workflow only builds and pushes images — it does NOT deploy to the cluster.
 # Deployment is intentionally manual (or via your CD tool, e.g. Argo CD / Flux).

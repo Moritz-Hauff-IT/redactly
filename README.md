@@ -1,104 +1,86 @@
-# de-pii
+# Redactly
 
-> Browser-only PII & secret masking for safe LLM input.
+> Mask PII and secrets in your browser — _before_ they reach ChatGPT, Claude, or any other LLM.
 
-![Status: In Development](https://img.shields.io/badge/status-in%20development-orange)
-![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+[Live demo →](https://app.redactly.dev) · [Docs →](https://redactly.dev/docs) · [Privacy promise →](https://redactly.dev/privacy)
 
-de-pii lets you strip personally identifiable information and secrets from text and files
-**entirely in your browser** before sending them to AI assistants like ChatGPT or Claude.
-Masking is reversible: paste the LLM's response back and recover the original values.
-No data ever leaves your device — the hoster cannot see your content.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![CI](https://github.com/moritz-hauff-it/redactly/actions/workflows/ci.yml/badge.svg)](https://github.com/moritz-hauff-it/redactly/actions/workflows/ci.yml)
+[![No telemetry](https://img.shields.io/badge/telemetry-none-green)](https://redactly.dev/privacy)
 
-**Status: in development** — see the [sequencing plan](/.claude/plans/) for build order.
+## Why
 
-## Repo structure
+Pasting a support ticket, medical record, or internal email into an LLM exposes sensitive data to a third-party server. Redactly replaces names, emails, phone numbers, IBANs, API keys, and other PII with reversible placeholders entirely inside your browser tab. The LLM never sees the real values — and neither does Redactly's server, because there is no server-side processing.
+
+## Features
+
+- **Browser-only** — no server processing of your text or files; verify via the Network tab
+- **Reversible** — paste the LLM's response back to restore originals locally, session-scoped
+- **Hybrid detection** — Regex (always-on, instant) + NER (opt-in, ~80 MB download) + WebLLM (opt-in, 1–4 GB)
+- **File support** — `.txt`, `.md`, `.eml`, `.pdf`, `.docx` via drag & drop or file picker
+- **Open source, MIT** — self-host or audit the code
+
+## How it works
+
+```
+1. Paste text or drop a file
+         |
+         v
+2. Redactly detects PII → replaces with [NAME_1], [EMAIL_1], …
+         |
+         v
+3. Copy the clean text → paste into ChatGPT / Claude / etc.
+         |
+         v
+4. Copy the LLM response → paste back into Redactly → originals restored
+```
+
+## Try it locally
+
+**Prerequisites:** Node 22+, pnpm 9.12.0+
+
+```bash
+pnpm install
+pnpm -F @de-pii/app dev      # http://localhost:5173
+pnpm -F @de-pii/landing dev  # http://localhost:5174
+```
+
+Run all checks:
+
+```bash
+pnpm test        # unit tests
+pnpm typecheck   # TypeScript
+pnpm lint        # ESLint + Prettier
+```
+
+## Architecture
 
 ```
 de-pii/
 ├── packages/
 │   └── core/          # Headless detection + masking engine (TS, framework-agnostic)
 ├── apps/
-│   ├── app/           # SvelteKit app  →  app.<domain>
-│   └── landing/       # SvelteKit landing  →  <domain>
-├── deploy/            # Dockerfiles + k8s manifests
-└── ...tooling configs
+│   ├── app/           # SvelteKit app  →  app.redactly.dev
+│   └── landing/       # SvelteKit landing  →  redactly.dev
+├── deploy/
+│   ├── argocd/        # ArgoCD App-of-Apps root Application
+│   ├── k8s/           # Kubernetes manifests (namespace, ingress, deployments, HPA)
+│   └── nginx/         # nginx config shared by both containers
+└── .github/workflows/ # CI (lint/test/typecheck) + image build/push
 ```
 
-## Development
-
-**Prerequisites:** Node 22+, pnpm 9.12.0+
-
-```bash
-# Install dependencies
-pnpm install
-
-# Run all tests (all packages via root vitest config — no per-package test scripts)
-pnpm test
-
-# Type-check all packages
-pnpm typecheck
-
-# Lint
-pnpm lint
-
-# Format
-pnpm format
-
-# Build all packages
-pnpm build
-```
-
-### Running the app
-
-```bash
-# Start the SvelteKit dev server (http://localhost:5173)
-pnpm -F @de-pii/app dev
-
-# Build the app for production (outputs to apps/app/build/)
-pnpm -F @de-pii/app build
-
-# Preview the production build locally
-pnpm -F @de-pii/app preview
-```
-
-### Running the landing
-
-```bash
-# Start the landing dev server (http://localhost:5174)
-pnpm -F @de-pii/landing dev
-
-# Build the landing for production (outputs to apps/landing/build/)
-pnpm -F @de-pii/landing build
-
-# Preview the production build locally
-pnpm -F @de-pii/landing preview
-```
-
-Set `PUBLIC_APP_URL` to point the landing's "Zur App" CTA at your app instance
-(defaults to `https://app.de-pii.dev` when unset).
+Internal package scope is `@de-pii/*` — external brand is **Redactly**.
 
 ## Deployment
 
-Both apps build to a static `build/` directory (adapter-static) and are served by a minimal nginx container.
+Both apps build to a static `build/` directory (SvelteKit adapter-static) and are served by a minimal nginx container. Images are published to `ghcr.io/moritz-hauff-it/redactly-{app,landing}` on every push to `main`.
 
-```bash
-# Build images locally
-docker build -f apps/app/Dockerfile -t de-pii-app .
-docker build -f apps/landing/Dockerfile -t de-pii-landing .
+This repo includes Kubernetes manifests under `deploy/k8s/` and an ArgoCD root Application under `deploy/argocd/`. See [deploy/README.md](deploy/README.md) for full self-hosting instructions (ingress-nginx + cert-manager required).
 
-# Apply to Kubernetes (edit host placeholders first — see deploy/README.md)
-kubectl apply -f deploy/k8s/namespace.yaml
-kubectl apply -R -f deploy/k8s/
-```
+## Contributing
 
-CI builds and pushes images to `ghcr.io/<owner>/de-pii-{app,landing}` on every push to `main`.
-See [deploy/README.md](deploy/README.md) for full self-hosting instructions, required cluster prerequisites, and CD options.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Security issues: [SECURITY.md](SECURITY.md).
 
-## Privacy guarantee
+## License
 
-All processing happens in the browser session. No server endpoint receives user content.
-Verify this yourself via the Network tab — inputs never leave your browser.
-
-The Kubernetes NetworkPolicy (`deploy/k8s/networkpolicy.yaml`) enforces this at the network layer too:
-the server process is blocked from all egress except DNS — it cannot phone home even if compromised.
+MIT — see [LICENSE](LICENSE).

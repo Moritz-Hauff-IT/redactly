@@ -19,7 +19,7 @@ Moderner Browser (Chrome 113+, Firefox 115+, Safari 16.4+, Edge 113+). Für WebL
 
 ## Schritt 1: App öffnen
 
-Öffne [app.de-pii.dev](https://app.de-pii.dev). Die App startet sofort — kein Ladebildschirm, kein Onboarding.
+Öffne [app.redactly.dev](https://app.redactly.dev). Die App startet sofort — kein Ladebildschirm, kein Onboarding.
 
 Erkennungsmodus wählen (Einstellungen):
 

@@ -1,15 +1,15 @@
 # Deployment
 
-de-pii ships as two static nginx containers — one for the main app (`app.<domain>`) and one for the landing page (`<domain>`). Both run fully non-root in Kubernetes.
+Redactly ships as two static nginx containers — one for the main app (`app.redactly.dev`) and one for the landing page (`redactly.dev`). Both run fully non-root in Kubernetes.
 
 ## Prerequisites
 
 Your cluster must have:
 
-| Component | Notes |
-|-----------|-------|
-| **ingress-nginx** | `ingressClassName: nginx` is used in all Ingress resources |
-| **cert-manager** | Used to issue TLS certificates via a `ClusterIssuer` |
+| Component             | Notes                                                                                               |
+| --------------------- | --------------------------------------------------------------------------------------------------- |
+| **ingress-nginx**     | `ingressClassName: nginx` is used in all Ingress resources                                          |
+| **cert-manager**      | Used to issue TLS certificates via a `ClusterIssuer`                                                |
 | **A `ClusterIssuer`** | Manifests default to `letsencrypt-prod` — change the annotation if your issuer has a different name |
 
 ## Quick start
@@ -18,14 +18,7 @@ Your cluster must have:
 # 1. Apply the namespace first
 kubectl apply -f deploy/k8s/namespace.yaml
 
-# 2. Edit the host placeholders in both Ingress files:
-#    deploy/k8s/app/ingress.yaml     → replace app.de-pii.example.com
-#    deploy/k8s/landing/ingress.yaml → replace de-pii.example.com
-#
-#    Also replace <OWNER> in both deployment.yaml files with your GitHub username/org,
-#    or set the image field to your actual image reference.
-
-# 3. Apply everything recursively
+# 2. Apply everything recursively
 kubectl apply -R -f deploy/k8s/
 ```
 
@@ -33,14 +26,14 @@ That's it. cert-manager will issue certificates automatically once the Ingress r
 
 ## Image references
 
-The `deployment.yaml` files contain placeholder image references:
+The `deployment.yaml` files reference images from the GitHub Container Registry:
 
 ```
-ghcr.io/<OWNER>/de-pii-app:latest
-ghcr.io/<OWNER>/de-pii-landing:latest
+ghcr.io/moritz-hauff-it/redactly-app:latest
+ghcr.io/moritz-hauff-it/redactly-landing:latest
 ```
 
-Replace `<OWNER>` with your GitHub username or organisation name. Images are built and pushed by the CI workflow on every push to `main` (see `.github/workflows/build-images.yml`).
+Images are built and pushed by the CI workflow on every push to `main` (see `.github/workflows/build-images.yml`).
 
 ### Pinning to a specific image
 
@@ -49,7 +42,7 @@ For production, prefer a pinned SHA tag over `:latest`:
 ```bash
 # Example — pin the app deployment to a specific git SHA
 kubectl set image deployment/de-pii-app \
-  web=ghcr.io/<OWNER>/de-pii-app:abc1234 \
+  web=ghcr.io/moritz-hauff-it/redactly-app:abc1234 \
   -n de-pii
 ```
 
@@ -61,7 +54,7 @@ If your cluster uses a different issuer name, edit the annotation in both Ingres
 
 ```yaml
 annotations:
-  cert-manager.io/cluster-issuer: <your-issuer-name>   # e.g. letsencrypt-staging
+  cert-manager.io/cluster-issuer: <your-issuer-name> # e.g. letsencrypt-staging
 ```
 
 ## NetworkPolicy
@@ -99,14 +92,17 @@ The included CI workflow (`build-images.yml`) **builds and pushes images only** 
 
 Recommended CD approaches:
 
+- **Argo CD** (included): Apply `deploy/argocd/root.yaml` once — Argo CD then auto-syncs on every push to `main` with prune + self-heal. See [deploy/argocd/README.md](argocd/README.md).
 - **Manual**: `kubectl set image` or edit the deployment YAML and `kubectl apply`
-- **Argo CD**: Point an Application at `deploy/k8s/` — Argo CD will sync on every push after you update the image tag in the overlay
-- **Flux**: Similar — use an `ImageUpdateAutomation` to watch the registry and patch the deployment
+- **Flux**: Use an `ImageUpdateAutomation` to watch the registry and patch the deployment
 
 ## Directory layout
 
 ```
 deploy/
+├── argocd/
+│   ├── root.yaml         # ArgoCD App-of-Apps root Application
+│   └── README.md         # bootstrap instructions
 ├── nginx/
 │   └── spa.conf          # nginx config shared by both apps
 ├── k8s/

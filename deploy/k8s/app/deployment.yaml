@@ -21,27 +21,25 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 101   # nginx user in nginx:alpine
+        runAsUser: 101 # nginx user in nginx:alpine
         runAsGroup: 101
         fsGroup: 101
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: web
-          # Placeholder — CI overrides with ghcr.io/<owner>/de-pii-app:<sha>
-          # See deploy/README.md for how to set this.
-          image: ghcr.io/<OWNER>/de-pii-app:latest
+          image: ghcr.io/moritz-hauff-it/redactly-app:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
               protocol: TCP
           resources:
             requests:
-              cpu: "10m"
-              memory: "32Mi"
+              cpu: '10m'
+              memory: '32Mi'
             limits:
-              cpu: "200m"
-              memory: "128Mi"
+              cpu: '200m'
+              memory: '128Mi'
           readinessProbe:
             httpGet:
               path: /health
@@ -60,7 +58,7 @@ spec:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
-              drop: ["ALL"]
+              drop: ['ALL']
           volumeMounts:
             - name: nginx-tmp
               mountPath: /var/cache/nginx
