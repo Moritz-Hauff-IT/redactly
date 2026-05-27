@@ -1,16 +1,66 @@
 import { Pipeline } from '@de-pii/core/pipeline';
 import { RegexDetector } from '@de-pii/core/regex';
-import type { Entity } from '@de-pii/core/types';
+import type { Entity, EntityCategory } from '@de-pii/core/types';
+import type { Detector } from '@de-pii/core/types';
+import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
 
-const pipeline = new Pipeline({
-  detectors: [new RegexDetector()],
-});
+/** Minimal public interface we need from NerDetector — avoids importing the class directly. */
+export interface NerDetectorLike extends Detector {
+  ready(): Promise<void>;
+  dispose(): Promise<void>;
+}
+
+let nerDetector: NerDetectorLike | null = null;
+
+function buildPipeline(): Pipeline {
+  const detectors: Detector[] = [new RegexDetector()];
+  if (nerDetector !== null) {
+    detectors.push(nerDetector);
+  }
+  const cats = [...settingsStore.enabledCategories] as EntityCategory[];
+  return new Pipeline({
+    detectors,
+    enabledCategories: cats.length > 0 ? cats : undefined,
+    disabledTypes: [],
+  });
+}
+
+let pipeline: Pipeline = buildPipeline();
+
+export function getPipeline(): Pipeline {
+  return pipeline;
+}
 
 /**
- * Analyze text for PII entities.
- * Uses only the RegexDetector singleton for now; NER is added in task 9.
+ * Analyze text for PII entities using the current pipeline configuration.
  */
 export async function analyze(text: string): Promise<Entity[]> {
-  const result = await pipeline.analyze(text);
+  const result = await getPipeline().analyze(text);
   return result.entities;
+}
+
+/**
+ * Add a NER detector to the pipeline. Call after `detector.ready()` resolves.
+ */
+export async function enableNer(detector: NerDetectorLike): Promise<void> {
+  nerDetector = detector;
+  pipeline = buildPipeline();
+}
+
+/**
+ * Remove the NER detector from the pipeline and dispose it.
+ */
+export async function disableNer(): Promise<void> {
+  if (nerDetector !== null) {
+    await nerDetector.dispose();
+    nerDetector = null;
+  }
+  pipeline = buildPipeline();
+}
+
+/**
+ * Rebuild the pipeline with updated category filters (keeps existing detectors).
+ */
+export function applyCategoryFilter(_enabled: EntityCategory[]): void {
+  pipeline = buildPipeline();
 }
