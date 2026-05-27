@@ -229,3 +229,31 @@ describe('restore — multi-type', () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Known limitations
+// ---------------------------------------------------------------------------
+
+describe('known limitations', () => {
+  it('mis-restores user-typed placeholder strings (documented V1 limitation)', () => {
+    const input = 'Alice said "[PERSON_1]" is the format we use';
+    // Alice is the only entity
+    const entities: Entity[] = [
+      {
+        start: 0,
+        end: 5,
+        type: 'PERSON',
+        category: 'person',
+        text: 'Alice',
+        confidence: 1,
+        source: 'manual',
+      },
+    ];
+    const { maskedText, mapping } = mask(input, entities);
+    // After mask: '[PERSON_1] said "[PERSON_1]" is the format we use'
+    const { restoredText } = restore(maskedText, mapping);
+    // The user-typed [PERSON_1] in quotes also gets "restored" to Alice
+    expect(restoredText).toBe('Alice said "Alice" is the format we use');
+    // Documents the gap; when this is fixed, the assertion will change.
+  });
+});

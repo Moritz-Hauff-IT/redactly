@@ -151,6 +151,15 @@ function validateFormat(format: string): void {
  * Overlapping entities are not supported. The function will throw a clear
  * error if the input contains overlapping ranges. The calling pipeline
  * (Task 5) is responsible for deduplication.
+ *
+ * **Limitation:** Placeholder collisions. If the input text contains a literal
+ * substring that already matches the placeholder format (e.g., the user wrote
+ * `[PERSON_1]` as prose), the masker will not detect or escape it. During
+ * `restore`, that substring will be replaced with the real value associated
+ * with `[PERSON_1]`. To avoid this, either: (a) pass a `format` that uses an
+ * unlikely shape, or (b) pre-scan the input for placeholder-shaped strings and
+ * pass them as additional entities to the masker. A `sessionNonce` option is
+ * planned for a future release to solve this automatically.
  */
 export function mask(text: string, entities: Entity[], options?: MaskOptions): MaskResult {
   const format = options?.format ?? DEFAULT_FORMAT;

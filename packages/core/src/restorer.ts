@@ -96,18 +96,16 @@ function buildMatchRegex(placeholder: string, tolerant: boolean): RegExp {
   return new RegExp(alts, 'g');
 }
 
-/**
- * Pattern that matches placeholder-shaped strings in text.
- * Used to detect unknown placeholders that the LLM may have hallucinated.
- */
-const PLACEHOLDER_SHAPED = /(?:\[|<|\{)?[A-Z][A-Z_]*_\d+(?:\]|>|\})?/g;
-
 // ---------------------------------------------------------------------------
 // Main API
 // ---------------------------------------------------------------------------
 
 /**
  * Restore original values by replacing placeholders in text using the mapping.
+ *
+ * **Limitation:** The restorer cannot distinguish a placeholder it inserted
+ * from a placeholder-shaped string that was present in the original input.
+ * See `mask()` docs for mitigation.
  */
 export function restore(text: string, mapping: Mapping, options?: RestoreOptions): RestoreResult {
   const tolerant = options?.tolerant ?? true;
@@ -119,7 +117,6 @@ export function restore(text: string, mapping: Mapping, options?: RestoreOptions
 
   for (const [placeholder, original] of mapping.forward) {
     const re = buildMatchRegex(placeholder, tolerant);
-    re.lastIndex = 0;
 
     let found = false;
     restoredText = restoredText.replace(re, () => {
@@ -134,13 +131,15 @@ export function restore(text: string, mapping: Mapping, options?: RestoreOptions
     }
   }
 
-  // Detect unknown placeholder-shaped strings remaining in the restored text
+  // Detect unknown placeholder-shaped strings remaining in the restored text.
+  // A fresh regex is created each call to avoid g-flag lastIndex state leaking
+  // between invocations.
+  const placeholderShaped = /(?:\[|<|\{)?[A-Z][A-Z_]*_\d+(?:\]|>|\})?/g;
   const unknown: string[] = [];
-  PLACEHOLDER_SHAPED.lastIndex = 0;
   let m: RegExpExecArray | null;
   const seen = new Set<string>();
 
-  while ((m = PLACEHOLDER_SHAPED.exec(restoredText)) !== null) {
+  while ((m = placeholderShaped.exec(restoredText)) !== null) {
     const candidate = m[0];
     // Only flag it if it looks like a genuine placeholder (uppercase + digits)
     // and is not in the forward map
