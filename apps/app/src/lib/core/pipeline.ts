@@ -1,5 +1,6 @@
-import { Pipeline, RegexDetector } from '@de-pii/core';
-import type { Entity } from '@de-pii/core';
+import { Pipeline } from '@de-pii/core/pipeline';
+import { RegexDetector } from '@de-pii/core/regex';
+import type { Entity } from '@de-pii/core/types';
 
 const pipeline = new Pipeline({
   detectors: [new RegexDetector()],

@@ -6,6 +6,34 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./regex": {
+      "import": "./dist/detectors/regex.js",
+      "types": "./dist/detectors/regex.d.ts"
+    },
+    "./ner": {
+      "import": "./dist/detectors/ner.js",
+      "types": "./dist/detectors/ner.d.ts"
+    },
+    "./parsers": {
+      "import": "./dist/parsers/index.js",
+      "types": "./dist/parsers/index.d.ts"
+    },
+    "./masker": {
+      "import": "./dist/masker.js",
+      "types": "./dist/masker.d.ts"
+    },
+    "./restorer": {
+      "import": "./dist/restorer.js",
+      "types": "./dist/restorer.d.ts"
+    },
+    "./pipeline": {
+      "import": "./dist/pipeline.js",
+      "types": "./dist/pipeline.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types.js",
+      "types": "./dist/types.d.ts"
     }
   },
   "main": "./dist/index.js",

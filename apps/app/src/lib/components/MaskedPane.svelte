@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { inputStore } from '../stores/inputStore.svelte.js';
+
   interface Props {
     maskedText: string;
   }
@@ -15,6 +17,24 @@
       copied = false;
     }, 2000);
   }
+
+  function downloadMasked() {
+    if (!maskedText) return;
+
+    // Determine extension based on input format
+    const fmt = inputStore.format;
+    const ext = fmt === 'md' ? 'md' : 'txt';
+    const baseName = inputStore.filename ? inputStore.filename.replace(/\.[^.]+$/, '') : 'masked';
+    const filename = `${baseName}-masked.${ext}`;
+
+    const blob = new Blob([maskedText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 </script>
 
 <div class="flex h-full flex-col gap-2">
@@ -24,11 +44,20 @@
       <button
         class="rounded px-3 py-1 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
         disabled={!maskedText}
+        onclick={downloadMasked}
+        aria-label="Download masked text"
+      >
+        Download
+      </button>
+      <button
+        class="rounded px-3 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40
+          {copied ? 'bg-green-700 text-green-100' : 'text-slate-300 hover:bg-slate-700'}"
+        disabled={!maskedText}
         onclick={copyToClipboard}
+        aria-label={copied ? 'Copied to clipboard' : 'Copy masked text to clipboard'}
       >
         {copied ? 'Copied!' : 'Copy'}
       </button>
-      <!-- Download button placeholder — wired in task 7 -->
     </div>
   </div>
   <pre

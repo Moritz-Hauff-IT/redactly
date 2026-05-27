@@ -1,4 +1,4 @@
-import type { Mapping } from '@de-pii/core';
+import type { Mapping } from '@de-pii/core/masker';
 
 function createMappingStore() {
   let mapping = $state<Mapping | null>(null);

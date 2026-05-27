@@ -1,4 +1,4 @@
-import type { SupportedFormat } from '@de-pii/core';
+import type { SupportedFormat } from '@de-pii/core/parsers';
 
 export interface InputState {
   text: string;

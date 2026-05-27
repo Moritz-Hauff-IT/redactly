@@ -1,6 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import '../lib/setup/pdf.js';
+  import Toast from '$lib/components/Toast.svelte';
   import type { Snippet } from 'svelte';
 
   interface Props {
@@ -24,4 +25,5 @@
   <main class="mx-auto max-w-7xl px-4 py-6">
     {@render children()}
   </main>
+  <Toast />
 </div>

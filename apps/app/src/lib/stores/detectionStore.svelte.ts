@@ -1,11 +1,11 @@
-import type { Entity, EntityCategory } from '@de-pii/core';
+import type { Entity, EntityCategory } from '@de-pii/core/types';
 
 export interface EntityWithId extends Entity {
   id: string;
 }
 
 function entityId(entity: Entity): string {
-  return `${entity.start}-${entity.end}-${entity.type}`;
+  return `${entity.start}-${entity.end}-${entity.type}-${entity.source}`;
 }
 
 function createDetectionStore() {
@@ -26,12 +26,47 @@ function createDetectionStore() {
     },
 
     setEntities(newEntities: Entity[]) {
+      // Preserve manual entities
+      const manualEntities = entities.filter((e) => e.source === 'manual');
       const withIds: EntityWithId[] = newEntities.map((e) => ({
         ...e,
         id: entityId(e),
       }));
-      entities = withIds;
-      enabledIds = new Set(withIds.map((e) => e.id));
+      // Merge: new entities take precedence, keep manuals that don't overlap
+      const merged = [
+        ...withIds,
+        ...manualEntities.filter((m) => !withIds.some((w) => w.start < m.end && m.start < w.end)),
+      ];
+      merged.sort((a, b) => a.start - b.start);
+      entities = merged;
+      const existingEnabled = new Set(enabledIds);
+      const newEnabled = new Set<string>();
+      for (const e of merged) {
+        // Enable new non-manual entities; preserve manual entity enabled state
+        if (e.source === 'manual') {
+          if (existingEnabled.has(e.id)) newEnabled.add(e.id);
+          else newEnabled.add(e.id); // enable new manual by default
+        } else {
+          newEnabled.add(e.id);
+        }
+      }
+      enabledIds = newEnabled;
+    },
+
+    addEntity(entity: Entity) {
+      const withId: EntityWithId = { ...entity, id: entityId(entity) };
+      const next = [...entities, withId].sort((a, b) => a.start - b.start);
+      entities = next;
+      const nextEnabled = new Set(enabledIds);
+      nextEnabled.add(withId.id);
+      enabledIds = nextEnabled;
+    },
+
+    removeEntity(id: string) {
+      entities = entities.filter((e) => e.id !== id);
+      const next = new Set(enabledIds);
+      next.delete(id);
+      enabledIds = next;
     },
 
     toggleEntity(id: string) {
