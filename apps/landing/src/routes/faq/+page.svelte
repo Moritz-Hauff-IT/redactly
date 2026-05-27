@@ -20,12 +20,12 @@
     {
       question: "Was ist der Unterschied zu ChatGPT's eigener Maskierung?",
       answer:
-        'ChatGPT und ähnliche Dienste bieten teils eigene "Datenschutzmodi" oder Memory-Deaktivierung an. Der entscheidende Unterschied: Diese verhindern nicht, dass dein Text beim Anbieter ankommt und verarbeitet wird — sie begrenzen nur die Speicherung. de-pii maskiert deinen Text, bevor er deinen Browser verlässt. Das LLM sieht niemals die echten Werte, sondern nur anonymisierte Platzhalter.',
+        'ChatGPT und ähnliche Dienste bieten teils eigene "Datenschutzmodi" oder Memory-Deaktivierung an. Der entscheidende Unterschied: Diese verhindern nicht, dass dein Text beim Anbieter ankommt und verarbeitet wird — sie begrenzen nur die Speicherung. Redactly maskiert deinen Text, bevor er deinen Browser verlässt. Das LLM sieht niemals die echten Werte, sondern nur anonymisierte Platzhalter.',
     },
     {
       question: 'Kann ich PDFs oder Word-Dokumente verwenden?',
       answer:
-        'Ja. de-pii unterstützt .txt, .md, .eml, .pdf und .docx. PDF-Parsing läuft via pdf.js direkt im Browser, DOCX-Parsing über einen lokalen Parser. Keine Datei wird jemals hochgeladen oder an einen Server gesendet.',
+        'Ja. Redactly unterstützt .txt, .md, .eml, .pdf und .docx. PDF-Parsing läuft via pdf.js direkt im Browser, DOCX-Parsing über einen lokalen Parser. Keine Datei wird jemals hochgeladen oder an einen Server gesendet.',
     },
     {
       question: 'Was passiert, wenn ich den Tab schließe?',
@@ -33,19 +33,19 @@
         'Das PII-Mapping (die Zuordnung Platzhalter → Originalwert) ist session-scoped und lebt nur im Arbeitsspeicher des Browser-Tabs. Wenn du den Tab schließt, geht das Mapping verloren — das ist by design und ein Privacy-Feature. Halte den Tab offen, solange du auf eine LLM-Antwort wartest, die du zurückübersetzen möchtest.',
     },
     {
-      question: 'Ist de-pii DSGVO-konform?',
+      question: 'Ist Redactly DSGVO-konform?',
       answer:
-        'Da de-pii keine personenbezogenen Daten auf Servern verarbeitet oder speichert, entfallen die meisten DSGVO-Pflichten für den Betreiber. Die einzige Netzwerkaktivität ist der einmalige CDN-Download der NER/WebLLM-Modelle — dabei werden keine Nutzerdaten übermittelt. Für Unternehmensumgebungen mit strikten Anforderungen empfehlen wir den Regex-Only-Modus oder eine Self-Hosted-Installation.',
+        'Da Redactly keine personenbezogenen Daten auf Servern verarbeitet oder speichert, entfallen die meisten DSGVO-Pflichten für den Betreiber. Die einzige Netzwerkaktivität ist der einmalige CDN-Download der NER/WebLLM-Modelle — dabei werden keine Nutzerdaten übermittelt. Für Unternehmensumgebungen mit strikten Anforderungen empfehlen wir den Regex-Only-Modus oder eine Self-Hosted-Installation.',
     },
     {
-      question: 'Was kostet de-pii?',
+      question: 'Was kostet Redactly?',
       answer:
-        'de-pii ist kostenlos und Open Source (MIT-Lizenz). Es gibt keine Pro-Pläne, keine Subscriptions, keine versteckten Kosten. Du kannst den Quellcode forken, selbst hosten und anpassen — ohne Einschränkungen.',
+        'Redactly ist kostenlos und Open Source (MIT-Lizenz). Es gibt keine Pro-Pläne, keine Subscriptions, keine versteckten Kosten. Du kannst den Quellcode forken, selbst hosten und anpassen — ohne Einschränkungen.',
     },
     {
       question: 'Wie kann ich beitragen?',
       answer:
-        'Das Projekt freut sich über Beiträge! Öffne ein Issue für Bug Reports oder Feature-Requests, oder erstelle direkt einen Pull Request. Den Quellcode findest du auf GitHub unter github.com/moritz-hauff/de-pii. Bitte lies das CONTRIBUTING.md im Repo, bevor du einen großen PR erstellst.',
+        'Das Projekt freut sich über Beiträge! Öffne ein Issue für Bug Reports oder Feature-Requests, oder erstelle direkt einen Pull Request. Den Quellcode findest du auf GitHub unter github.com/moritz-hauff/Redactly. Bitte lies das CONTRIBUTING.md im Repo, bevor du einen großen PR erstellst.',
     },
     {
       question: 'Welche Browser werden unterstützt?',
@@ -53,7 +53,7 @@
         'Alle modernen Browser: Chrome 113+, Firefox 115+, Safari 16.4+, Edge 113+. Für WebLLM wird WebGPU benötigt (Chrome 113+, experimentell in Firefox). Für den Regex- und NER-Modus reicht jeder modernen Browser.',
     },
     {
-      question: 'Kann ich de-pii offline nutzen?',
+      question: 'Kann ich Redactly offline nutzen?',
       answer:
         'Den Regex-Modus kannst du nach dem ersten Laden vollständig offline nutzen — er benötigt keine Netzwerkverbindung. Den NER-Modus kannst du offline nutzen, sobald das Modell einmalig heruntergeladen und gecacht wurde. WebLLM ebenfalls nach dem initialen Modell-Download.',
     },
@@ -91,7 +91,7 @@
   <div class="mx-auto max-w-3xl px-4 sm:px-6">
     <div class="mb-12 text-center">
       <h1 class="text-4xl font-extrabold tracking-tight text-slate-900">Häufige Fragen</h1>
-      <p class="mt-4 text-xl text-slate-600">Alles, was du über de-pii wissen willst.</p>
+      <p class="mt-4 text-xl text-slate-600">Alles, was du über Redactly wissen willst.</p>
     </div>
 
     <div class="divide-y divide-slate-200 rounded-2xl border border-slate-200">
@@ -131,7 +131,7 @@
       <p class="text-slate-700">
         Noch eine Frage? Öffne ein
         <a
-          href="https://github.com/moritz-hauff/de-pii/issues"
+          href="https://github.com/moritz-hauff/Redactly/issues"
           target="_blank"
           rel="noopener noreferrer"
           class="font-medium text-teal-600 hover:text-teal-700"

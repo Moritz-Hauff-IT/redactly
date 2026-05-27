@@ -90,7 +90,7 @@
     <div class="mb-12 text-center">
       <h1 class="text-4xl font-extrabold tracking-tight text-slate-900">Features</h1>
       <p class="mx-auto mt-4 max-w-2xl text-xl text-slate-600">
-        Was de-pii erkennt, was es verarbeitet und wie die Erkennungsmodi sich unterscheiden.
+        Was Redactly erkennt, was es verarbeitet und wie die Erkennungsmodi sich unterscheiden.
       </p>
     </div>
 
@@ -196,7 +196,7 @@
     <section class="rounded-2xl border border-teal-200 bg-teal-50 p-8">
       <h2 class="mb-4 text-2xl font-bold text-teal-900">Reversibles Masking</h2>
       <p class="mb-6 text-teal-800">
-        de-pii ersetzt PII durch nummerierte Platzhalter und hält das Mapping lokal. Nach dem
+        Redactly ersetzt PII durch nummerierte Platzhalter und hält das Mapping lokal. Nach dem
         LLM-Aufruf werden Platzhalter durch Originalwerte ersetzt — verlässt nie deinen Browser.
       </p>
       <div class="grid gap-4 sm:grid-cols-3 text-sm">

@@ -7,10 +7,10 @@
     label?: string;
   }
 
-  let { href = APP_URL, size = 'md', label = 'Zur App →' }: Props = $props();
+  let { href = APP_URL, size = 'md', label = 'App starten' }: Props = $props();
 
   const sizeClasses = {
-    sm: 'px-4 py-2 text-sm',
+    sm: 'px-5 py-2.5 text-sm',
     md: 'px-6 py-3 text-base',
     lg: 'px-8 py-4 text-lg',
   };
@@ -18,9 +18,12 @@
 
 <a
   {href}
-  class="inline-flex items-center gap-2 rounded-xl bg-teal-600 font-semibold text-white shadow-sm transition-all hover:bg-teal-700 hover:shadow-md {sizeClasses[
+  class="group relative inline-flex items-baseline gap-3 bg-[color:var(--color-ink)] font-[family-name:var(--font-display)] italic text-[color:var(--color-paper)] shadow-[3px_3px_0_0_var(--color-rust)] transition-all hover:bg-[color:var(--color-rust)] hover:shadow-[3px_3px_0_0_var(--color-ink)] {sizeClasses[
     size
   ]}"
 >
+  <span class="not-italic font-[family-name:var(--font-mono)] text-xs tracking-[0.12em] uppercase"
+    >→</span
+  >
   {label}
 </a>

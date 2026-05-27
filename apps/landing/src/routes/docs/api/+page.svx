@@ -13,9 +13,9 @@ description: Das headless Core-Paket für programmatische Nutzung.
 
 # @de-pii/core API
 
-`@de-pii/core` ist das headless Detection- und Masking-Engine-Paket, das in der de-pii App verwendet wird. Es ist framework-agnostisch und kann in jeder TypeScript/JavaScript-Umgebung eingesetzt werden.
+`@de-pii/core` ist das headless Detection- und Masking-Engine-Paket, das in der Redactly App verwendet wird. Es ist framework-agnostisch und kann in jeder TypeScript/JavaScript-Umgebung eingesetzt werden.
 
-> **Status:** Das Paket ist derzeit als Workspace-Package im Monorepo verfügbar. Eine Veröffentlichung auf npm ist geplant — verfolge den Status im [GitHub-Repository](https://github.com/moritz-hauff/de-pii).
+> **Status:** Das Paket ist derzeit als Workspace-Package im Monorepo verfügbar. Eine Veröffentlichung auf npm ist geplant — verfolge den Status im [GitHub-Repository](https://github.com/moritz-hauff/Redactly).
 
 ## Installation (Monorepo)
 

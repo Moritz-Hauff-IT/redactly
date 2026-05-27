@@ -3,85 +3,74 @@
 
   const steps = [
     {
-      number: '1',
-      title: 'Text eingeben oder Datei hochladen',
-      description:
-        'Füge Text ein oder lade eine Datei hoch (.txt, .md, .eml, .pdf, .docx). de-pii erkennt automatisch PII und Secrets im Browser.',
-      detail: 'Browser erkennt PII lokal',
+      n: '01',
+      title: 'Du fügst ein, was sensibel ist.',
+      body: 'Email-Entwurf, Code-Snippet, Log-Auszug, ein PDF mit Vertragstext. Redactly liest mit — aber nur im Browser. Erkennt automatisch, was nach Person, Email, IBAN, Token oder Geheimnis aussieht.',
+      meta: 'lokal — keine Anfrage verlässt den Tab',
     },
     {
-      number: '2',
-      title: 'Maskierten Text kopieren',
-      description:
-        'Der maskierte Text wird sofort angezeigt. Echte Werte werden durch Platzhalter ersetzt (z.B. [NAME_1], [EMAIL_1]). Kopiere ihn in ChatGPT, Claude oder ein anderes LLM.',
-      detail: 'Kopieren → an ChatGPT / Claude senden',
+      n: '02',
+      title: 'Du übernimmst die maskierte Version ins LLM.',
+      body: 'Aus „Martin Müller" wird [PERSON_1], aus deinem AWS-Key wird [SECRET_3]. Den maskierten Text kopierst du in ChatGPT oder Claude. Das Modell sieht Platzhalter — und nur die.',
+      meta: 'das LLM sieht keine echten Werte',
     },
     {
-      number: '3',
-      title: 'Antwort einfügen → Originale restaurieren',
-      description:
-        'Füge die LLM-Antwort zurück in de-pii ein. Die Platzhalter werden lokal durch deine Originalwerte ersetzt — das Mapping verlässt nie deinen Browser.',
-      detail: 'Lokale Restaurierung im Browser',
+      n: '03',
+      title: 'Die Antwort kommt zurück — und wird wieder lesbar.',
+      body: 'Du fügst die LLM-Antwort in Redactly ein. Die Platzhalter werden mit deinen echten Werten ersetzt, weil das Mapping lokal beim Maskieren entstanden ist und deinen Browser nie verlassen hat.',
+      meta: 'Restauration vollständig clientseitig',
     },
   ];
 </script>
 
-<section class="bg-white py-20">
-  <div class="mx-auto max-w-6xl px-4 sm:px-6">
-    <div class="text-center">
-      <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-        Wie es funktioniert
-      </h2>
-      <p class="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
-        Drei Schritte — vollständig im Browser, ohne Server-Roundtrip.
-      </p>
-    </div>
+<section
+  class="border-t border-[color:var(--color-rule)] bg-[color:var(--color-paper-deep)]/30 py-24 sm:py-32"
+>
+  <div class="mx-auto max-w-6xl px-5 sm:px-8">
+    <header class="mb-20 grid grid-cols-1 gap-8 lg:grid-cols-12">
+      <div class="lg:col-span-3">
+        <span class="label-caps">§ 3 — Ablauf</span>
+      </div>
+      <div class="lg:col-span-9">
+        <h2
+          class="font-[family-name:var(--font-display)] text-[2.25rem] leading-[1.05] italic tracking-tight text-[color:var(--color-ink)] sm:text-[3rem]"
+        >
+          Drei Bewegungen. Keine davon verlässt deinen Browser.
+        </h2>
+      </div>
+    </header>
 
-    <div class="mt-16 space-y-8 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-8">
-      {#each steps as step, i}
-        <div class="relative flex flex-col">
-          <!-- Connector line (desktop) -->
-          {#if i < steps.length - 1}
-            <div
-              class="absolute top-8 left-full hidden w-full items-center lg:flex"
-              aria-hidden="true"
-            >
-              <div class="h-0.5 w-full bg-slate-200"></div>
-              <svg
-                class="h-4 w-4 flex-shrink-0 text-slate-300"
-                viewBox="0 0 16 16"
-                fill="currentColor"
+    <ol class="space-y-16">
+      {#each steps as step}
+        <li class="grid grid-cols-1 gap-x-12 gap-y-4 lg:grid-cols-12">
+          <div class="lg:col-span-3">
+            <div class="flex items-baseline gap-4">
+              <span
+                class="font-[family-name:var(--font-display)] text-[3rem] leading-none text-[color:var(--color-rust)]"
               >
-                <path d="M8 0l8 8-8 8V0z" />
-              </svg>
-            </div>
-          {/if}
-
-          <div class="flex items-start gap-4 lg:flex-col lg:items-center lg:text-center">
-            <!-- Step number -->
-            <div
-              class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-teal-600 text-2xl font-bold text-white shadow-md"
-            >
-              {step.number}
-            </div>
-
-            <div class="lg:mt-4">
-              <h3 class="text-lg font-semibold text-slate-900">{step.title}</h3>
-              <p class="mt-2 text-sm leading-relaxed text-slate-600">{step.description}</p>
-              <!-- Detail badge -->
-              <div
-                class="mt-3 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500"
-              >
-                {step.detail}
-              </div>
+                {step.n}
+              </span>
+              <span class="label-caps">{step.meta}</span>
             </div>
           </div>
-        </div>
+          <div class="lg:col-span-9">
+            <h3
+              class="font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.15] italic text-[color:var(--color-ink)] sm:text-[1.875rem]"
+            >
+              {step.title}
+            </h3>
+            <p
+              class="mt-4 max-w-3xl text-[1.0625rem] leading-[1.7] text-[color:var(--color-ink-soft)]"
+            >
+              {step.body}
+            </p>
+          </div>
+        </li>
       {/each}
-    </div>
+    </ol>
 
-    <div class="mt-16 text-center">
-      <CtaButton size="lg" label="Jetzt ausprobieren →" />
+    <div class="mt-20 flex items-center justify-center">
+      <CtaButton size="lg" label="im Browser starten" />
     </div>
   </div>
 </section>

@@ -189,7 +189,7 @@
     <div>
       <h2 class="text-lg font-semibold text-white">Welchen Modus brauche ich?</h2>
       <p class="mt-1 text-sm text-slate-400">
-        de-pii bietet drei Erkennungsmodi — du kannst sie kombinieren. Hier siehst du auf einen
+        Redactly bietet drei Erkennungsmodi — du kannst sie kombinieren. Hier siehst du auf einen
         Blick, welcher für deinen Anwendungsfall passt.
       </p>
     </div>

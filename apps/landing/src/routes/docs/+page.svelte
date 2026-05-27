@@ -14,7 +14,7 @@
       icon: '🏠',
       title: 'Self-Hosting',
       description:
-        'de-pii auf deiner eigenen Infrastruktur betreiben — Docker, Kubernetes, Static Host.',
+        'Redactly auf deiner eigenen Infrastruktur betreiben — Docker, Kubernetes, Static Host.',
     },
     {
       href: '/docs/api',
@@ -36,7 +36,7 @@
     <div class="mb-12">
       <h1 class="text-4xl font-extrabold tracking-tight text-slate-900">Dokumentation</h1>
       <p class="mt-4 text-xl text-slate-600">
-        Alles, was du brauchst, um de-pii zu nutzen, selbst zu hosten oder programmatisch
+        Alles, was du brauchst, um Redactly zu nutzen, selbst zu hosten oder programmatisch
         einzusetzen.
       </p>
     </div>

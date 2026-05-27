@@ -46,7 +46,7 @@
     <div class="mb-12">
       <h1 class="text-4xl font-extrabold tracking-tight text-slate-900">Privacy-Versprechen</h1>
       <p class="mt-4 text-xl text-slate-600">
-        de-pii verarbeitet <em>keine</em> Nutzerinhalte auf externen Servern. Das ist keine Marketingaussage
+        Redactly verarbeitet <em>keine</em> Nutzerinhalte auf externen Servern. Das ist keine Marketingaussage
         — es ist technisch unmöglich, weil es keinen Server gibt.
       </p>
     </div>
@@ -150,7 +150,7 @@
     <section class="rounded-2xl border border-teal-200 bg-teal-50 p-6">
       <h2 class="mb-3 text-xl font-bold text-teal-900">DSGVO-Konformität</h2>
       <p class="text-sm leading-relaxed text-teal-800">
-        Da de-pii keine personenbezogenen Daten auf Servern verarbeitet oder speichert, entfallen
+        Da Redactly keine personenbezogenen Daten auf Servern verarbeitet oder speichert, entfallen
         die meisten DSGVO-Anforderungen an den Betreiber (Art. 5–11 DSGVO). Einzig der CDN-Abruf der
         Modelle stellt technisch einen Drittland-Transfer dar — dies betrifft jedoch nur
         Modellgewichte, nicht Nutzerdaten. Für den Einsatz in Unternehmensumgebungen empfehlen wir

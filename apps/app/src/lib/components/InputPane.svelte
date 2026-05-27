@@ -11,9 +11,11 @@
 
   interface Props {
     onchange?: () => void;
+    onmask?: () => void;
+    isAnalyzing?: boolean;
   }
 
-  const { onchange }: Props = $props();
+  const { onchange, onmask, isAnalyzing = false }: Props = $props();
 
   let fileInputEl = $state<HTMLInputElement | null>(null);
   let isDragOver = $state(false);
@@ -162,7 +164,39 @@
     />
   </div>
 
-  <!-- File picker toolbar -->
+  <!-- Primary action row: Maskieren button, full-width, prominent -->
+  <button
+    type="button"
+    data-testid="mask-button"
+    class="inline-flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+    disabled={!inputStore.text.trim() || isAnalyzing}
+    onclick={() => onmask?.()}
+    title="Erkennt PII jetzt und maskiert den Text"
+  >
+    {#if isAnalyzing}
+      <svg class="h-4 w-4 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-opacity="0.3" stroke-width="2" />
+        <path
+          d="M14 8a6 6 0 00-6-6"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+      </svg>
+      Analysiere & maskiere…
+    {:else}
+      Maskieren
+      <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path
+          fill-rule="evenodd"
+          d="M3 8a.75.75 0 01.75-.75h6.69L7.97 4.78a.75.75 0 011.06-1.06l3.75 3.75a.75.75 0 010 1.06l-3.75 3.75a.75.75 0 11-1.06-1.06l2.47-2.47H3.75A.75.75 0 013 8z"
+          clip-rule="evenodd"
+        />
+      </svg>
+    {/if}
+  </button>
+
+  <!-- File picker toolbar (secondary) -->
   <div class="flex items-center gap-2">
     <input
       bind:this={fileInputEl}

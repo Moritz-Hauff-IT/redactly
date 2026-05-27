@@ -1,5 +1,5 @@
 ---
-title: Warum wir de-pii bauen
+title: Warum wir Redactly bauen
 date: "2026-05-27"
 author: Moritz Hauff
 slug: 2026-05-launch
@@ -14,7 +14,7 @@ description: Der Ausgangspunkt — warum PII-Masking vor dem LLM sinnvoller ist 
   publishedTime="2026-05-27"
 />
 
-<DocLayout title="Warum wir de-pii bauen" backHref="/blog" backLabel="Blog">
+<DocLayout title="Warum wir Redactly bauen" backHref="/blog" backLabel="Blog">
 
 <div class="mb-6 flex items-center gap-3 text-sm text-slate-500 not-prose">
   <time datetime="2026-05-27">27. Mai 2026</time>
@@ -22,7 +22,7 @@ description: Der Ausgangspunkt — warum PII-Masking vor dem LLM sinnvoller ist 
   <span>Moritz Hauff</span>
 </div>
 
-# Warum wir de-pii bauen
+# Warum wir Redactly bauen
 
 Es begann mit einer simplen Beobachtung: Fast jeder in meinem Umfeld nutzt ChatGPT, Claude oder ähnliche LLMs für Arbeitsaufgaben. Und fast jeder sendet dabei unbewusst sensible Daten — Namen von Kollegen, E-Mail-Adressen, Vertragsdaten, interne Ticket-Nummern.
 
@@ -44,9 +44,9 @@ Du hast die Kontrolle von einem Dritten (OpenAI) zu einem anderen Dritten (dem P
 
 Browser-native löst das Problem wirklich: Die Erkennung und das Mapping laufen im selben Prozess wie dein Tab. Kein Server kennt deine Daten. Das ist prüfbar — du kannst die DevTools öffnen und sehen, dass keine POST-Requests mit deinem Inhalt gesendet werden.
 
-## Was de-pii anders macht
+## Was Redactly anders macht
 
-de-pii ist kein Proxy, kein Service, keine Cloud-Lösung. Es ist eine statische Web-App, die in deinem Browser läuft.
+Redactly ist kein Proxy, kein Service, keine Cloud-Lösung. Es ist eine statische Web-App, die in deinem Browser läuft.
 
 Drei Erkennungsstufen erlauben dir, Netzwerknutzung gegen Erkennungsqualität abzuwägen: Regex für maximale Offline-Nutzung, NER für kontextbewusste Erkennung, WebLLM für maximale Genauigkeit. In allen drei Fällen verlässt dein Text nie den Browser.
 

@@ -2,11 +2,11 @@
 </script>
 
 <div class="mx-auto max-w-2xl space-y-6">
-  <h1 class="text-2xl font-bold text-white">About de-pii</h1>
+  <h1 class="text-2xl font-bold text-white">About Redactly</h1>
   <p class="text-slate-300">
-    de-pii is a privacy-first PII masking tool that runs entirely in your browser. No text you enter
-    ever leaves your device — there are no server-side API calls, no analytics, and no telemetry of
-    any kind.
+    Redactly is a privacy-first PII masking tool that runs entirely in your browser. No text you
+    enter ever leaves your device — there are no server-side API calls, no analytics, and no
+    telemetry of any kind.
   </p>
   <p class="text-slate-300">
     Detection is powered by a regex engine covering common PII patterns (emails, phone numbers,

@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Wie du de-pii in wenigen Schritten nutzt.
+description: Wie du Redactly in wenigen Schritten nutzt.
 ---
 
 <SeoHead
@@ -13,7 +13,7 @@ description: Wie du de-pii in wenigen Schritten nutzt.
 
 # Getting Started
 
-de-pii läuft vollständig in deinem Browser. Kein Account, kein Login, keine Installation.
+Redactly läuft vollständig in deinem Browser. Kein Account, kein Login, keine Installation.
 
 ## Voraussetzungen
 
@@ -50,7 +50,7 @@ Klicke auf "Kopieren" und füge den maskierten Text in dein LLM-Interface ein.
 
 ## Schritt 4: LLM-Antwort einfügen
 
-Kopiere die LLM-Antwort und füge sie im rechten Bereich "Restaurieren" ein. de-pii ersetzt alle Platzhalter automatisch durch die Originalwerte — lokal, ohne Netzwerkrequest.
+Kopiere die LLM-Antwort und füge sie im rechten Bereich "Restaurieren" ein. Redactly ersetzt alle Platzhalter automatisch durch die Originalwerte — lokal, ohne Netzwerkrequest.
 
 ## Erkannte Kategorien
 

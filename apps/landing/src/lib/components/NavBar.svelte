@@ -4,29 +4,41 @@
   let menuOpen = $state(false);
 
   const navLinks = [
-    { href: '/features', label: 'Features' },
-    { href: '/docs', label: 'Docs' },
-    { href: '/privacy', label: 'Privacy' },
+    { href: '/features', label: 'Funktionen' },
+    { href: '/docs', label: 'Dokumentation' },
+    { href: '/privacy', label: 'Datenschutz' },
     { href: '/faq', label: 'FAQ' },
-    { href: '/blog', label: 'Blog' },
+    { href: '/blog', label: 'Journal' },
   ];
 </script>
 
-<header class="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-  <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-    <!-- Logo -->
-    <a href="/" class="flex items-center gap-2 font-mono text-xl font-bold text-teal-600">
-      de-pii
-      <span class="rounded bg-teal-50 px-1.5 py-0.5 text-xs font-normal text-teal-700">beta</span>
+<header
+  class="sticky top-0 z-50 border-b border-[color:var(--color-rule)] bg-[color:var(--color-paper)]/85 backdrop-blur"
+>
+  <nav class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
+    <!-- Wordmark with literal redaction bar -->
+    <a href="/" class="group flex items-baseline gap-1 text-[color:var(--color-ink)]">
+      <span
+        class="font-[family-name:var(--font-display)] text-[1.75rem] leading-none italic tracking-tight"
+        >Redact</span
+      >
+      <span
+        class="font-[family-name:var(--font-display)] text-[1.75rem] leading-none italic tracking-tight transition-colors group-hover:text-[color:var(--color-rust)]"
+        >ly</span
+      >
+      <span
+        aria-hidden="true"
+        class="ml-1 inline-block h-[1.1em] w-[0.45em] translate-y-[0.05em] bg-[color:var(--color-redaction)] transition-colors group-hover:bg-[color:var(--color-rust)]"
+      ></span>
     </a>
 
     <!-- Desktop nav -->
-    <ul class="hidden items-center gap-6 md:flex">
+    <ul class="hidden items-center gap-7 md:flex">
       {#each navLinks as link}
         <li>
           <a
             href={link.href}
-            class="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600"
+            class="font-[family-name:var(--font-mono)] text-[0.78rem] tracking-[0.08em] uppercase text-[color:var(--color-ink-soft)] transition-colors hover:text-[color:var(--color-rust)]"
           >
             {link.label}
           </a>
@@ -38,10 +50,14 @@
     <div class="hidden md:block">
       <a
         href={APP_URL}
-        class="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700"
+        class="group inline-flex items-baseline gap-2 border-b-2 border-[color:var(--color-ink)] pb-0.5 font-[family-name:var(--font-display)] text-base italic text-[color:var(--color-ink)] transition-colors hover:border-[color:var(--color-rust)] hover:text-[color:var(--color-rust)]"
       >
-        Zur App
-        <span aria-hidden="true">→</span>
+        zur App
+        <span
+          aria-hidden="true"
+          class="font-[family-name:var(--font-mono)] text-sm not-italic transition-transform group-hover:translate-x-0.5"
+          >→</span
+        >
       </a>
     </div>
 
@@ -53,14 +69,16 @@
       aria-expanded={menuOpen}
     >
       <span
-        class="block h-0.5 w-5 bg-slate-700 transition-transform"
+        class="block h-px w-6 bg-[color:var(--color-ink)] transition-transform"
         class:rotate-45={menuOpen}
         class:translate-y-2={menuOpen}
       ></span>
-      <span class="block h-0.5 w-5 bg-slate-700 transition-opacity" class:opacity-0={menuOpen}
+      <span
+        class="block h-px w-6 bg-[color:var(--color-ink)] transition-opacity"
+        class:opacity-0={menuOpen}
       ></span>
       <span
-        class="block h-0.5 w-5 bg-slate-700 transition-transform"
+        class="block h-px w-6 bg-[color:var(--color-ink)] transition-transform"
         class:-rotate-45={menuOpen}
         class:-translate-y-2={menuOpen}
       ></span>
@@ -69,25 +87,28 @@
 
   <!-- Mobile menu -->
   {#if menuOpen}
-    <div class="border-t border-slate-100 bg-white px-4 pb-4 md:hidden">
-      <ul class="flex flex-col gap-3 pt-3">
+    <div
+      class="border-t border-[color:var(--color-rule)] bg-[color:var(--color-paper)] px-5 pb-6 md:hidden"
+    >
+      <ul class="flex flex-col gap-4 pt-4">
         {#each navLinks as link}
           <li>
             <a
               href={link.href}
-              class="block text-sm font-medium text-slate-700 hover:text-teal-600"
+              class="block font-[family-name:var(--font-mono)] text-sm tracking-[0.08em] uppercase text-[color:var(--color-ink-soft)] hover:text-[color:var(--color-rust)]"
               onclick={() => (menuOpen = false)}
             >
               {link.label}
             </a>
           </li>
         {/each}
-        <li>
+        <li class="mt-2">
           <a
             href={APP_URL}
-            class="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white"
+            class="inline-flex items-baseline gap-2 border-b-2 border-[color:var(--color-ink)] pb-0.5 font-[family-name:var(--font-display)] text-base italic text-[color:var(--color-ink)]"
           >
-            Zur App →
+            zur App
+            <span class="font-[family-name:var(--font-mono)] text-sm not-italic">→</span>
           </a>
         </li>
       </ul>

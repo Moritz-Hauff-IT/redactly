@@ -2,7 +2,6 @@
   import { untrack } from 'svelte';
   import InputPane from '$lib/components/InputPane.svelte';
   import MaskedPane from '$lib/components/MaskedPane.svelte';
-  import EngineStatus from '$lib/components/EngineStatus.svelte';
   import DetectionReview from '$lib/components/DetectionReview.svelte';
   import RestorePane from '$lib/components/RestorePane.svelte';
   import { analyze } from '$lib/core/pipeline.js';
@@ -11,37 +10,46 @@
   import { detectionStore } from '$lib/stores/detectionStore.svelte.js';
 
   let maskedText = $state('');
-  let analyzeTimer: ReturnType<typeof setTimeout> | null = null;
+  let isAnalyzing = $state(false);
+  let hasMasked = $state(false);
 
-  async function runAnalysis() {
+  async function handleMaskClick() {
     const text = inputStore.text;
     if (!text.trim()) {
       detectionStore.clear();
       maskedText = '';
+      hasMasked = false;
       return;
     }
 
+    isAnalyzing = true;
     try {
       const entities = await analyze(text);
       detectionStore.setEntities(entities);
-      // Don't mask here — the $effect below picks up the entity change and masks once.
+      // Effect below picks up the entity change and writes maskedText.
+      hasMasked = true;
     } catch (err) {
       console.error('Analysis failed:', err);
+    } finally {
+      isAnalyzing = false;
     }
   }
 
   function handleInputChange() {
-    if (analyzeTimer !== null) clearTimeout(analyzeTimer);
-    analyzeTimer = setTimeout(() => {
-      runAnalysis();
-    }, 300);
+    // User has edited input — previous detection is stale.
+    if (hasMasked) {
+      detectionStore.clear();
+      maskedText = '';
+      hasMasked = false;
+    }
   }
 
-  // Single mask-on-entity-change effect. Reads activeEntities (tracked) and
-  // pulls text untracked so character-by-character typing doesn't mask before
-  // the debounced analyze has refreshed entities.
+  // Re-mask whenever the user toggles entities (after the initial click).
+  // Reads activeEntities (tracked) and pulls text untracked so the effect
+  // only fires on entity toggle, not on every character.
   $effect(() => {
-    const _active = detectionStore.activeEntities;
+    const active = detectionStore.activeEntities;
+    if (active.length === 0 && !hasMasked) return;
     const text = untrack(() => inputStore.text);
     if (!text.trim()) {
       maskedText = '';
@@ -53,10 +61,8 @@
 </script>
 
 <div class="flex flex-col gap-6">
-  <EngineStatus />
-
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-    <InputPane onchange={handleInputChange} />
+    <InputPane onchange={handleInputChange} onmask={handleMaskClick} {isAnalyzing} />
     <MaskedPane {maskedText} />
   </div>
 

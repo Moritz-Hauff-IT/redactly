@@ -12,7 +12,7 @@
   const posts: Post[] = [
     {
       slug: '2026-05-launch',
-      title: 'Warum wir de-pii bauen',
+      title: 'Warum wir Redactly bauen',
       date: '2026-05-27',
       description:
         'Der Ausgangspunkt: Warum PII-Masking vor dem LLM sinnvoller ist als danach — und warum Browser-native der richtige Ansatz ist.',

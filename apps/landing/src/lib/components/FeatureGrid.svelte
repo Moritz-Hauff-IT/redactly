@@ -1,71 +1,84 @@
 <script lang="ts">
   interface Feature {
-    icon: string;
+    n: string;
     title: string;
-    description: string;
+    body: string;
   }
 
   const features: Feature[] = [
     {
-      icon: '🛡️',
-      title: 'Privacy first',
-      description:
-        'Nichts verlässt deinen Browser. Alle Erkennung und Maskierung läuft lokal — dein Text wird niemals an einen Server gesendet.',
+      n: 'i',
+      title: 'Privatsphäre nicht als Versprechen, sondern als Architektur',
+      body: 'Es gibt keinen Server, der deine Eingaben sehen könnte. Erkennung und Maskierung laufen in deinem Browser-Tab — physisch dort, wo du den Text eingibst. Du kannst die Netzwerk-Tab in den DevTools offen lassen, während du arbeitest.',
     },
     {
-      icon: '↔️',
-      title: 'Reversibel',
-      description:
-        'Maskierte Antworten vom LLM werden lokal zurückübersetzt. Füge die Antwort ein und erhalte den originalen Text mit deinen echten Daten zurück.',
+      n: 'ii',
+      title: 'Reversibel, weil eine Antwort nichts wert ist, wenn sie kryptisch bleibt',
+      body: 'Jede Maskierung schreibt ein lokales Mapping. Fügst du die LLM-Antwort zurück ein, ersetzt Redactly die Platzhalter wieder durch die echten Werte — du arbeitest weiter, als wäre nichts passiert.',
     },
     {
-      icon: '🧠',
-      title: 'Hybrid Detection',
-      description:
-        'Drei Erkennungsstufen: schnelle Regex-Patterns, lokales NER-Modell (transformers.js) und optionales WebLLM für maximale Genauigkeit.',
+      n: 'iii',
+      title: 'Drei Erkennungsstufen, weil ein Werkzeug verschiedenen Texten gerecht werden muss',
+      body: 'Regex für Strukturen wie IBANs, E-Mails, API-Keys. NER für freie Personennamen und Orte. WebLLM für kontextuelle Erkennung, wenn nichts anderes greift. Du wählst, was du brauchst.',
     },
     {
-      icon: '📄',
-      title: 'Datei-Support',
-      description:
-        'Verarbeite .txt, .md, .eml, .pdf und .docx direkt im Browser. Kein Upload nötig — die Dateien werden lokal geparst.',
+      n: 'iv',
+      title: 'Dateiformate ohne Umwege über fremde Server',
+      body: '.txt, .md, .eml, .pdf, .docx — alle im Browser geparst. Keine Cloud-Konversion, kein Upload an einen Document-Service. Was du hochlädst, bleibt da, wo du es hochlädst.',
     },
     {
-      icon: '🔓',
-      title: 'Open Source',
-      description:
-        'Vollständig quelloffen auf GitHub. Prüfe den Code selbst — kein Vertrauen nötig, nur Verifikation.',
+      n: 'v',
+      title: 'Open Source als Verifikation, nicht als Marketing',
+      body: 'Der gesamte Quellcode liegt öffentlich auf GitHub. „Vertrau uns" ist keine Antwort auf eine Datenschutz-Frage. „Lies den Code" schon.',
     },
     {
-      icon: '🌐',
-      title: 'Mehrsprachig',
-      description:
-        'Erkennung für Deutsch und Englisch out-of-the-box. Mit NER-Modus erweiterbar auf weitere Sprachen.',
+      n: 'vi',
+      title: 'Deutsch und Englisch ab Werk, multilingual auf Wunsch',
+      body: 'Die Pattern-Bibliothek deckt deutschsprachige Konventionen ab (IBANs, Steuer-ID, Telefonformate). Mit dem NER-Modus erweiterst du nahtlos auf weitere Sprachen.',
     },
   ];
 </script>
 
-<section class="bg-slate-50 py-20">
-  <div class="mx-auto max-w-6xl px-4 sm:px-6">
-    <div class="text-center">
-      <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Warum de-pii?</h2>
-      <p class="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
-        Produktivität mit KI ohne Datenschutzrisiken. de-pii macht deine LLM-Nutzung sicher — ohne
-        Workflow-Unterbrechung.
-      </p>
-    </div>
-
-    <div class="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {#each features as feature}
-        <div
-          class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+<section class="border-t border-[color:var(--color-rule)] py-24 sm:py-32">
+  <div class="mx-auto max-w-6xl px-5 sm:px-8">
+    <header class="mb-16 grid grid-cols-1 gap-8 lg:grid-cols-12">
+      <div class="lg:col-span-3">
+        <span class="label-caps">§ 2 — Was es leistet</span>
+      </div>
+      <div class="lg:col-span-9">
+        <h2
+          class="font-[family-name:var(--font-display)] text-[2.25rem] leading-[1.05] italic tracking-tight text-[color:var(--color-ink)] sm:text-[3rem]"
         >
-          <div class="mb-4 text-3xl" role="img" aria-label={feature.title}>
-            {feature.icon}
+          Sechs Eigenschaften, ohne die das ganze Konzept nicht trägt.
+        </h2>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 gap-x-12 gap-y-14 md:grid-cols-2">
+      {#each features as feature, i}
+        <article
+          class="grid grid-cols-[3rem_1fr] gap-x-5 border-t border-[color:var(--color-rule)] pt-6"
+          class:md:border-t-0={i < 2}
+          class:md:pt-0={i < 2}
+        >
+          <div class="pt-1">
+            <span
+              class="font-[family-name:var(--font-display)] text-2xl italic text-[color:var(--color-rust)]"
+            >
+              {feature.n}
+            </span>
           </div>
-          <h3 class="mb-2 text-lg font-semibold text-slate-900">{feature.title}</h3>
-          <p class="text-sm leading-relaxed text-slate-600">{feature.description}</p>
-        </div>
+          <div>
+            <h3
+              class="font-[family-name:var(--font-display)] text-[1.375rem] leading-[1.2] text-[color:var(--color-ink)]"
+            >
+              {feature.title}
+            </h3>
+            <p class="mt-3 text-[0.95rem] leading-[1.65] text-[color:var(--color-ink-soft)]">
+              {feature.body}
+            </p>
+          </div>
+        </article>
       {/each}
     </div>
   </div>

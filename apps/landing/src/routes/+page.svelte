@@ -54,48 +54,59 @@
 <FeatureGrid />
 <HowItWorks />
 
-<!-- Privacy promise section -->
-<section class="bg-slate-900 py-20 text-white">
-  <div class="mx-auto max-w-4xl px-4 text-center sm:px-6">
-    <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">Deine Daten gehören dir.</h2>
-    <p class="mx-auto mt-6 max-w-2xl text-lg text-slate-300">
-      de-pii wurde gebaut mit einer einzigen Prämisse: <strong class="text-white"
-        >kein Nutzerinhalt verlässt deinen Browser</strong
-      >. Keine Server-Logs, keine Analyse, kein Tracking. Nur dein Browser, deine Daten.
-    </p>
+<!-- Closing manifesto — inverse panel, dark ink on bright rust, with editorial typesetting -->
+<section
+  class="relative border-t border-[color:var(--color-rule)] bg-[color:var(--color-ink)] py-24 text-[color:var(--color-paper)] sm:py-32"
+>
+  <div class="mx-auto max-w-6xl px-5 sm:px-8">
+    <div class="grid grid-cols-1 gap-12 lg:grid-cols-12">
+      <div class="lg:col-span-3">
+        <span class="label-caps text-[color:var(--color-rust)]">§ 4 — Schlusswort</span>
+      </div>
+      <div class="lg:col-span-9">
+        <blockquote
+          class="font-[family-name:var(--font-display)] text-[2rem] leading-[1.15] italic tracking-tight sm:text-[2.75rem]"
+        >
+          „Deine Daten gehören dir.<br />
+          Dieses Werkzeug ist die <span class="text-[color:var(--color-rust)]">Architektur</span>,
+          die das wahr macht."
+        </blockquote>
 
-    <div class="mt-10 grid gap-4 sm:grid-cols-3">
-      <div class="rounded-xl border border-slate-700 bg-slate-800 p-5">
-        <div class="mb-3 text-2xl">🔒</div>
-        <h3 class="font-semibold text-slate-100">Kein Server-Processing</h3>
-        <p class="mt-1 text-sm text-slate-400">
-          Erkennung und Masking laufen ausschließlich im Browser-Prozess.
-        </p>
-      </div>
-      <div class="rounded-xl border border-slate-700 bg-slate-800 p-5">
-        <div class="mb-3 text-2xl">📊</div>
-        <h3 class="font-semibold text-slate-100">Kein Tracking</h3>
-        <p class="mt-1 text-sm text-slate-400">
-          Keine Analytics, keine Cookies, kein Fingerprinting. Nichts.
-        </p>
-      </div>
-      <div class="rounded-xl border border-slate-700 bg-slate-800 p-5">
-        <div class="mb-3 text-2xl">👁️</div>
-        <h3 class="font-semibold text-slate-100">Prüfbarer Code</h3>
-        <p class="mt-1 text-sm text-slate-400">
-          Open Source auf GitHub — Versprechen brauchen keine Vertrauen, wenn der Code prüfbar ist.
-        </p>
-      </div>
-    </div>
+        <div class="mt-12 grid grid-cols-1 gap-x-12 gap-y-8 sm:grid-cols-3">
+          <div>
+            <span class="label-caps text-[color:var(--color-paper)]/60">Versprechen</span>
+            <p class="mt-2 text-sm leading-relaxed text-[color:var(--color-paper)]/85">
+              Kein Server berührt deine Eingabe. Erkennung und Maskierung laufen im selben Prozess
+              wie dein Browser-Tab.
+            </p>
+          </div>
+          <div>
+            <span class="label-caps text-[color:var(--color-paper)]/60">Beweis</span>
+            <p class="mt-2 text-sm leading-relaxed text-[color:var(--color-paper)]/85">
+              Öffne die DevTools. Schau in den Netzwerk-Tab. Tippe, was du willst. Es geht keine
+              POST-Anfrage raus, die deinen Text enthält.
+            </p>
+          </div>
+          <div>
+            <span class="label-caps text-[color:var(--color-paper)]/60">Lizenz</span>
+            <p class="mt-2 text-sm leading-relaxed text-[color:var(--color-paper)]/85">
+              MIT. Forke es, hoste es selbst, lies den Code. Vertrauen ist keine Antwort. Lesen
+              schon.
+            </p>
+          </div>
+        </div>
 
-    <div class="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-      <CtaButton size="lg" label="Jetzt ausprobieren →" />
-      <a
-        href="/privacy"
-        class="text-sm font-medium text-slate-300 hover:text-white underline underline-offset-2"
-      >
-        Privacy-Versprechen lesen →
-      </a>
+        <div class="mt-12 flex flex-col gap-5 sm:flex-row sm:items-center">
+          <CtaButton size="lg" label="App jetzt starten" />
+          <a
+            href="/privacy"
+            class="group inline-flex items-baseline gap-2 font-[family-name:var(--font-display)] text-lg italic text-[color:var(--color-paper)]/80 underline decoration-[color:var(--color-paper)]/30 decoration-1 underline-offset-[6px] transition-all hover:text-[color:var(--color-paper)] hover:decoration-[color:var(--color-rust)]"
+          >
+            das ganze Privacy-Manifest
+            <span class="not-italic font-[family-name:var(--font-mono)] text-sm">↗</span>
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </section>
