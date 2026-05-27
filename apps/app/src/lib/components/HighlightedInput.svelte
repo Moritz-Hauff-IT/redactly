@@ -206,6 +206,7 @@
   <!-- Editable textarea on top -->
   <textarea
     bind:this={textareaEl}
+    data-testid="input-textarea"
     class="relative min-h-64 w-full flex-1 resize-none rounded-md border border-slate-700 bg-transparent p-3 font-mono text-sm text-slate-100 placeholder-slate-600 focus:border-slate-500 focus:outline-none"
     style="caret-color: #e2e8f0;"
     placeholder="Paste or type text here to detect and mask PII..."

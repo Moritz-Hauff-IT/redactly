@@ -3,6 +3,7 @@
   import MaskedPane from '$lib/components/MaskedPane.svelte';
   import EngineStatus from '$lib/components/EngineStatus.svelte';
   import DetectionReview from '$lib/components/DetectionReview.svelte';
+  import RestorePane from '$lib/components/RestorePane.svelte';
   import { analyze } from '$lib/core/pipeline.js';
   import { maskText } from '$lib/core/maskingService.js';
   import { inputStore } from '$lib/stores/inputStore.svelte.js';
@@ -62,8 +63,6 @@
   <!-- Detection Review — full width below the two-column workspace -->
   <DetectionReview />
 
-  <!-- RestorePane placeholder — wired in task 8 -->
-  <div class="rounded-md border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-500">
-    Restore panel coming in task 8.
-  </div>
+  <!-- Restore LLM response -->
+  <RestorePane />
 </div>

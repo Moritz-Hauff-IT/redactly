@@ -50,17 +50,23 @@
         Download
       </button>
       <button
+        data-testid="copy-masked"
         class="rounded px-3 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40
           {copied ? 'bg-green-700 text-green-100' : 'text-slate-300 hover:bg-slate-700'}"
         disabled={!maskedText}
         onclick={copyToClipboard}
         aria-label={copied ? 'Copied to clipboard' : 'Copy masked text to clipboard'}
       >
-        {copied ? 'Copied!' : 'Copy'}
+        {#if copied}
+          <span data-testid="copy-feedback">Copied!</span>
+        {:else}
+          Copy
+        {/if}
       </button>
     </div>
   </div>
   <pre
+    data-testid="masked-output"
     class="min-h-64 flex-1 overflow-auto rounded-md border border-slate-700 bg-slate-900 p-3 font-mono text-sm text-slate-100 whitespace-pre-wrap">{maskedText ||
       'Masked text will appear here...'}</pre>
 </div>

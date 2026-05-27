@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "typecheck": "pnpm check"
+    "typecheck": "pnpm check",
+    "test:e2e": "pnpm build && pnpm exec playwright test"
   },
   "dependencies": {
     "@de-pii/core": "workspace:*",

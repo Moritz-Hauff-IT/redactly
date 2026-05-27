@@ -1,14 +1,19 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  // TODO: configure baseURL, browsers, etc. when SvelteKit app is scaffolded (task 6+)
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:4173',
   },
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
   webServer: {
-    command: 'pnpm dev',
-    port: 5173,
+    command: 'pnpm preview --port 4173 --strictPort',
+    port: 4173,
     reuseExistingServer: !process.env['CI'],
   },
 });
