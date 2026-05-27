@@ -1,0 +1,225 @@
+/**
+ * masker.ts — Replace detected entities in text with stable placeholders.
+ *
+ * Design notes:
+ * - Placeholder numbers are allocated left-to-right (first entity in the text
+ *   gets _1, second gets _2, etc.) for human readability.
+ * - Replacements are applied right-to-left to preserve character offsets.
+ * - Counters per prefix are derived on the fly by scanning the forward map;
+ *   this keeps the Mapping shape clean (only two Maps).
+ * - The reverse map keys on entity.text only (case-sensitive). When the same
+ *   string appears as two different EntityTypes, first-write wins. This is
+ *   intentional: the placeholder still correctly masks the text regardless of
+ *   entity type.
+ * - All secret EntityTypes share the 'SECRET' prefix so the LLM never learns
+ *   which kind of secret was redacted.
+ */
+
+import type { Entity, EntityType } from './types.js';
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export interface Mapping {
+  /** placeholder -> original */
+  forward: Map<string, string>;
+  /** original (case-sensitive exact match) -> placeholder */
+  reverse: Map<string, string>;
+}
+
+export interface MaskOptions {
+  /**
+   * Map from EntityType to placeholder prefix. Defaults provided.
+   * Custom prefixes are merged over the defaults.
+   */
+  prefixes?: Partial<Record<EntityType, string>>;
+  /**
+   * Placeholder format. Default: '[{PREFIX}_{N}]'.
+   * MUST contain literal {PREFIX} and {N} tokens.
+   */
+  format?: string;
+  /**
+   * If provided, the masker reuses its forward/reverse entries
+   * (same original -> same placeholder) and extends it.
+   * Use for incremental re-masking when the user toggles entities or
+   * pastes additional text.
+   */
+  existing?: Mapping;
+}
+
+export interface MaskResult {
+  maskedText: string;
+  mapping: Mapping;
+}
+
+// ---------------------------------------------------------------------------
+// Default configuration
+// ---------------------------------------------------------------------------
+
+const DEFAULT_FORMAT = '[{PREFIX}_{N}]';
+
+const DEFAULT_PREFIXES: Record<EntityType, string> = {
+  PERSON: 'PERSON',
+  ORG: 'ORG',
+  LOCATION: 'LOC',
+  EMAIL: 'EMAIL',
+  PHONE: 'PHONE',
+  URL: 'URL',
+  IP: 'IP',
+  IBAN: 'IBAN',
+  BIC: 'BIC',
+  CREDIT_CARD: 'CARD',
+  TAX_ID_DE: 'TAX_ID',
+  VAT_ID: 'VAT_ID',
+  // Secrets - all map to 'SECRET'
+  AWS_ACCESS_KEY: 'SECRET',
+  AWS_SECRET_KEY: 'SECRET',
+  GCP_KEY: 'SECRET',
+  AZURE_KEY: 'SECRET',
+  GITHUB_TOKEN: 'SECRET',
+  SLACK_TOKEN: 'SECRET',
+  STRIPE_KEY: 'SECRET',
+  OPENAI_KEY: 'SECRET',
+  ANTHROPIC_KEY: 'SECRET',
+  JWT: 'SECRET',
+  SSH_PRIVATE_KEY: 'SECRET',
+  PGP_PRIVATE_KEY: 'SECRET',
+  BEARER_TOKEN: 'SECRET',
+  ENV_SECRET: 'SECRET',
+  GENERIC_SECRET: 'SECRET',
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+export function createMapping(): Mapping {
+  return {
+    forward: new Map<string, string>(),
+    reverse: new Map<string, string>(),
+  };
+}
+
+/**
+ * Derive the next counter value for a given prefix by scanning existing
+ * forward-map placeholders. O(n) per prefix allocation, acceptable since
+ * typical entity counts are small.
+ */
+function nextCounter(forward: Map<string, string>, prefix: string): number {
+  let max = 0;
+  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`\\b${escaped}_(\\d+)\\b`);
+  for (const placeholder of forward.keys()) {
+    const m = re.exec(placeholder);
+    if (m?.[1] !== undefined) {
+      const n = parseInt(m[1], 10);
+      if (n > max) max = n;
+    }
+  }
+  return max + 1;
+}
+
+/**
+ * Build a placeholder string from the format template.
+ */
+function buildPlaceholder(format: string, prefix: string, n: number): string {
+  return format.replace('{PREFIX}', prefix).replace('{N}', String(n));
+}
+
+/**
+ * Validate that the format string contains the required tokens.
+ */
+function validateFormat(format: string): void {
+  if (!format.includes('{PREFIX}')) {
+    throw new Error(
+      `Invalid placeholder format: "${format}" — must contain literal {PREFIX} token.`
+    );
+  }
+  if (!format.includes('{N}')) {
+    throw new Error(`Invalid placeholder format: "${format}" — must contain literal {N} token.`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main API
+// ---------------------------------------------------------------------------
+
+/**
+ * Replace detected entities in text with stable placeholders.
+ *
+ * Overlapping entities are not supported. The function will throw a clear
+ * error if the input contains overlapping ranges. The calling pipeline
+ * (Task 5) is responsible for deduplication.
+ */
+export function mask(text: string, entities: Entity[], options?: MaskOptions): MaskResult {
+  const format = options?.format ?? DEFAULT_FORMAT;
+  validateFormat(format);
+
+  const prefixMap: Record<EntityType, string> = {
+    ...DEFAULT_PREFIXES,
+    ...(options?.prefixes ?? {}),
+  } as Record<EntityType, string>;
+
+  const mapping: Mapping = options?.existing
+    ? {
+        forward: new Map(options.existing.forward),
+        reverse: new Map(options.existing.reverse),
+      }
+    : createMapping();
+
+  // Short-circuit: no entities to replace
+  if (entities.length === 0) {
+    return { maskedText: text, mapping };
+  }
+
+  // Sort ascending by start position (left-to-right)
+  const sorted = [...entities].sort((a, b) => a.start - b.start || b.end - a.end);
+
+  // Validate no overlapping entities
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const curr = sorted[i]!;
+    const next = sorted[i + 1]!;
+    // If curr ends after next starts, they overlap
+    if (curr.end > next.start) {
+      throw new Error(
+        `Overlapping entities detected at [${curr.start},${curr.end}) and [${next.start},${next.end}). ` +
+          `Deduplicate entities before calling mask().`
+      );
+    }
+  }
+
+  // Pass 1 (left-to-right): allocate placeholders in document order so that
+  // the first entity gets _1, second gets _2, etc. This makes masked text
+  // human-readable and predictable.
+  const placeholderFor = new Map<Entity, string>();
+  for (const entity of sorted) {
+    const original = entity.text;
+    if (mapping.reverse.has(original)) {
+      // Reuse existing placeholder for this original text.
+      // Note: first-write wins when the same string appears as different
+      // EntityTypes (e.g., a name that's also an organization name). The
+      // placeholder still correctly masks the text regardless of entity type.
+      placeholderFor.set(entity, mapping.reverse.get(original)!);
+    } else {
+      // Allocate a new placeholder
+      const prefix = prefixMap[entity.type] ?? entity.type;
+      const n = nextCounter(mapping.forward, prefix);
+      const placeholder = buildPlaceholder(format, prefix, n);
+      mapping.forward.set(placeholder, original);
+      mapping.reverse.set(original, placeholder);
+      placeholderFor.set(entity, placeholder);
+    }
+  }
+
+  // Pass 2 (right-to-left): apply replacements from the end to preserve
+  // character offsets of earlier entities.
+  let result = text;
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const entity = sorted[i]!;
+    const placeholder = placeholderFor.get(entity)!;
+    result = result.slice(0, entity.start) + placeholder + result.slice(entity.end);
+  }
+
+  return { maskedText: result, mapping };
+}
