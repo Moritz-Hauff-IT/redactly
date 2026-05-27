@@ -20,3 +20,20 @@ export type { Mapping, MaskOptions, MaskResult } from './masker.js';
 // Restorer
 export { restore } from './restorer.js';
 export type { RestoreOptions, RestoreResult } from './restorer.js';
+
+// Pipeline orchestrator
+export { Pipeline } from './pipeline.js';
+export type { PipelineOptions, PipelineResult } from './pipeline.js';
+
+// File parsers
+export type { ParseResult, SupportedFormat } from './parsers/index.js';
+export {
+  parseTxtBlob,
+  parseMdBlob,
+  parseEmlBlob,
+  parsePdfBlob,
+  parseDocxBlob,
+  detectFormat,
+  parseFile,
+  UnsupportedFormatError,
+} from './parsers/index.js';
