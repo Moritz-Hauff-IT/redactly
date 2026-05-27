@@ -20,6 +20,6 @@
     "test:watch": "vitest --project @de-pii/core"
   },
   "dependencies": {
-    "@huggingface/transformers": "^3"
+    "@huggingface/transformers": "^3.8.1"
   }
 }

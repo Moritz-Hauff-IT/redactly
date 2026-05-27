@@ -292,6 +292,37 @@ describe('dispose()', () => {
     // Second dispose — pipeline is null, should not throw
     await expect(detector.dispose()).resolves.toBeUndefined();
   });
+
+  it('dispose() mid-flight: detect() returns [] instead of throwing', async () => {
+    // Build a factory whose pipeline call never resolves during this test so we
+    // can interleave dispose() between ready() and the pipe() call.  We achieve
+    // the race by making the pipeline callable block until we release it.
+    let releasePipe!: () => void;
+    const pipeBlocked = new Promise<void>((resolve) => {
+      releasePipe = resolve;
+    });
+
+    const mockPipe = vi.fn().mockImplementation(() => pipeBlocked.then(() => []));
+    mockPipe.dispose = vi.fn().mockResolvedValue(undefined);
+    const factory = vi.fn().mockResolvedValue(mockPipe);
+
+    const detector = new NerDetector({ _pipelineFactory: factory });
+
+    // Start detect() but do NOT await yet — it will block inside pipe(text)
+    const detectPromise = detector.detect('hello');
+
+    // Yield to let detect() get past ready() and into pipe(text)
+    await Promise.resolve();
+
+    // Call dispose() — this nulls this.pipeline
+    await detector.dispose();
+
+    // Unblock the in-flight pipe call so detect() can finish
+    releasePipe();
+
+    // detect() must resolve to [] without throwing
+    await expect(detectPromise).resolves.toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------------------

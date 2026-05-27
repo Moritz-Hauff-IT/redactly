@@ -194,8 +194,10 @@ export class NerDetector implements Detector {
     // Lazy load if not yet initialized
     await this.ready();
 
-    // After ready() resolves, pipeline is guaranteed to be set
-    const pipe = this.pipeline!;
+    // Capture pipeline reference before any further await so a concurrent
+    // dispose() cannot null it between the ready() check and the pipe call.
+    const pipe = this.pipeline;
+    if (pipe === null) return []; // disposed mid-flight
 
     const rawEntities = await pipe(text);
     const entities: Entity[] = [];
