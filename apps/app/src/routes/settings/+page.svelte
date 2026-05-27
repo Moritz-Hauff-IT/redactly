@@ -129,8 +129,132 @@
 <div class="mx-auto max-w-2xl space-y-8">
   <h1 class="text-2xl font-bold text-white">Settings</h1>
 
+  <!-- ─── Welchen Modus brauche ich? ─── -->
+  <section class="space-y-4" id="mode-guide">
+    <div>
+      <h2 class="text-lg font-semibold text-white">Welchen Modus brauche ich?</h2>
+      <p class="mt-1 text-sm text-slate-400">
+        de-pii bietet drei Erkennungsmodi — du kannst sie kombinieren. Hier siehst du auf einen
+        Blick, welcher für deinen Anwendungsfall passt.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <!-- Regex card -->
+      <div class="flex flex-col rounded-lg border border-slate-700 bg-slate-900 overflow-hidden">
+        <div class="border-b border-slate-700 bg-slate-800 px-4 py-2.5">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Regex</span>
+          <p class="text-sm font-medium text-slate-100 mt-0.5">Immer aktiv</p>
+        </div>
+        <div class="flex flex-col gap-3 p-4 flex-1">
+          <div class="space-y-1 text-xs text-slate-300">
+            <p>
+              ✅ <span class="font-medium text-slate-200">Erkennt:</span> E-Mails, IBANs,
+              Kreditkarten, Telefon, URLs, API-Keys, Tokens, JWTs,
+              <code class="font-mono text-slate-400">.env</code>-Werte
+            </p>
+            <p class="mt-2">
+              ⚠️ <span class="font-medium text-slate-200">Erkennt nicht:</span> freie Namen ("Martin"),
+              Firmennamen, Adressen ohne festes Muster
+            </p>
+            <p class="mt-2">
+              💾 <span class="font-medium text-slate-200">Download:</span> 0 KB extra — läuft sofort
+            </p>
+            <p class="mt-2">
+              🎯 <span class="font-medium text-slate-200">Ideal für:</span> Code-Snippets, Logs, Configs
+              → reicht völlig
+            </p>
+          </div>
+          <div class="mt-auto pt-2">
+            <a
+              href="#categories"
+              class="inline-block rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
+            >
+              Konfigurieren ↓
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- NER card -->
+      <div class="flex flex-col rounded-lg border border-blue-800/60 bg-slate-900 overflow-hidden">
+        <div class="border-b border-blue-800/60 bg-blue-950/50 px-4 py-2.5">
+          <span class="text-xs font-semibold uppercase tracking-wider text-blue-400">NER</span>
+          <p class="text-sm font-medium text-slate-100 mt-0.5">Named Entity Recognition</p>
+        </div>
+        <div class="flex flex-col gap-3 p-4 flex-1">
+          <div class="space-y-1 text-xs text-slate-300">
+            <p>
+              ✅ <span class="font-medium text-slate-200">Erkennt zusätzlich:</span> freie Personennamen,
+              Firmen, Orte auf Deutsch und Englisch
+            </p>
+            <p class="mt-2">
+              ⚠️ <span class="font-medium text-slate-200">Tradeoffs:</span> einmaliger ~140 MB Download,
+              ca. 1–3 Sek. pro Analyse auf normaler Hardware
+            </p>
+            <p class="mt-2">
+              💾 <span class="font-medium text-slate-200">Cache:</span> nach dem ersten Download offline-fähig,
+              bleibt im Browser
+            </p>
+            <p class="mt-2">
+              🎯 <span class="font-medium text-slate-200">Ideal für:</span> E-Mails, Briefe, freie Texte
+              → einschalten
+            </p>
+          </div>
+          <div class="mt-auto pt-2">
+            <a
+              href="#ner"
+              class="inline-block rounded-md border border-blue-700/60 px-3 py-1.5 text-xs font-medium text-blue-300 transition-colors hover:border-blue-500 hover:text-blue-200"
+            >
+              Konfigurieren ↓
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- WebLLM card -->
+      <div
+        class="flex flex-col rounded-lg border border-purple-800/40 bg-slate-900 overflow-hidden opacity-70"
+      >
+        <div class="border-b border-purple-800/40 bg-purple-950/30 px-4 py-2.5">
+          <span class="text-xs font-semibold uppercase tracking-wider text-purple-400">WebLLM</span>
+          <p class="text-sm font-medium text-slate-100 mt-0.5">Experimentell</p>
+        </div>
+        <div class="flex flex-col gap-3 p-4 flex-1">
+          <div class="space-y-1 text-xs text-slate-300">
+            <p>
+              ✅ <span class="font-medium text-slate-200">Erkennt zusätzlich:</span> kontextuelle Fälle
+              ("mein Chef Martin" → maskiert "Chef" + "Martin"), versteht Beziehungen, fängt kreative
+              Edge-Cases
+            </p>
+            <p class="mt-2">
+              ⚠️ <span class="font-medium text-slate-200">Tradeoffs:</span> GB-Download, braucht WebGPU
+              (Chrome/Edge Desktop — kein Safari, kein Firefox), 5–30 Sek. pro Analyse
+            </p>
+            <p class="mt-2">
+              💾 <span class="font-medium text-slate-200">Cache:</span> WebLLM speichert im IndexedDB,
+              bleibt im Browser
+            </p>
+            <p class="mt-2">
+              🎯 <span class="font-medium text-slate-200">Ideal für:</span> sehr sensible oder komplexe
+              Dokumente ohne Zeit-Constraints
+            </p>
+          </div>
+          <div class="mt-auto pt-2">
+            <a
+              href="#webllm"
+              class="inline-block rounded-md border border-purple-800/50 px-3 py-1.5 text-xs font-medium text-purple-400 transition-colors hover:border-purple-600 hover:text-purple-300"
+            >
+              Konfigurieren ↓
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ─── Detection Categories ─── -->
-  <section class="space-y-4">
+  <section class="space-y-4" id="categories">
     <div>
       <h2 class="text-lg font-semibold text-white">Detection Categories</h2>
       <p class="mt-1 text-sm text-slate-400">
@@ -177,7 +301,7 @@
   </section>
 
   <!-- ─── NER ─── -->
-  <section class="space-y-4">
+  <section class="space-y-4" id="ner">
     <div>
       <h2 class="text-lg font-semibold text-white">Named Entity Recognition (NER)</h2>
       <p class="mt-1 text-sm text-slate-400">
@@ -322,7 +446,7 @@
   </section>
 
   <!-- ─── WebLLM Placeholder ─── -->
-  <section class="space-y-4">
+  <section class="space-y-4" id="webllm">
     <div>
       <h2 class="text-lg font-semibold text-slate-500">WebLLM (experimental)</h2>
     </div>

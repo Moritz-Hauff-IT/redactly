@@ -23,6 +23,35 @@
   <hr class="border-slate-800" />
 
   <section class="space-y-3">
+    <h2 class="text-lg font-semibold text-white">Welche Detection-Modi gibt es?</h2>
+    <p class="text-slate-300">
+      <strong class="text-white">Regex (immer aktiv)</strong> — erkennt strukturierte Daten wie E-Mails,
+      IBANs, Kreditkarten, Telefonnummern, API-Keys und Tokens sofort, ohne Download. Perfekt für Logs,
+      Configs und Code-Snippets.
+    </p>
+    <p class="text-slate-300">
+      <strong class="text-white">NER (Named Entity Recognition, optional)</strong> — erkennt zusätzlich
+      freie Personennamen, Firmennamen und Orte auf Deutsch und Englisch. Erfordert einen einmaligen ~140
+      MB Download, läuft danach vollständig offline im Browser. Empfohlen für E-Mails, Briefe und freie
+      Texte.
+    </p>
+    <p class="text-slate-300">
+      <strong class="text-white">WebLLM (experimentell, optional)</strong> — kontextbewusste Erkennung
+      mit einem lokalen Sprachmodell: versteht Beziehungen wie "mein Chef Martin" und maskiert auch kreative
+      Edge-Cases. Erfordert WebGPU (Chrome/Edge Desktop) und einen GB-großen Download. Für sehr sensible
+      Dokumente ohne Zeit-Constraints.
+    </p>
+    <p class="text-slate-300">
+      Alle Modi können in den <a
+        href="/settings"
+        class="text-violet-400 underline hover:text-violet-300">Einstellungen</a
+      > konfiguriert werden.
+    </p>
+  </section>
+
+  <hr class="border-slate-800" />
+
+  <section class="space-y-3">
     <h2 class="text-lg font-semibold text-white">
       Why we ask your permission before downloading the NER model
     </h2>

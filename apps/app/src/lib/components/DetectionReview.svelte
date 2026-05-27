@@ -68,10 +68,19 @@
 </script>
 
 <div class="rounded-lg border border-slate-800 bg-slate-900/60">
-  <div class="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-    <h2 class="text-sm font-semibold text-slate-200">Detection Review</h2>
+  <div class="flex items-start justify-between border-b border-slate-800 px-4 py-3 gap-3">
+    <div class="min-w-0">
+      <h2 class="text-sm font-semibold text-slate-200">Detection Review</h2>
+      <p class="mt-0.5 text-xs text-slate-500 leading-snug">
+        Was hier nicht auftaucht, wurde nicht erkannt —
+        <a href="/settings" class="text-violet-400 hover:text-violet-300 underline"
+          >überleg in den Settings</a
+        >
+        ob du NER oder WebLLM aktivieren willst.
+      </p>
+    </div>
     {#if totalEntities > 0}
-      <span class="text-xs text-slate-500">
+      <span class="shrink-0 text-xs text-slate-500 mt-0.5">
         {totalActive} active / {totalEntities} detected
       </span>
     {/if}
