@@ -6,6 +6,10 @@ export type { Entity, EntityCategory, EntityType, Detector } from './types.js';
 // Regex detector
 export { RegexDetector } from './detectors/regex.js';
 
+// NER detector (lazy model load, browser + Node compatible)
+export { NerDetector } from './detectors/ner.js';
+export type { NerOptions, NerProgressEvent } from './detectors/ner.js';
+
 // Validators (useful for consumers wanting to validate independently)
 export { luhn, ibanMod97, shannonEntropy } from './detectors/validators.js';
 

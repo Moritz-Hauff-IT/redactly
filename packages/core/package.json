@@ -18,5 +18,8 @@
     "typecheck": "tsc -p . --noEmit",
     "test": "echo 'Run tests from root: pnpm test'",
     "test:watch": "vitest --project @de-pii/core"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3"
   }
 }

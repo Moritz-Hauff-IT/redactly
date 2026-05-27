@@ -4,6 +4,7 @@
 export type EntityCategory =
   | 'contact' // email, phone, url, ip
   | 'person' // names (filled in by NER later)
+  | 'organization' // companies, institutions (filled in by NER)
   | 'address' // postal / street / city (later NER)
   | 'financial' // IBAN, BIC, credit-card, tax IDs
   | 'secret'; // API keys, tokens, JWT, private keys
