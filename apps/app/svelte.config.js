@@ -14,6 +14,7 @@ const config = {
       // with a strict regex (^@de-pii/core$), preventing prefix match on sub-paths.
       '@de-pii/core/regex': '../../packages/core/src/detectors/regex.ts',
       '@de-pii/core/ner': '../../packages/core/src/detectors/ner.ts',
+      '@de-pii/core/llm': '../../packages/core/src/detectors/llm.ts',
       '@de-pii/core/parsers': '../../packages/core/src/parsers/index.ts',
       '@de-pii/core/masker': '../../packages/core/src/masker.ts',
       '@de-pii/core/restorer': '../../packages/core/src/restorer.ts',

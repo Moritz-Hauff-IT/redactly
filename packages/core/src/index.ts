@@ -10,6 +10,11 @@ export { RegexDetector } from './detectors/regex.js';
 export { NerDetector } from './detectors/ner.js';
 export type { NerOptions, NerProgressEvent } from './detectors/ner.js';
 
+// WebLLM model catalog — safe to re-export (tree-shakeable constants and types only).
+// Do NOT re-export WebLlmDetector here — import it via '@de-pii/core/llm' sub-path only.
+export { SUPPORTED_WEBLLM_MODELS } from './detectors/llm.js';
+export type { WebLlmModelInfo, WebLlmOptions, WebLlmProgressEvent } from './detectors/llm.js';
+
 // Validators (useful for consumers wanting to validate independently)
 export { luhn, ibanMod97, shannonEntropy } from './detectors/validators.js';
 

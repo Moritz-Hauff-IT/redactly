@@ -10,12 +10,22 @@ export interface NerDetectorLike extends Detector {
   dispose(): Promise<void>;
 }
 
+/** Minimal public interface we need from WebLlmDetector — avoids importing the class directly. */
+export interface WebLlmDetectorLike extends Detector {
+  ready(): Promise<void>;
+  dispose(): Promise<void>;
+}
+
 let nerDetector: NerDetectorLike | null = null;
+let webllmDetector: WebLlmDetectorLike | null = null;
 
 function buildPipeline(): Pipeline {
   const detectors: Detector[] = [new RegexDetector()];
   if (nerDetector !== null) {
     detectors.push(nerDetector);
+  }
+  if (webllmDetector !== null) {
+    detectors.push(webllmDetector);
   }
   const cats = [...settingsStore.enabledCategories] as EntityCategory[];
   return new Pipeline({
@@ -54,6 +64,25 @@ export async function disableNer(): Promise<void> {
   if (nerDetector !== null) {
     await nerDetector.dispose();
     nerDetector = null;
+  }
+  pipeline = buildPipeline();
+}
+
+/**
+ * Add a WebLLM detector to the pipeline. Call after `detector.ready()` resolves.
+ */
+export async function enableWebLlm(detector: WebLlmDetectorLike): Promise<void> {
+  webllmDetector = detector;
+  pipeline = buildPipeline();
+}
+
+/**
+ * Remove the WebLLM detector from the pipeline and dispose it.
+ */
+export async function disableWebLlm(): Promise<void> {
+  if (webllmDetector !== null) {
+    await webllmDetector.dispose();
+    webllmDetector = null;
   }
   pipeline = buildPipeline();
 }

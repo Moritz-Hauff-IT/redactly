@@ -11,6 +11,10 @@ const ALL_CATEGORIES: EntityCategory[] = [
 
 const LS_CATEGORIES_KEY = 'de-pii:settings:categories';
 const LS_NER_KEY = 'de-pii:settings:ner-enabled';
+const LS_WEBLLM_KEY = 'de-pii:settings:webllm-enabled';
+const LS_WEBLLM_MODEL_KEY = 'de-pii:settings:webllm-model';
+
+const DEFAULT_WEBLLM_MODEL = 'Llama-3.2-3B-Instruct-q4f16_1-MLC';
 
 function safeLocalStorageGet(key: string): string | null {
   try {
@@ -60,9 +64,20 @@ function loadNerEnabled(): boolean {
   return raw === 'true';
 }
 
+function loadWebllmEnabled(): boolean {
+  const raw = safeLocalStorageGet(LS_WEBLLM_KEY);
+  return raw === 'true';
+}
+
+function loadWebllmModelId(): string {
+  return safeLocalStorageGet(LS_WEBLLM_MODEL_KEY) ?? DEFAULT_WEBLLM_MODEL;
+}
+
 function createSettingsStore() {
   let enabledCategories = $state<Set<EntityCategory>>(loadEnabledCategories());
   let nerEnabled = $state<boolean>(loadNerEnabled());
+  let webllmEnabled = $state<boolean>(loadWebllmEnabled());
+  let webllmModelId = $state<string>(loadWebllmModelId());
 
   return {
     get enabledCategories() {
@@ -70,6 +85,12 @@ function createSettingsStore() {
     },
     get nerEnabled() {
       return nerEnabled;
+    },
+    get webllmEnabled() {
+      return webllmEnabled;
+    },
+    get webllmModelId() {
+      return webllmModelId;
     },
     get allCategories() {
       return ALL_CATEGORIES;
@@ -98,6 +119,25 @@ function createSettingsStore() {
     clearNerPreference(): void {
       nerEnabled = false;
       safeLocalStorageRemove(LS_NER_KEY);
+    },
+
+    setWebllmEnabled(b: boolean): void {
+      webllmEnabled = b;
+      if (b) {
+        safeLocalStorageSet(LS_WEBLLM_KEY, 'true');
+      } else {
+        safeLocalStorageRemove(LS_WEBLLM_KEY);
+      }
+    },
+
+    setWebllmModelId(id: string): void {
+      webllmModelId = id;
+      safeLocalStorageSet(LS_WEBLLM_MODEL_KEY, id);
+    },
+
+    clearWebllmPreference(): void {
+      webllmEnabled = false;
+      safeLocalStorageRemove(LS_WEBLLM_KEY);
     },
   };
 }

@@ -3,6 +3,8 @@
   import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
   import { applyCategoryFilter } from '$lib/core/pipeline.js';
   import { loadNer, unloadNer } from '$lib/core/nerLoader.js';
+  import { loadWebLlm, unloadWebLlm } from '$lib/core/llmLoader.js';
+  import { SUPPORTED_WEBLLM_MODELS } from '@de-pii/core';
   import type { EntityCategory } from '@de-pii/core/types';
 
   const NER_MODEL = 'Xenova/bert-base-multilingual-cased-ner-hrl';
@@ -61,11 +63,59 @@
 
   async function handleRetryNer() {
     // Reset error state so loadNer proceeds
-    engineStore.setStatus('idle');
+    engineStore.setNerStatus('idle');
     await loadNer();
   }
 
-  // Cache management
+  // ─── WebLLM state ────────────────────────────────────────────────────────
+  /** Whether WebGPU is available — inline check avoids pulling the library eagerly. */
+  const webgpuSupported = typeof navigator !== 'undefined' && 'gpu' in navigator;
+
+  /** Currently selected model in the picker (may differ from the active loaded model). */
+  let selectedModelId = $state(settingsStore.webllmModelId);
+
+  /** Whether a model-change confirmation dialog is pending. */
+  let confirmingModelChange = $state(false);
+  /** Model id user wants to switch to, waiting for confirmation. */
+  let pendingModelId = $state('');
+
+  function handleModelSelect(id: string) {
+    if (engineStore.webllm.status === 'ready' && id !== settingsStore.webllmModelId) {
+      pendingModelId = id;
+      confirmingModelChange = true;
+    } else {
+      selectedModelId = id;
+      settingsStore.setWebllmModelId(id);
+    }
+  }
+
+  async function confirmModelChange() {
+    confirmingModelChange = false;
+    selectedModelId = pendingModelId;
+    // Unload current model, then load new one
+    await unloadWebLlm();
+    await loadWebLlm(pendingModelId);
+  }
+
+  function cancelModelChange() {
+    confirmingModelChange = false;
+    pendingModelId = '';
+  }
+
+  async function handleEnableWebLlm() {
+    await loadWebLlm(selectedModelId);
+  }
+
+  async function handleDisableWebLlm() {
+    await unloadWebLlm();
+  }
+
+  async function handleRetryWebLlm() {
+    engineStore.setWebllmStatus('idle');
+    await loadWebLlm(selectedModelId);
+  }
+
+  // ─── Cache management ────────────────────────────────────────────────────
   let cacheSize = $state<string>('Calculating…');
   let cacheCleared = $state(false);
 
@@ -91,7 +141,7 @@
 
   async function handleClearCache() {
     const confirmed = confirm(
-      'This will delete all cached NER model files from your browser. The next time you enable NER, the model will be re-downloaded (~140 MB). Continue?'
+      'Damit werden alle gecachten Modelldaten aus deinem Browser gelöscht (NER ~140 MB + ggf. WebLLM-Modell). Fortfahren?'
     );
     if (!confirmed) return;
 
@@ -99,7 +149,7 @@
       try {
         const keys = await caches.keys();
         for (const k of keys) {
-          if (k.startsWith('transformers')) {
+          if (k.startsWith('transformers') || k.startsWith('webllm')) {
             await caches.delete(k);
           }
         }
@@ -109,8 +159,13 @@
     }
 
     settingsStore.clearNerPreference();
-    if (engineStore.status === 'ready') {
+    if (engineStore.ner.status === 'ready') {
       await unloadNer();
+    }
+
+    settingsStore.clearWebllmPreference();
+    if (engineStore.webllm.status === 'ready') {
+      await unloadWebLlm();
     }
 
     cacheCleared = true;
@@ -214,9 +269,9 @@
 
       <!-- WebLLM card -->
       <div
-        class="flex flex-col rounded-lg border border-purple-800/40 bg-slate-900 overflow-hidden opacity-70"
+        class="flex flex-col rounded-lg border border-purple-800/60 bg-slate-900 overflow-hidden"
       >
-        <div class="border-b border-purple-800/40 bg-purple-950/30 px-4 py-2.5">
+        <div class="border-b border-purple-800/60 bg-purple-950/40 px-4 py-2.5">
           <span class="text-xs font-semibold uppercase tracking-wider text-purple-400">WebLLM</span>
           <p class="text-sm font-medium text-slate-100 mt-0.5">Experimentell</p>
         </div>
@@ -243,7 +298,7 @@
           <div class="mt-auto pt-2">
             <a
               href="#webllm"
-              class="inline-block rounded-md border border-purple-800/50 px-3 py-1.5 text-xs font-medium text-purple-400 transition-colors hover:border-purple-600 hover:text-purple-300"
+              class="inline-block rounded-md border border-purple-700/60 px-3 py-1.5 text-xs font-medium text-purple-300 transition-colors hover:border-purple-500 hover:text-purple-200"
             >
               Konfigurieren ↓
             </a>
@@ -330,7 +385,7 @@
       </p>
 
       <!-- Status display -->
-      {#if engineStore.status === 'idle'}
+      {#if engineStore.ner.status === 'idle'}
         <div class="flex items-center justify-between">
           <span class="text-sm text-slate-400"
             >Status: <span class="text-slate-300">Not loaded</span></span
@@ -342,7 +397,7 @@
             Enable NER
           </button>
         </div>
-      {:else if engineStore.status === 'loading'}
+      {:else if engineStore.ner.status === 'loading'}
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-sm text-slate-400">
@@ -358,18 +413,18 @@
           </div>
           <div class="space-y-1">
             <div class="flex justify-between text-xs text-slate-500">
-              <span>{engineStore.message || 'Initializing…'}</span>
-              <span>{Math.round(engineStore.progress * 100)}%</span>
+              <span>{engineStore.ner.message || 'Initializing…'}</span>
+              <span>{Math.round(engineStore.ner.progress * 100)}%</span>
             </div>
             <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-700">
               <div
                 class="h-full rounded-full bg-blue-500 transition-all duration-300"
-                style="width: {Math.round(engineStore.progress * 100)}%"
+                style="width: {Math.round(engineStore.ner.progress * 100)}%"
               ></div>
             </div>
           </div>
         </div>
-      {:else if engineStore.status === 'ready'}
+      {:else if engineStore.ner.status === 'ready'}
         <div class="flex items-center justify-between">
           <span class="text-sm text-slate-400">
             Status:
@@ -391,11 +446,11 @@
             Disable
           </button>
         </div>
-      {:else if engineStore.status === 'error'}
+      {:else if engineStore.ner.status === 'error'}
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-sm text-red-400">
-              Error: {engineStore.message || 'Failed to load NER model'}
+              Error: {engineStore.ner.message || 'Failed to load NER model'}
             </span>
             <button
               onclick={handleRetryNer}
@@ -412,51 +467,294 @@
     </div>
   </section>
 
+  <!-- ─── WebLLM ─── -->
+  <section class="space-y-4" id="webllm">
+    <div>
+      <h2 class="text-lg font-semibold text-white">
+        WebLLM <span
+          class="ml-1 text-xs font-normal text-purple-400 border border-purple-700/60 rounded px-1.5 py-0.5"
+          >experimentell</span
+        >
+      </h2>
+      <p class="mt-1 text-sm text-slate-400">
+        Führt ein lokales Sprachmodell direkt in deinem Browser aus (WebGPU) für kontextbewusste
+        PII-Erkennung. Erkennt auch indirekte Hinweise auf Personen und Beziehungen.
+      </p>
+    </div>
+
+    {#if !webgpuSupported}
+      <!-- WebGPU not available -->
+      <div class="rounded-lg border border-red-800/60 bg-red-950/30 p-4 space-y-2">
+        <div class="flex items-start gap-2">
+          <svg class="h-4 w-4 mt-0.5 shrink-0 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fill-rule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+              clip-rule="evenodd"
+            />
+          </svg>
+          <p class="text-sm text-red-300">
+            WebGPU nicht verfügbar in diesem Browser. Probier es mit aktueller Chrome- oder
+            Edge-Desktop-Version. Safari und Firefox werden noch nicht offiziell unterstützt.
+          </p>
+        </div>
+      </div>
+
+      <!-- Controls disabled -->
+      <div
+        class="rounded-lg border border-slate-800/50 bg-slate-900/50 p-4 space-y-4 opacity-50 pointer-events-none"
+      >
+        <p class="text-sm text-slate-500">WebLLM ist in diesem Browser nicht verfügbar.</p>
+      </div>
+    {:else}
+      <!-- WebGPU available -->
+      <div class="rounded-lg border border-slate-800 bg-slate-900 p-4 space-y-5">
+        <!-- Model picker -->
+        <div class="space-y-2">
+          <h3 class="text-sm font-medium text-slate-200">Modell auswählen</h3>
+          <div class="space-y-2">
+            {#each SUPPORTED_WEBLLM_MODELS as model (model.id)}
+              {@const isSelected = selectedModelId === model.id}
+              {@const isActive =
+                engineStore.webllm.status === 'ready' && settingsStore.webllmModelId === model.id}
+              {@const isLoading = engineStore.webllm.status === 'loading'}
+              <button
+                type="button"
+                onclick={() => handleModelSelect(model.id)}
+                disabled={isLoading}
+                class={[
+                  'w-full text-left rounded-lg border p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 focus:ring-offset-slate-900',
+                  isSelected
+                    ? 'border-purple-600 bg-purple-950/40'
+                    : 'border-slate-700 bg-slate-800/50 hover:border-slate-600',
+                  isLoading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+                ].join(' ')}
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-sm font-medium text-slate-100">{model.label}</span>
+                      {#if model.recommendedFor === 'balanced'}
+                        <span
+                          class="text-xs bg-purple-700/60 text-purple-200 px-1.5 py-0.5 rounded font-medium"
+                          >Empfohlen</span
+                        >
+                      {:else if model.recommendedFor === 'fast'}
+                        <span
+                          class="text-xs bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-medium"
+                          >Schnell</span
+                        >
+                      {:else if model.recommendedFor === 'best'}
+                        <span
+                          class="text-xs bg-amber-800/60 text-amber-300 px-1.5 py-0.5 rounded font-medium"
+                          >Präzise</span
+                        >
+                      {/if}
+                      {#if isActive}
+                        <span
+                          class="text-xs bg-emerald-800/60 text-emerald-300 px-1.5 py-0.5 rounded font-medium"
+                          >Aktiv</span
+                        >
+                      {/if}
+                    </div>
+                    <p class="mt-1 text-xs text-slate-400">{model.description}</p>
+                    <div class="mt-1.5 flex gap-3 text-xs text-slate-500">
+                      <span
+                        >Download ~{model.sizeMB >= 1000
+                          ? `${(model.sizeMB / 1000).toFixed(1)} GB`
+                          : `${model.sizeMB} MB`}</span
+                      >
+                      <span
+                        >VRAM ~{model.vramMB >= 1000
+                          ? `${(model.vramMB / 1000).toFixed(1)} GB`
+                          : `${model.vramMB} MB`}</span
+                      >
+                    </div>
+                  </div>
+                  <!-- Radio indicator -->
+                  <div
+                    class={[
+                      'mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 transition-colors',
+                      isSelected
+                        ? 'border-purple-500 bg-purple-500'
+                        : 'border-slate-600 bg-transparent',
+                    ].join(' ')}
+                  ></div>
+                </div>
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Status + actions -->
+        {#if engineStore.webllm.status === 'idle'}
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-slate-400"
+              >Status: <span class="text-slate-300">Nicht geladen</span></span
+            >
+            <button
+              onclick={handleEnableWebLlm}
+              class="rounded-md bg-purple-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none"
+            >
+              Aktivieren
+            </button>
+          </div>
+        {:else if engineStore.webllm.status === 'loading'}
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-slate-400">
+                Status: <span class="text-purple-400">Lädt…</span>
+              </span>
+              <button
+                disabled
+                class="cursor-not-allowed rounded-md bg-slate-700 px-4 py-1.5 text-sm font-medium text-slate-500"
+                title="Laden läuft — bitte warten"
+              >
+                Lädt…
+              </button>
+            </div>
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs text-slate-500">
+                <span>{engineStore.webllm.message || 'Initialisiere…'}</span>
+                <span>{Math.round(engineStore.webllm.progress * 100)}%</span>
+              </div>
+              <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-700">
+                <div
+                  class="h-full rounded-full bg-purple-500 transition-all duration-300"
+                  style="width: {Math.round(engineStore.webllm.progress * 100)}%"
+                ></div>
+              </div>
+            </div>
+          </div>
+        {:else if engineStore.webllm.status === 'ready'}
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-slate-400">
+              Status:
+              <span class="inline-flex items-center gap-1 text-emerald-400">
+                <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fill-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+                WebLLM aktiv
+              </span>
+            </span>
+            <div class="flex items-center gap-2">
+              <code
+                class="text-xs font-mono text-purple-400 border border-purple-800/50 rounded px-1.5 py-0.5"
+                >{settingsStore.webllmModelId}</code
+              >
+              <button
+                onclick={handleDisableWebLlm}
+                class="rounded-md border border-slate-700 px-4 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:border-red-700 hover:text-red-400 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none"
+              >
+                Deaktivieren
+              </button>
+            </div>
+          </div>
+        {:else if engineStore.webllm.status === 'error'}
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-red-400">
+                Fehler: {engineStore.webllm.message || 'WebLLM konnte nicht geladen werden'}
+              </span>
+              <button
+                onclick={handleRetryWebLlm}
+                class="rounded-md bg-slate-700 px-4 py-1.5 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-600 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none"
+              >
+                Erneut versuchen
+              </button>
+            </div>
+            <p class="text-xs text-slate-500">
+              Regex-Erkennung bleibt aktiv. Prüfe deine Internetverbindung und versuche es erneut.
+            </p>
+          </div>
+        {/if}
+
+        <!-- Persistence note -->
+        <div
+          class="rounded-md border border-slate-700/50 bg-slate-800/50 p-3 text-xs text-slate-400 space-y-1"
+        >
+          <p>
+            <span class="font-medium text-slate-300">Persistenz:</span>
+            Das heruntergeladene Modell bleibt in deinem Browser gespeichert (IndexedDB). Es wird nicht
+            erneut geladen wenn du die Seite neu öffnest. Du kannst es jederzeit unter "Cache verwalten"
+            löschen.
+          </p>
+        </div>
+      </div>
+    {/if}
+  </section>
+
+  <!-- ─── Model Change Confirmation Dialog ─── -->
+  {#if confirmingModelChange}
+    <div
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
+    >
+      <div
+        class="mx-4 w-full max-w-sm rounded-lg border border-slate-700 bg-slate-900 p-6 shadow-xl space-y-4"
+      >
+        <h3 id="confirm-dialog-title" class="text-base font-semibold text-white">
+          Modell wechseln?
+        </h3>
+        <p class="text-sm text-slate-400">
+          Das aktuelle Modell wird entladen und das neue heruntergeladen. Das kann einige Minuten
+          dauern.
+        </p>
+        <div class="flex justify-end gap-3">
+          <button
+            onclick={cancelModelChange}
+            class="rounded-md border border-slate-700 px-4 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
+          >
+            Abbrechen
+          </button>
+          <button
+            onclick={confirmModelChange}
+            class="rounded-md bg-purple-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-purple-500"
+          >
+            Wechseln
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
   <!-- ─── Cache Management ─── -->
   <section class="space-y-4">
     <div>
-      <h2 class="text-lg font-semibold text-white">Cache Management</h2>
+      <h2 class="text-lg font-semibold text-white">Cache verwalten</h2>
       <p class="mt-1 text-sm text-slate-400">
-        Models are cached by your browser and only downloaded once per browser profile.
+        Modelle werden von deinem Browser gecacht und nur einmal pro Browser-Profil heruntergeladen.
       </p>
     </div>
 
     <div class="rounded-lg border border-slate-800 bg-slate-900 p-4 space-y-3">
       <div class="flex items-center justify-between text-sm">
         <span class="text-slate-400">
-          Approximate storage used: <span class="text-slate-200">{cacheSize}</span>
+          Ungefähr verwendeter Speicher: <span class="text-slate-200">{cacheSize}</span>
         </span>
         <button
           onclick={handleClearCache}
           class="rounded-md border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:border-red-700 hover:text-red-400 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none"
         >
-          Clear cached models
+          Cache löschen
         </button>
       </div>
 
       {#if cacheCleared}
-        <p class="text-xs text-emerald-400">Cache cleared successfully.</p>
+        <p class="text-xs text-emerald-400">Cache wurde erfolgreich gelöscht.</p>
       {/if}
 
       <p class="text-xs text-slate-500">
-        Clearing the cache removes downloaded model weights from your browser. The next time NER is
-        enabled, the model (~140 MB) will be re-downloaded.
+        Beim Löschen des Caches werden alle heruntergeladenen Modellgewichte aus deinem Browser
+        entfernt (NER ~140 MB + ggf. WebLLM-Modell). Beim nächsten Aktivieren wird das Modell erneut
+        geladen.
       </p>
-    </div>
-  </section>
-
-  <!-- ─── WebLLM Placeholder ─── -->
-  <section class="space-y-4" id="webllm">
-    <div>
-      <h2 class="text-lg font-semibold text-slate-500">WebLLM (experimental)</h2>
-    </div>
-
-    <div class="rounded-lg border border-slate-800/50 bg-slate-900/50 p-4 space-y-2 opacity-60">
-      <p class="text-sm text-slate-400">
-        An optional advanced mode that uses a local LLM for context-aware detection. Coming in the
-        next release.
-      </p>
-      <p class="text-xs text-slate-500">This feature is not yet available. No action is needed.</p>
     </div>
   </section>
 </div>

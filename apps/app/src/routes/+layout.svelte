@@ -24,6 +24,16 @@
         });
       });
     }
+
+    // Auto-load WebLLM only if the user previously enabled it AND WebGPU is available.
+    if (settingsStore.webllmEnabled && typeof navigator !== 'undefined' && 'gpu' in navigator) {
+      const modelId = settingsStore.webllmModelId;
+      import('$lib/core/llmLoader.js').then(({ loadWebLlm }) => {
+        loadWebLlm(modelId).catch((err: unknown) => {
+          console.error('Auto WebLLM load failed:', err);
+        });
+      });
+    }
   });
 </script>
 

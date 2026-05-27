@@ -20,6 +20,10 @@ export default defineConfig({
         replacement: path.join(coreRoot, 'detectors/ner.ts'),
       },
       {
+        find: '@de-pii/core/llm',
+        replacement: path.join(coreRoot, 'detectors/llm.ts'),
+      },
+      {
         find: '@de-pii/core/parsers',
         replacement: path.join(coreRoot, 'parsers/index.ts'),
       },
@@ -39,9 +43,9 @@ export default defineConfig({
         find: '@de-pii/core/types',
         replacement: path.join(coreRoot, 'types.ts'),
       },
-      // Root alias must come after sub-paths
+      // Root alias must come after sub-paths — use regex to avoid matching sub-paths
       {
-        find: '@de-pii/core',
+        find: /^@de-pii\/core$/,
         replacement: path.join(coreRoot, 'index.ts'),
       },
     ],
