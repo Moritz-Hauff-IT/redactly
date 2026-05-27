@@ -26,6 +26,9 @@ importers:
       eslint-plugin-svelte:
         specifier: ^2.46.1
         version: 2.46.1(eslint@9.39.4)(svelte@5.55.9(@typescript-eslint/types@8.60.0))
+      globals:
+        specifier: ^17.6.0
+        version: 17.6.0
       prettier:
         specifier: ^3.4.2
         version: 3.8.3
@@ -757,6 +760,10 @@ packages:
 
   globals@14.0.0:
     resolution: {integrity: sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ==}
+    engines: {node: '>=18'}
+
+  globals@17.6.0:
+    resolution: {integrity: sha512-sepffkT8stwnIYbsMBpoCHJuJM5l98FUF2AnE07hfvE0m/qp3R586hw4jF4uadbhvg1ooIdzuu7CsfD2jzCaNA==}
     engines: {node: '>=18'}
 
   has-flag@4.0.0:
@@ -1785,6 +1792,8 @@ snapshots:
       is-glob: 4.0.3
 
   globals@14.0.0: {}
+
+  globals@17.6.0: {}
 
   has-flag@4.0.0: {}
 

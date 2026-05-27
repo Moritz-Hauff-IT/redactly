@@ -2,6 +2,7 @@ import tseslint from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import sveltePlugin from 'eslint-plugin-svelte';
 import prettierConfig from 'eslint-config-prettier';
+import globals from 'globals';
 
 /** @type {import("eslint").Linter.FlatConfig[]} */
 export default [
@@ -14,6 +15,8 @@ export default [
         ecmaVersion: 2022,
         sourceType: 'module',
       },
+      // core runs in the browser; tooling configs run in Node — allow both
+      globals: { ...globals.browser, ...globals.node },
     },
     plugins: {
       '@typescript-eslint': tseslint,
@@ -29,6 +32,13 @@ export default [
   },
   // Svelte files (for when svelte packages are added later)
   ...sveltePlugin.configs['flat/recommended'],
+  // Override Svelte files with browser globals (Svelte components run in the browser)
+  {
+    files: ['**/*.svelte'],
+    languageOptions: {
+      globals: { ...globals.browser },
+    },
+  },
   // Disable ESLint rules that conflict with Prettier (must be last)
   prettierConfig,
   // Ignores

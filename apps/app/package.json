@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "echo 'TODO: SvelteKit app scaffolded in task 6'",
     "build": "echo 'TODO: SvelteKit app scaffolded in task 6'",
-    "typecheck": "echo 'TODO: SvelteKit app scaffolded in task 6'",
-    "test": "echo 'No tests yet — SvelteKit app scaffolded in task 6'"
+    "typecheck": "echo 'TODO: SvelteKit app scaffolded in task 6'"
   }
 }

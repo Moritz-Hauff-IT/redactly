@@ -33,7 +33,7 @@ de-pii/
 # Install dependencies
 pnpm install
 
-# Run all tests
+# Run all tests (all packages via root vitest config — no per-package test scripts)
 pnpm test
 
 # Type-check all packages

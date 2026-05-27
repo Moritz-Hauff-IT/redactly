@@ -24,7 +24,6 @@ test-results/
 # Editor
 .vscode/
 !.vscode/extensions.json
-!.vscode/settings.json
 
 # Logs
 *.log
