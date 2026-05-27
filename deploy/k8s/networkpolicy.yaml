@@ -1,0 +1,69 @@
+---
+# NetworkPolicy for de-pii-app
+# Allows ingress only from ingress-nginx; egress only to DNS.
+# These are static SPAs — the server process cannot phone home.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: de-pii-app
+  namespace: de-pii
+  labels:
+    app.kubernetes.io/name: de-pii-app
+    app.kubernetes.io/part-of: de-pii
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: de-pii-app
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic only from ingress-nginx pods
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    # Allow DNS resolution only (UDP + TCP port 53)
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+
+---
+# NetworkPolicy for de-pii-landing
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: de-pii-landing
+  namespace: de-pii
+  labels:
+    app.kubernetes.io/name: de-pii-landing
+    app.kubernetes.io/part-of: de-pii
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: de-pii-landing
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic only from ingress-nginx pods
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    # Allow DNS resolution only (UDP + TCP port 53)
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP

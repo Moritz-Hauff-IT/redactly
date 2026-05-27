@@ -1,0 +1,10 @@
+node_modules
+build
+.svelte-kit
+dist
+.git
+.github
+.vscode
+docs
+*.md
+!README.md

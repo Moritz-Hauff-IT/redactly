@@ -62,7 +62,27 @@ pnpm -F @de-pii/app build
 pnpm -F @de-pii/app preview
 ```
 
+## Deployment
+
+Both apps build to a static `build/` directory (adapter-static) and are served by a minimal nginx container.
+
+```bash
+# Build images locally
+docker build -f apps/app/Dockerfile -t de-pii-app .
+docker build -f apps/landing/Dockerfile -t de-pii-landing .
+
+# Apply to Kubernetes (edit host placeholders first — see deploy/README.md)
+kubectl apply -f deploy/k8s/namespace.yaml
+kubectl apply -R -f deploy/k8s/
+```
+
+CI builds and pushes images to `ghcr.io/<owner>/de-pii-{app,landing}` on every push to `main`.
+See [deploy/README.md](deploy/README.md) for full self-hosting instructions, required cluster prerequisites, and CD options.
+
 ## Privacy guarantee
 
 All processing happens in the browser session. No server endpoint receives user content.
 Verify this yourself via the Network tab — inputs never leave your browser.
+
+The Kubernetes NetworkPolicy (`deploy/k8s/networkpolicy.yaml`) enforces this at the network layer too:
+the server process is blocked from all egress except DNS — it cannot phone home even if compromised.
