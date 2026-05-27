@@ -20,8 +20,11 @@ export const financialRules: RegexRule[] = [
     //   BB   = country code (2 alpha)
     //   CC   = location code (2 alphanumeric, second char not O or 1)
     //   DDD  = optional branch code (3 alphanumeric)
+    // Confidence is intentionally low (0.55): proper validation would require
+    // a live SWIFT registry lookup, which is out of scope here. Any all-caps
+    // 8/11-char token that matches the structural format will fire.
     pattern: /\b[A-Z]{6}[A-Z2-9][A-NP-Z0-9](?:[A-Z0-9]{3})?\b/g,
-    confidence: 0.75,
+    confidence: 0.55,
   },
   {
     type: 'CREDIT_CARD',

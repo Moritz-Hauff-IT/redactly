@@ -504,3 +504,66 @@ describe('Entity invariants', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Capture-group offset regression
+// ---------------------------------------------------------------------------
+describe('Capture-group offset regression', () => {
+  it('AWS_SECRET_KEY offset falls in the key= line, not the earlier comment', () => {
+    // The secret value "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY" (40 chars)
+    // is deliberately placed in a comment first, then in the real assignment.
+    // The entity must reference the assignment line, not the comment.
+    const secret = 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
+    const text = `# example: ${secret}\naws_secret_access_key = ${secret}`;
+    const entities = findType(text, 'AWS_SECRET_KEY');
+    expect(entities.length).toBeGreaterThanOrEqual(1);
+    const e = entities[0]!;
+    // The assignment starts after the newline — the entity start must be > the
+    // index of the first occurrence of the secret in the comment.
+    const commentOccurrenceEnd = text.indexOf(secret) + secret.length;
+    expect(e.start).toBeGreaterThan(commentOccurrenceEnd);
+    // Invariant: entity text must equal what the slice gives us.
+    expect(text.slice(e.start, e.end)).toBe(e.text);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Intentional overlaps (contract for pipeline dedup — Task 5)
+// ---------------------------------------------------------------------------
+describe('Intentional overlap: JWT fires alongside BEARER_TOKEN', () => {
+  const jwt =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' +
+    '.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ' +
+    '.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+
+  it('both JWT and BEARER_TOKEN fire on "Bearer <jwt>"', () => {
+    const text = `Authorization: Bearer ${jwt}`;
+    expect(hasMatch(text, 'JWT')).toBe(true);
+    expect(hasMatch(text, 'BEARER_TOKEN')).toBe(true);
+  });
+});
+
+describe('Intentional overlap: EMAIL fires alongside URL on userinfo URL', () => {
+  it('both EMAIL and URL fire on "https://user@example.com/path"', () => {
+    const text = 'https://user@example.com/path';
+    expect(hasMatch(text, 'EMAIL')).toBe(true);
+    expect(hasMatch(text, 'URL')).toBe(true);
+  });
+});
+
+describe('Intentional overlap: PHONE may fire inside spaced IBAN', () => {
+  it('IBAN fires on "DE89 3704 0044 0532 0130 00"', () => {
+    const text = 'IBAN: DE89 3704 0044 0532 0130 00';
+    expect(hasMatch(text, 'IBAN')).toBe(true);
+  });
+
+  it('PHONE may also fire on "DE89 3704 0044 0532 0130 00" (pipeline dedup must prefer IBAN)', () => {
+    // This test documents the overlap — it does NOT assert PHONE fires (it may
+    // or may not depending on the phone regex heuristics), but confirms IBAN
+    // wins when both fire (IBAN confidence 0.99 > PHONE confidence 0.8).
+    const text = 'IBAN: DE89 3704 0044 0532 0130 00';
+    const ibanEntities = findType(text, 'IBAN');
+    expect(ibanEntities.length).toBeGreaterThanOrEqual(1);
+    expect(ibanEntities[0]!.confidence).toBeGreaterThan(0.8); // higher than PHONE
+  });
+});

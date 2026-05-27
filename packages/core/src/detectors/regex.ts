@@ -36,17 +36,19 @@ export class RegexDetector implements Detector {
         let entityText: string;
 
         if (CAPTURE_GROUP_RULES.has(rule.type) && match[1] !== undefined) {
-          // The entity is the first capture group (e.g. the value after =)
-          const captureStart = text.indexOf(match[1], start);
-          if (captureStart === -1) continue;
+          // The entity is the first capture group (e.g. the value after =).
+          // Compute the offset within the full match string so we never
+          // accidentally resolve to an earlier occurrence of the same value.
+          const groupOffsetInMatch = match[0].indexOf(match[1]);
+          const captureStart = match.index + groupOffsetInMatch;
           start = captureStart;
           entityText = match[1];
         } else if (rule.type === 'ENV_SECRET' && match[1] !== undefined) {
-          // ENV_SECRET captures the value portion in group 1
+          // ENV_SECRET captures the value portion in group 1.
+          // Same approach: resolve from match.index to avoid false earlier hits.
           const rawValue = match[1];
-          const valueStart = text.indexOf(rawValue, start);
-          if (valueStart === -1) continue;
-          start = valueStart;
+          const groupOffsetInMatch = match[0].indexOf(rawValue);
+          start = match.index + groupOffsetInMatch;
           entityText = rawValue;
         } else {
           entityText = match[0];

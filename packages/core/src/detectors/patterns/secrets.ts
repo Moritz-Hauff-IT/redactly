@@ -1,3 +1,23 @@
+/**
+ * Intentional pattern overlaps — pipeline dedup (Task 5) must handle these:
+ *
+ * JWT vs BEARER_TOKEN:
+ *   `JWT` is a more specific pattern than `BEARER_TOKEN`. When the value of a
+ *   Bearer token is a well-formed JWT, both rules will fire. Pipeline dedup
+ *   should suppress BEARER_TOKEN whenever its span is fully contained within a
+ *   JWT span (prefer the higher-specificity match).
+ *
+ * PHONE inside spaced IBAN:
+ *   A spaced IBAN like "DE89 3704 0044 0532 0130 00" can cause PHONE to fire
+ *   on a subsequence of digits that looks like a local phone number. Pipeline
+ *   dedup should prefer higher-confidence financial entities (IBAN, CREDIT_CARD)
+ *   over PHONE when the spans overlap.
+ *
+ * EMAIL inside URL:
+ *   A URL with userinfo such as "https://user@example.com/path" will trigger
+ *   both URL and EMAIL. Pipeline dedup should prefer URL (larger, more specific
+ *   span) over EMAIL when fully contained.
+ */
 import { shannonEntropy } from '../validators.js';
 import type { RegexRule } from './contact.js';
 
