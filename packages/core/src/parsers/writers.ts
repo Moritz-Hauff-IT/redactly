@@ -270,23 +270,102 @@ function applyMappingToString(s: string, mapping: Mapping, sortedKeys: string[])
  * positioning) and only overlay whiteout + placeholder text where PII was
  * detected.
  *
- * Approach: pdfjs gives us per-text-item positions; for any item whose text
- * contains a mapping key, we draw a white rectangle covering the item's
- * bounding box and then redraw the modified text (with placeholders) at the
- * same baseline. The rest of the page (vector graphics, images, untouched
- * text) is preserved exactly.
+ * Approach:
+ * 1. Pull all pdfjs text items for a page with their positions.
+ * 2. Group items into lines by their baseline Y coordinate.
+ * 3. Concatenate each line into a single string (inserting synthetic spaces
+ *    where items have an X-gap), keeping a character → item index map.
+ * 4. Find all mapping-key occurrences in each line string — including spans
+ *    that cross multiple text items (e.g. an IBAN broken into 6 4-digit
+ *    fragments, or "Moritz Hauff" split into two name items).
+ * 5. For each match, whiteout the bounding box covering all spanned items
+ *    and draw the placeholder text at the start position.
  *
  * Limitations:
  * - Replacement text uses Helvetica (standard font) regardless of the
- *   original font face. Visually close for most documents.
- * - Background color underneath the redacted text is replaced with white.
+ *   original font. Visually close enough for redaction markers.
+ * - Background color underneath the redacted region is replaced with white.
  *   Documents with colored text-block backgrounds will show a white patch.
- * - If a PII span crosses multiple text items (e.g. justified text broken
- *   at a space), only items that contain a complete key as substring are
- *   redacted. Partial fragments are left untouched. This is rare in
- *   practice because PII tokens (emails, IBANs, names) usually appear as
- *   single text runs.
+ * - Cross-line PII spans (PII wrapped across two visual lines) are not
+ *   handled — rare for the entity types we mask.
  */
+
+interface PdfTextItem {
+  str: string;
+  transform: number[];
+  width: number;
+  height: number;
+}
+
+interface CharOrigin {
+  /** Index into the original page items array; null = synthetic space we inserted */
+  itemIdx: number | null;
+}
+
+/**
+ * Group items by baseline Y coordinate (within a small tolerance) and sort
+ * by X within each line. The tolerance scales with font size so we don't
+ * merge subscripts/superscripts with body text.
+ */
+function groupItemsIntoLines(items: PdfTextItem[]): { item: PdfTextItem; idx: number }[][] {
+  const indexed = items.map((item, idx) => ({ item, idx }));
+  const buckets: { item: PdfTextItem; idx: number }[][] = [];
+
+  for (const entry of indexed) {
+    const y = entry.item.transform[5] ?? 0;
+    const tol = Math.max(2, Math.abs(entry.item.transform[3] ?? 10) * 0.3);
+    const bucket = buckets.find((b) => {
+      const by = b[0]?.item.transform[5] ?? 0;
+      return Math.abs(by - y) <= tol;
+    });
+    if (bucket) {
+      bucket.push(entry);
+    } else {
+      buckets.push([entry]);
+    }
+  }
+
+  for (const b of buckets) {
+    b.sort((a, b) => (a.item.transform[4] ?? 0) - (b.item.transform[4] ?? 0));
+  }
+  return buckets;
+}
+
+/**
+ * Concatenate a line's items into a single string, tracking which original
+ * item each character came from. Synthetic spaces inserted between visually-
+ * separated items map to itemIdx=null.
+ */
+function buildLineText(line: { item: PdfTextItem; idx: number }[]): {
+  text: string;
+  origin: CharOrigin[];
+} {
+  let text = '';
+  const origin: CharOrigin[] = [];
+
+  for (let i = 0; i < line.length; i++) {
+    const entry = line[i]!;
+    if (i > 0) {
+      const prev = line[i - 1]!;
+      const prevEnd = (prev.item.transform[4] ?? 0) + (prev.item.width ?? 0);
+      const currStart = entry.item.transform[4] ?? 0;
+      const gap = currStart - prevEnd;
+      const avgChar = Math.abs(prev.item.transform[3] ?? 10) * 0.25;
+      // Insert a synthetic space if there's a visible gap and the previous
+      // item didn't already end with whitespace.
+      if (gap > avgChar && !prev.item.str.endsWith(' ')) {
+        text += ' ';
+        origin.push({ itemIdx: null });
+      }
+    }
+    for (let c = 0; c < entry.item.str.length; c++) {
+      text += entry.item.str[c];
+      origin.push({ itemIdx: entry.idx });
+    }
+  }
+  return { text, origin };
+}
+
 async function writePdfRedacted(
   originalBytes: Uint8Array,
   mapping: Mapping,
@@ -294,8 +373,6 @@ async function writePdfRedacted(
 ): Promise<WriteResult> {
   const sortedKeys = sortedMappingKeys(mapping);
   if (sortedKeys.length === 0) {
-    // Nothing to redact — return the original unchanged. The user explicitly
-    // disabled all detections, so a verbatim copy is the correct output.
     const blob = new Blob([new Uint8Array(originalBytes)], { type: 'application/pdf' });
     return { blob, filename: `${baseName}-masked.pdf`, mimeType: 'application/pdf' };
   }
@@ -303,7 +380,6 @@ async function writePdfRedacted(
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
 
-  // pdfjs detaches its input buffer; pdf-lib needs its own copy too.
   const bytesForPdfjs = originalBytes.slice();
   const bytesForPdfLib = originalBytes.slice();
 
@@ -318,76 +394,116 @@ async function writePdfRedacted(
     const content = await page.getTextContent();
     const pdfLibPage = pdfDoc.getPage(i - 1);
 
+    const items: PdfTextItem[] = [];
     for (const raw of content.items) {
       if (!('str' in raw)) continue;
-      const item = raw as {
-        str: string;
-        transform: number[];
-        width: number;
-        height: number;
-      };
-      const original = item.str;
-      if (!original) continue;
-
-      const modified = applyMappingToString(original, mapping, sortedKeys);
-      if (modified === null) continue;
-
-      // Transform: [scaleX, skewY, skewX, scaleY, tx, ty]
-      // For typical horizontal text, fontSize ≈ scaleY.
-      const tx = item.transform[4] ?? 0;
-      const ty = item.transform[5] ?? 0;
-      const scaleY = item.transform[3] ?? 12;
-      const fontSize = Math.abs(scaleY) || 12;
-      const originalWidth =
-        item.width || safeFontWidth(helv, sanitizeForWinAnsi(original), fontSize);
-
-      // Whiteout: pad a little so the rectangle fully covers the original
-      // glyphs (which extend above baseline by ascender and below by descender).
-      const padY = fontSize * 0.25;
-      pdfLibPage.drawRectangle({
-        x: tx - 1,
-        y: ty - padY,
-        width: originalWidth + 2,
-        height: fontSize + padY * 1.2,
-        color: rgb(1, 1, 1),
-        borderWidth: 0,
+      const tx = raw as { str: string; transform: number[]; width: number; height: number };
+      items.push({
+        str: tx.str,
+        transform: tx.transform,
+        width: tx.width ?? 0,
+        height: tx.height ?? Math.abs(tx.transform[3] ?? 10),
       });
+    }
 
-      // Redraw modified text at the same baseline. If the replacement is
-      // wider than the original slot, shrink the font so it still fits —
-      // prevents overflow into neighbouring content.
-      const safeText = sanitizeForWinAnsi(modified);
-      let drawSize = fontSize;
-      const targetWidth = originalWidth + 4; // tiny slack
-      try {
-        const replWidth = helv.widthOfTextAtSize(safeText, fontSize);
-        if (replWidth > targetWidth && targetWidth > 0) {
-          drawSize = Math.max(6, fontSize * (targetWidth / replWidth));
+    const lines = groupItemsIntoLines(items);
+
+    for (const line of lines) {
+      if (line.length === 0) continue;
+      const { text, origin } = buildLineText(line);
+      if (!text.trim()) continue;
+
+      // Collect non-overlapping matches across all mapping keys (longest-first).
+      const matches: { start: number; end: number; placeholder: string }[] = [];
+      for (const key of sortedKeys) {
+        if (!key) continue;
+        let searchFrom = 0;
+        while (searchFrom <= text.length - key.length) {
+          const idx = text.indexOf(key, searchFrom);
+          if (idx < 0) break;
+          const end = idx + key.length;
+          // Skip if this region overlaps a previously-recorded longer match
+          const overlaps = matches.some((m) => !(end <= m.start || idx >= m.end));
+          if (!overlaps) {
+            matches.push({ start: idx, end, placeholder: mapping.reverse.get(key)! });
+          }
+          searchFrom = idx + 1;
         }
-      } catch {
-        /* width check failed — proceed at original size */
       }
+      if (matches.length === 0) continue;
 
-      try {
-        pdfLibPage.drawText(safeText, {
-          x: tx,
-          y: ty,
-          size: drawSize,
-          font: helv,
-          color: rgb(0, 0, 0),
+      // Sort matches left-to-right
+      matches.sort((a, b) => a.start - b.start);
+
+      for (const match of matches) {
+        // Find items touched by chars [match.start, match.end)
+        const touchedItemIdxs = new Set<number>();
+        for (let c = match.start; c < match.end; c++) {
+          const o = origin[c];
+          if (o && o.itemIdx !== null) touchedItemIdxs.add(o.itemIdx);
+        }
+        if (touchedItemIdxs.size === 0) continue;
+
+        // Compute bounding box covering all touched items
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxFontSize = 0;
+        for (const idx of touchedItemIdxs) {
+          const it = items[idx]!;
+          const x = it.transform[4] ?? 0;
+          const y = it.transform[5] ?? 0;
+          const w = it.width ?? 0;
+          const fs = Math.abs(it.transform[3] ?? 10);
+          if (x < minX) minX = x;
+          if (x + w > maxX) maxX = x + w;
+          if (y < minY) minY = y;
+          if (fs > maxFontSize) maxFontSize = fs;
+        }
+        if (!isFinite(minX) || !isFinite(maxX) || maxFontSize === 0) continue;
+
+        const padY = maxFontSize * 0.3;
+        pdfLibPage.drawRectangle({
+          x: minX - 1,
+          y: minY - padY,
+          width: maxX - minX + 2,
+          height: maxFontSize + padY * 1.4,
+          color: rgb(1, 1, 1),
+          borderWidth: 0,
         });
-      } catch {
-        // Encoding failed even after sanitize — last resort ASCII-only
+
+        const safeText = sanitizeForWinAnsi(match.placeholder);
+        const targetWidth = maxX - minX + 2;
+        let drawSize = maxFontSize;
         try {
-          pdfLibPage.drawText(safeText.replace(/[^\x20-\x7E]/g, '?'), {
-            x: tx,
-            y: ty,
+          const replWidth = helv.widthOfTextAtSize(safeText, maxFontSize);
+          if (replWidth > targetWidth && targetWidth > 0) {
+            drawSize = Math.max(6, maxFontSize * (targetWidth / replWidth));
+          }
+        } catch {
+          /* width check failed — proceed at original size */
+        }
+
+        try {
+          pdfLibPage.drawText(safeText, {
+            x: minX,
+            y: minY,
             size: drawSize,
             font: helv,
             color: rgb(0, 0, 0),
           });
         } catch {
-          /* skip — whiteout still applied, content is gone which is the priority */
+          try {
+            pdfLibPage.drawText(safeText.replace(/[^\x20-\x7E]/g, '?'), {
+              x: minX,
+              y: minY,
+              size: drawSize,
+              font: helv,
+              color: rgb(0, 0, 0),
+            });
+          } catch {
+            /* skip — whiteout still applied, the PII content is hidden */
+          }
         }
       }
     }
@@ -397,22 +513,6 @@ async function writePdfRedacted(
   const bytes = await pdfDoc.save();
   const blob = new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
   return { blob, filename: `${baseName}-masked.pdf`, mimeType: 'application/pdf' };
-}
-
-function safeFontWidth(
-  font: { widthOfTextAtSize: (s: string, size: number) => number },
-  s: string,
-  size: number
-): number {
-  try {
-    return font.widthOfTextAtSize(s, size);
-  } catch {
-    try {
-      return font.widthOfTextAtSize(s.replace(/[^\x20-\x7E]/g, '?'), size);
-    } catch {
-      return s.length * size * 0.5; // heuristic
-    }
-  }
 }
 
 /**
