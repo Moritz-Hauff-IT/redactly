@@ -7,23 +7,25 @@
     label?: string;
   }
 
-  let { href = APP_URL, size = 'md', label = 'App starten' }: Props = $props();
+  let { href = APP_URL, size = 'md', label = 'run.app' }: Props = $props();
 
   const sizeClasses = {
-    sm: 'px-5 py-2.5 text-sm',
-    md: 'px-6 py-3 text-base',
-    lg: 'px-8 py-4 text-lg',
+    sm: 'px-4 py-2 text-[0.7rem]',
+    md: 'px-6 py-3 text-[0.8rem]',
+    lg: 'px-8 py-4 text-[0.875rem]',
   };
 </script>
 
 <a
   {href}
-  class="group relative inline-flex items-baseline gap-3 bg-[color:var(--color-ink)] font-[family-name:var(--font-display)] italic text-[color:var(--color-paper)] shadow-[3px_3px_0_0_var(--color-rust)] transition-all hover:bg-[color:var(--color-rust)] hover:shadow-[3px_3px_0_0_var(--color-ink)] {sizeClasses[
+  class="group relative inline-flex items-center gap-3 border-2 border-[color:var(--color-signal)] bg-[color:var(--color-signal)] font-[family-name:var(--font-mono)] font-bold tracking-[0.1em] text-[color:var(--color-shell)] uppercase transition-all hover:bg-transparent hover:text-[color:var(--color-signal)] {sizeClasses[
     size
   ]}"
 >
-  <span class="not-italic font-[family-name:var(--font-mono)] text-xs tracking-[0.12em] uppercase"
-    >→</span
+  <span
+    aria-hidden="true"
+    class="text-[color:var(--color-shell)] group-hover:text-[color:var(--color-signal)]">$</span
   >
   {label}
+  <span aria-hidden="true" class="transition-transform group-hover:translate-x-0.5">→</span>
 </a>

@@ -243,17 +243,20 @@ describe('whitespace-padded range trimming', () => {
 // Sanity check: broken offsets are dropped, not thrown
 // ---------------------------------------------------------------------------
 
-describe('sanity check: broken offsets dropped silently', () => {
-  it('drops entity when text.slice(start, end) does not match word after trimming', async () => {
-    // The word 'Alice' at offsets 0..5 in text 'Hello World'
-    // text.slice(0, 5) === 'Hello' !== 'Alice' → must be dropped
+describe('slice recovery: prefer text slice when offsets look valid', () => {
+  it('prefers the text slice over the word when offsets are length-consistent', async () => {
+    // The word 'Alice' at offsets 0..5 in text 'Hello World'.
+    // text.slice(0, 5) === 'Hello', length 5 === end - start.
+    // Offsets are reliable; the slice wins over the model's decoded word.
+    // This recovers entities that previously got dropped on Unicode mismatches.
     const text = 'Hello World';
     const { detector } = buildDetector([
       { entity_group: 'PER', word: 'Alice', start: 0, end: 5, score: 0.99 },
     ]);
-    const entities = await detector.detect(text);
-    // Entity is silently dropped because the slice doesn't match
-    expect(entities).toHaveLength(0);
+    const [e] = await detector.detect(text);
+    expect(e?.text).toBe('Hello');
+    expect(e?.start).toBe(0);
+    expect(e?.end).toBe(5);
   });
 
   it('keeps entity when offsets are correct', async () => {

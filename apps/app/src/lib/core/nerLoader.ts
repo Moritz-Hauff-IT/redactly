@@ -42,7 +42,12 @@ export async function loadNer(reAnalyze?: ReAnalyzeFn): Promise<void> {
       }
     };
 
-    const detector = new NerDetector({ onProgress }) as unknown as NerDetectorLike;
+    // debug: true → logs raw entity counts + dropped-by-reason to the console
+    // on every detect() call. Helps diagnose detection issues during alpha.
+    const detector = new NerDetector({
+      onProgress,
+      debug: true,
+    }) as unknown as NerDetectorLike;
 
     await detector.ready();
     await enableNer(detector);

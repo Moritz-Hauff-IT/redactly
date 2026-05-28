@@ -20,8 +20,13 @@ export interface NerOptions {
   model?: string;
   /** Aggregation strategy for sub-word tokens. Default 'simple'. */
   aggregationStrategy?: 'none' | 'simple' | 'first' | 'average' | 'max';
-  /** Minimum confidence to emit an entity. Default 0.85. */
+  /** Minimum confidence to emit an entity. Default 0.5. The multilingual BERT
+   * model commonly scores valid German person names in the 0.5-0.8 range; higher
+   * thresholds drop legitimate entities silently. */
   minConfidence?: number;
+  /** Verbose console logging during detect — surfaces raw entity counts and
+   * any silently dropped entities. Off by default. */
+  debug?: boolean;
   /** Called during model download with progress information. */
   onProgress?: (event: NerProgressEvent) => void;
   /** Override the device. Default 'wasm' for max compatibility. */
@@ -114,12 +119,12 @@ async function defaultPipelineFactory(
     progress_callback: progressCallback as any,
   });
 
-  // Wrap the returned pipeline to match our HFPipeline interface
-  // (the HF pipeline returns a TokenClassificationPipeline, which is callable).
+  // Wrap the returned pipeline to match our HFPipeline interface.
+  // We default aggregation_strategy to 'simple' for German person-name merging.
   const callable = async (text: string): Promise<RawEntity[]> => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await (pipe as any)(text, {
-      aggregation_strategy: opts['aggregation_strategy'],
+      aggregation_strategy: 'simple',
     });
     // HF may return a nested array for batched input; we always pass a string
     return Array.isArray(result) ? (result as RawEntity[]) : [];
@@ -142,7 +147,7 @@ async function defaultPipelineFactory(
 
 const DEFAULT_MODEL = 'Xenova/bert-base-multilingual-cased-ner-hrl';
 const DEFAULT_AGGREGATION = 'simple';
-const DEFAULT_MIN_CONFIDENCE = 0.85;
+const DEFAULT_MIN_CONFIDENCE = 0.5;
 const DEFAULT_DEVICE = 'wasm';
 
 export class NerDetector implements Detector {
@@ -153,6 +158,7 @@ export class NerDetector implements Detector {
   private readonly minConfidence: number;
   private readonly onProgress: ((event: NerProgressEvent) => void) | undefined;
   private readonly device: string;
+  private readonly debug: boolean;
   private readonly pipelineFactory: PipelineFactory;
 
   private pipeline: HFPipeline | null = null;
@@ -164,6 +170,7 @@ export class NerDetector implements Detector {
     this.minConfidence = options.minConfidence ?? DEFAULT_MIN_CONFIDENCE;
     this.onProgress = options.onProgress;
     this.device = options.device ?? DEFAULT_DEVICE;
+    this.debug = options.debug ?? false;
     this.pipelineFactory = options._pipelineFactory ?? defaultPipelineFactory;
   }
 
@@ -176,11 +183,12 @@ export class NerDetector implements Detector {
       return this.loadPromise;
     }
 
+    // aggregation_strategy is NOT passed at construction time — some versions
+    // of @huggingface/transformers reject it there. It's set per-call instead.
     this.loadPromise = this.pipelineFactory(
       this.model,
       {
         device: this.device,
-        aggregation_strategy: this.aggregationStrategy,
       },
       this.onProgress
     ).then((pipe) => {
@@ -201,6 +209,9 @@ export class NerDetector implements Detector {
 
     const rawEntities = await pipe(text);
     const entities: Entity[] = [];
+    const droppedByConfidence: RawEntity[] = [];
+    const droppedByLabel: RawEntity[] = [];
+    const droppedBySlice: Array<{ raw: RawEntity; expected: string; got: string }> = [];
 
     for (const raw of rawEntities) {
       // HF NER label may be in entity_group (aggregated) or entity (non-aggregated)
@@ -208,10 +219,16 @@ export class NerDetector implements Detector {
       const mapping = mapLabel(label);
 
       // Drop MISC and unknown labels
-      if (mapping === null) continue;
+      if (mapping === null) {
+        droppedByLabel.push(raw);
+        continue;
+      }
 
       // Drop below-threshold entities
-      if (raw.score < this.minConfidence) continue;
+      if (raw.score < this.minConfidence) {
+        droppedByConfidence.push(raw);
+        continue;
+      }
 
       let start = raw.start;
       let end = raw.end;
@@ -226,12 +243,22 @@ export class NerDetector implements Detector {
         entityText = trimmed;
       }
 
-      // Sanity check: the text slice must equal our entity text.
-      // If it doesn't (e.g. model offsets are off), drop silently rather than
-      // emitting a broken entity. This protects the text.slice(start, end) === entity.text
-      // invariant that the rest of the pipeline depends on.
-      if (text.slice(start, end) !== entityText) {
-        continue;
+      // If word and slice diverge in length, treat the slice as the source of
+      // truth — the offsets are reliable, the tokenizer's `word` field may
+      // contain decoded variants. This recovers entities that previously got
+      // dropped due to Unicode normalization mismatches.
+      const sliced = text.slice(start, end);
+      if (sliced !== entityText) {
+        // Try Unicode NFC normalization on both sides
+        if (sliced.normalize('NFC') === entityText.normalize('NFC')) {
+          entityText = sliced;
+        } else if (sliced.length === end - start) {
+          // Offsets look valid even if word doesn't match — prefer the slice
+          entityText = sliced;
+        } else {
+          droppedBySlice.push({ raw, expected: entityText, got: sliced });
+          continue;
+        }
       }
 
       entities.push({
@@ -242,6 +269,21 @@ export class NerDetector implements Detector {
         text: entityText,
         confidence: raw.score,
         source: 'ner',
+      });
+    }
+
+    if (this.debug) {
+      // eslint-disable-next-line no-console
+      console.log('[NerDetector]', {
+        rawCount: rawEntities.length,
+        emitted: entities.length,
+        droppedByLabel: droppedByLabel.length,
+        droppedByConfidence: droppedByConfidence.length,
+        droppedBySlice: droppedBySlice.length,
+        raw: rawEntities,
+        emittedDetail: entities,
+        droppedByConfidenceDetail: droppedByConfidence,
+        droppedBySliceDetail: droppedBySlice,
       });
     }
 

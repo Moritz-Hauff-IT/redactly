@@ -1,82 +1,106 @@
 <script lang="ts">
   interface Feature {
-    n: string;
+    id: string;
     title: string;
     body: string;
+    tag: string;
   }
 
   const features: Feature[] = [
     {
-      n: 'i',
-      title: 'Privatsphäre nicht als Versprechen, sondern als Architektur',
-      body: 'Es gibt keinen Server, der deine Eingaben sehen könnte. Erkennung und Maskierung laufen in deinem Browser-Tab — physisch dort, wo du den Text eingibst. Du kannst die Netzwerk-Tab in den DevTools offen lassen, während du arbeitest.',
+      id: '0x01',
+      title: 'No server in the loop.',
+      body: 'There is no backend that could see your input. Detection and masking execute in the same browser process where you type. You can keep DevTools → Network open while you work.',
+      tag: 'architecture',
     },
     {
-      n: 'ii',
-      title: 'Reversibel, weil eine Antwort nichts wert ist, wenn sie kryptisch bleibt',
-      body: 'Jede Maskierung schreibt ein lokales Mapping. Fügst du die LLM-Antwort zurück ein, ersetzt Redactly die Platzhalter wieder durch die echten Werte — du arbeitest weiter, als wäre nichts passiert.',
+      id: '0x02',
+      title: 'Reversible by design.',
+      body: 'Every mask writes a local mapping. Paste the LLM response back and Redactly substitutes placeholders for the real values. The mapping never leaves this tab.',
+      tag: 'workflow',
     },
     {
-      n: 'iii',
-      title: 'Drei Erkennungsstufen, weil ein Werkzeug verschiedenen Texten gerecht werden muss',
-      body: 'Regex für Strukturen wie IBANs, E-Mails, API-Keys. NER für freie Personennamen und Orte. WebLLM für kontextuelle Erkennung, wenn nichts anderes greift. Du wählst, was du brauchst.',
+      id: '0x03',
+      title: 'Three detection layers.',
+      body: 'Regex for structured patterns (IBANs, emails, API keys). NER for free-form names and locations. WebLLM for context-aware detection on the trickiest cases. Pick what you need.',
+      tag: 'engine',
     },
     {
-      n: 'iv',
-      title: 'Dateiformate ohne Umwege über fremde Server',
-      body: '.txt, .md, .eml, .pdf, .docx — alle im Browser geparst. Keine Cloud-Konversion, kein Upload an einen Document-Service. Was du hochlädst, bleibt da, wo du es hochlädst.',
+      id: '0x04',
+      title: 'File formats handled in-tab.',
+      body: '.txt, .md, .eml, .pdf, .docx — all parsed in the browser via WebAssembly. No cloud conversion, no upload to a document service. What you load stays where you loaded it.',
+      tag: 'formats',
     },
     {
-      n: 'v',
-      title: 'Open Source als Verifikation, nicht als Marketing',
-      body: 'Der gesamte Quellcode liegt öffentlich auf GitHub. „Vertrau uns" ist keine Antwort auf eine Datenschutz-Frage. „Lies den Code" schon.',
+      id: '0x05',
+      title: 'Open source as verification.',
+      body: 'The entire source tree is on GitHub. "Trust us" is not a satisfying answer to a privacy question. "Read the code" is.',
+      tag: 'license',
     },
     {
-      n: 'vi',
-      title: 'Deutsch und Englisch ab Werk, multilingual auf Wunsch',
-      body: 'Die Pattern-Bibliothek deckt deutschsprachige Konventionen ab (IBANs, Steuer-ID, Telefonformate). Mit dem NER-Modus erweiterst du nahtlos auf weitere Sprachen.',
+      id: '0x06',
+      title: 'Local-first, multilingual.',
+      body: 'German and English patterns shipped. NER mode extends seamlessly to ~100 more languages. No locale calls home. Translation happens inside your machine.',
+      tag: 'i18n',
     },
   ];
 </script>
 
-<section class="border-t border-[color:var(--color-rule)] py-24 sm:py-32">
-  <div class="mx-auto max-w-6xl px-5 sm:px-8">
-    <header class="mb-16 grid grid-cols-1 gap-8 lg:grid-cols-12">
-      <div class="lg:col-span-3">
-        <span class="label-caps">§ 2 — Was es leistet</span>
-      </div>
-      <div class="lg:col-span-9">
-        <h2
-          class="font-[family-name:var(--font-display)] text-[2.25rem] leading-[1.05] italic tracking-tight text-[color:var(--color-ink)] sm:text-[3rem]"
-        >
-          Sechs Eigenschaften, ohne die das ganze Konzept nicht trägt.
+<section class="border-b border-[color:var(--color-line)] py-24 sm:py-32">
+  <div class="mx-auto max-w-7xl px-5 sm:px-8">
+    <!-- Section header -->
+    <header
+      class="mb-16 flex flex-wrap items-end justify-between gap-6 border-b border-[color:var(--color-line-strong)] pb-4"
+    >
+      <div>
+        <span class="label label-signal">02 / features</span>
+        <h2 class="display mt-3 text-[2.5rem] text-[color:var(--color-text)] sm:text-[3.5rem]">
+          Six properties without<br />which the concept collapses.
         </h2>
+      </div>
+      <div
+        class="font-[family-name:var(--font-mono)] text-[0.75rem] text-[color:var(--color-text-mute)]"
+      >
+        n=6 · sorted by priority
       </div>
     </header>
 
-    <div class="grid grid-cols-1 gap-x-12 gap-y-14 md:grid-cols-2">
-      {#each features as feature, i}
+    <!-- Module grid -->
+    <div
+      class="grid grid-cols-1 gap-x-px gap-y-px md:grid-cols-2 lg:grid-cols-3 bg-[color:var(--color-line)]"
+    >
+      {#each features as feature}
         <article
-          class="grid grid-cols-[3rem_1fr] gap-x-5 border-t border-[color:var(--color-rule)] pt-6"
-          class:md:border-t-0={i < 2}
-          class:md:pt-0={i < 2}
+          class="group relative bg-[color:var(--color-shell)] p-8 transition-colors hover:bg-[color:var(--color-shell-raised)]"
         >
-          <div class="pt-1">
+          <!-- ID + tag bar -->
+          <div class="mb-6 flex items-center justify-between">
             <span
-              class="font-[family-name:var(--font-display)] text-2xl italic text-[color:var(--color-rust)]"
+              class="font-[family-name:var(--font-mono)] text-[0.8rem] font-bold text-[color:var(--color-signal)]"
             >
-              {feature.n}
+              {feature.id}
             </span>
+            <span class="label">{feature.tag}</span>
           </div>
-          <div>
-            <h3
-              class="font-[family-name:var(--font-display)] text-[1.375rem] leading-[1.2] text-[color:var(--color-ink)]"
-            >
-              {feature.title}
-            </h3>
-            <p class="mt-3 text-[0.95rem] leading-[1.65] text-[color:var(--color-ink-soft)]">
-              {feature.body}
-            </p>
+
+          <!-- Title -->
+          <h3 class="display text-[1.5rem] leading-tight text-[color:var(--color-text)]">
+            {feature.title}
+          </h3>
+
+          <!-- Body -->
+          <p
+            class="mt-4 font-[family-name:var(--font-mono)] text-[0.85rem] leading-[1.7] text-[color:var(--color-text-dim)]"
+          >
+            {feature.body}
+          </p>
+
+          <!-- Hover-revealed arrow -->
+          <div
+            class="mt-6 flex items-center gap-1.5 font-[family-name:var(--font-mono)] text-[0.7rem] tracking-[0.1em] uppercase text-[color:var(--color-text-mute)] transition-colors group-hover:text-[color:var(--color-signal)]"
+          >
+            <span>read</span>
+            <span aria-hidden="true">→</span>
           </div>
         </article>
       {/each}
