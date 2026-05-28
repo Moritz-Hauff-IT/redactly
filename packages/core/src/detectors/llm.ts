@@ -212,32 +212,105 @@ interface LlmResponse {
   entities: RawLlmEntity[];
 }
 
+/**
+ * Coerce a value from various possible field names into a RawLlmEntity.
+ * Small LLMs use inconsistent field naming — accept common variants.
+ */
+function coerceEntity(o: unknown): RawLlmEntity | null {
+  if (o === null || typeof o !== 'object') return null;
+  const obj = o as Record<string, unknown>;
+
+  // Text variants seen from various model outputs
+  const text =
+    (typeof obj['text'] === 'string' && obj['text']) ||
+    (typeof obj['value'] === 'string' && obj['value']) ||
+    (typeof obj['entity'] === 'string' && obj['entity']) ||
+    (typeof obj['match'] === 'string' && obj['match']) ||
+    (typeof obj['span'] === 'string' && obj['span']) ||
+    (typeof obj['word'] === 'string' && obj['word']) ||
+    (typeof obj['name'] === 'string' && obj['name']);
+  if (typeof text !== 'string' || text.length === 0) return null;
+
+  // Type/label variants
+  const typeRaw =
+    (typeof obj['type'] === 'string' && obj['type']) ||
+    (typeof obj['category'] === 'string' && obj['category']) ||
+    (typeof obj['label'] === 'string' && obj['label']) ||
+    (typeof obj['kind'] === 'string' && obj['kind']) ||
+    (typeof obj['class'] === 'string' && obj['class']);
+  if (typeof typeRaw !== 'string') return null;
+
+  // Confidence variants — default to 0.8 if missing (better than dropping)
+  let confidence = 0.8;
+  for (const key of ['confidence', 'score', 'probability', 'prob']) {
+    const v = obj[key];
+    if (typeof v === 'number' && v >= 0 && v <= 1) {
+      confidence = v;
+      break;
+    }
+    // Models sometimes emit confidence as a string ("0.95") or %
+    if (typeof v === 'string') {
+      const n = parseFloat(v.replace('%', ''));
+      if (!isNaN(n)) {
+        confidence = n > 1 ? n / 100 : n;
+        break;
+      }
+    }
+  }
+
+  return { text, type: typeRaw.toUpperCase(), confidence };
+}
+
+/**
+ * Recursively walk a JSON value collecting every entity-shaped object.
+ * Handles nested structures, mis-named root keys, and arrays-of-arrays.
+ */
+function collectEntities(node: unknown, out: RawLlmEntity[]): void {
+  if (Array.isArray(node)) {
+    for (const child of node) collectEntities(child, out);
+    return;
+  }
+  if (node !== null && typeof node === 'object') {
+    const ent = coerceEntity(node);
+    if (ent !== null) out.push(ent);
+    // Also recurse into object values — handles wrappers like
+    // {entities: [...]} OR {result: {pii: [...]}} OR nested entity collections.
+    for (const v of Object.values(node as Record<string, unknown>)) {
+      collectEntities(v, out);
+    }
+  }
+}
+
 function parseJsonResponse(raw: string): RawLlmEntity[] {
-  // Try to extract JSON from the response — model may wrap it in markdown
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  // Strip markdown code fences if present
+  const cleaned = raw.replace(/```(?:json)?\s*/g, '').replace(/```\s*$/g, '');
+
+  // Find the outermost JSON object. Models sometimes emit prose before/after.
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (!jsonMatch) return [];
 
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(jsonMatch[0]) as unknown;
-    if (
-      parsed !== null &&
-      typeof parsed === 'object' &&
-      'entities' in parsed &&
-      Array.isArray((parsed as LlmResponse).entities)
-    ) {
-      return ((parsed as LlmResponse).entities as unknown[]).filter(
-        (e): e is RawLlmEntity =>
-          e !== null &&
-          typeof e === 'object' &&
-          typeof (e as RawLlmEntity).text === 'string' &&
-          typeof (e as RawLlmEntity).type === 'string' &&
-          typeof (e as RawLlmEntity).confidence === 'number'
-      );
-    }
+    parsed = JSON.parse(jsonMatch[0]);
   } catch {
-    // Invalid JSON — return empty
+    return [];
   }
-  return [];
+
+  // Recursive collection accepts {entities: [...]}, {result: {pii: [...]}},
+  // bare arrays, or single objects. Each found entity has been coerced from
+  // common field-name variants (text/value/entity/word, type/category/label, etc).
+  const collected: RawLlmEntity[] = [];
+  collectEntities(parsed, collected);
+
+  // Dedupe by (text, type) to handle nested-duplication patterns where a
+  // model puts the same entity in both outer and inner arrays.
+  const seen = new Set<string>();
+  return collected.filter((e) => {
+    const key = `${e.text}__${e.type}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // ---------------------------------------------------------------------------
