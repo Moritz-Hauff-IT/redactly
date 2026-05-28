@@ -13,9 +13,10 @@
     onchange?: () => void;
     onmask?: () => void;
     isAnalyzing?: boolean;
+    onZip?: (file: File) => void;
   }
 
-  const { onchange, onmask, isAnalyzing = false }: Props = $props();
+  const { onchange, onmask, isAnalyzing = false, onZip }: Props = $props();
 
   let fileInputEl = $state<HTMLInputElement | null>(null);
   let isDragOver = $state(false);
@@ -27,6 +28,15 @@
   }
 
   async function processFile(file: File) {
+    // ZIP archives route to the multi-file flow instead of the text pane.
+    if (/\.zip$/i.test(file.name) || file.type === 'application/zip') {
+      if (onZip) {
+        onZip(file);
+      } else {
+        errorStore.show('ZIP-Verarbeitung nicht verfügbar in diesem Kontext.');
+      }
+      return;
+    }
     try {
       const result = await parseFile(file);
       inputStore.set({
@@ -39,7 +49,7 @@
     } catch (err) {
       if (err instanceof UnsupportedFormatError) {
         errorStore.show(
-          `Format nicht unterstützt: ${file.name}. Erlaubt: .txt .md .eml .pdf .docx`
+          `Format nicht unterstützt: ${file.name}. Erlaubt: .txt .md .eml .pdf .docx .zip`
         );
       } else if (err instanceof PdfWorkerNotConfiguredError) {
         errorStore.show('PDF-Worker nicht konfiguriert. Seite neu laden und erneut versuchen.');
@@ -168,7 +178,7 @@ Buchhaltung, Müller GmbH
     <input
       bind:this={fileInputEl}
       type="file"
-      accept=".txt,.md,.eml,.pdf,.docx"
+      accept=".txt,.md,.eml,.pdf,.docx,.zip"
       class="sr-only"
       onchange={handleFileChange}
       aria-label="Datei auswählen"
@@ -177,7 +187,7 @@ Buchhaltung, Müller GmbH
     <span
       class="font-[family-name:var(--font-mono)] text-[10.5px] text-[color:var(--color-ink-mute)]"
     >
-      .txt .md .eml .pdf .docx
+      .txt .md .eml .pdf .docx .zip
     </span>
 
     <button

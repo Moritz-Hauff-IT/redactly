@@ -38,6 +38,10 @@
     "./llm": {
       "import": "./dist/detectors/llm.js",
       "types": "./dist/detectors/llm.d.ts"
+    },
+    "./orchestrator": {
+      "import": "./dist/orchestrator.js",
+      "types": "./dist/orchestrator.d.ts"
     }
   },
   "main": "./dist/index.js",

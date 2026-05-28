@@ -41,4 +41,18 @@ export {
   detectFormat,
   parseFile,
   UnsupportedFormatError,
+  writeAsFormat,
+  extractZip,
+  packZip,
 } from './parsers/index.js';
+export type { WriteResult, ZipManifest, ZipEntry, ZipPackEntry } from './parsers/index.js';
+
+// LLM file orchestrator
+export { generateFilePlan, heuristicPlan } from './orchestrator.js';
+export type {
+  FileAction,
+  FilePlanEntry,
+  FilePlan,
+  ManifestEntryForLlm,
+  ChatEngine,
+} from './orchestrator.js';

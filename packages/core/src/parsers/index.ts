@@ -10,6 +10,7 @@ export { parseEmlBlob } from './eml.js';
 export { parsePdfBlob, PdfWorkerNotConfiguredError } from './pdf.js';
 export { parseDocxBlob } from './docx.js';
 export { writeAsFormat, type WriteResult } from './writers.js';
+export { extractZip, packZip, type ZipManifest, type ZipEntry, type ZipPackEntry } from './zip.js';
 
 import { parseTxtBlob } from './txt.js';
 import { parseMdBlob } from './md.js';
