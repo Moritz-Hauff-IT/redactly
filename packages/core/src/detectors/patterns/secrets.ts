@@ -136,4 +136,60 @@ export const secretRules: RegexRule[] = [
       return shannonEntropy(v) >= 3.5;
     },
   },
+  {
+    // High-confidence: 32+ char hex string. Random hex strings of this length
+    // don't naturally occur in prose — they're cryptographic keys, hashes,
+    // session tokens, recovery codes, UUIDs-without-dashes, etc.
+    // Examples: MD5 (32), SHA-1 (40), SHA-256 (64), recovery keys.
+    type: 'GENERIC_SECRET',
+    category: 'secret',
+    pattern: /\b[a-f0-9]{32,}\b/g,
+    confidence: 0.8,
+  },
+  {
+    // Medium-confidence: 16-31 char hex string (truncated hashes, short
+    // secrets, fingerprints). Requires context to fire — without it the
+    // pattern would false-positive on e.g. 16-digit credit-card hex
+    // representations or other coincidental hex sequences.
+    type: 'GENERIC_SECRET',
+    category: 'secret',
+    pattern: /\b[a-f0-9]{16,31}\b/g,
+    confidence: 0.5,
+    context: [
+      'key',
+      'schlüssel',
+      'recovery',
+      'wiederherstellung',
+      'token',
+      'secret',
+      'hash',
+      'fingerprint',
+      'fingerabdruck',
+      'session',
+      'auth',
+      'api',
+      'release',
+    ],
+    requiresContext: true,
+  },
+  {
+    // Base64-style long secret (40+ chars of A-Za-z0-9+/=) with strong
+    // context. Catches things like base64 hashes, encryption keys, etc.
+    type: 'GENERIC_SECRET',
+    category: 'secret',
+    pattern: /\b[A-Za-z0-9+/]{40,}={0,2}\b/g,
+    confidence: 0.55,
+    context: [
+      'key',
+      'schlüssel',
+      'recovery',
+      'wiederherstellung',
+      'token',
+      'secret',
+      'session',
+      'auth',
+      'release',
+    ],
+    requiresContext: true,
+  },
 ];
