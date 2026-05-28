@@ -309,7 +309,6 @@ export class NerDetector implements Detector {
     }
 
     if (this.debug) {
-      // eslint-disable-next-line no-console
       console.log('[NerDetector]', {
         rawCount: rawEntities.length,
         emitted: entities.length,

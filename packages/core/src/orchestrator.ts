@@ -149,7 +149,6 @@ export async function generateFilePlan(
 
   const prompt = buildOrchestrationPrompt(manifest);
   if (debug) {
-    // eslint-disable-next-line no-console
     console.log('[Orchestrator] requesting plan for', manifest.length, 'files');
   }
 
@@ -173,7 +172,6 @@ export async function generateFilePlan(
     rawContent = resp.choices[0]?.message?.content ?? '';
   } catch (err) {
     if (debug) {
-      // eslint-disable-next-line no-console
       console.warn('[Orchestrator] LLM call failed, falling back to heuristic:', err);
     }
     return heuristicPlan(manifest);
@@ -182,7 +180,6 @@ export async function generateFilePlan(
   const parsed = parsePlanResponse(rawContent);
   if (parsed === null) {
     if (debug) {
-      // eslint-disable-next-line no-console
       console.warn(
         '[Orchestrator] could not parse plan JSON, falling back to heuristic. Raw:',
         rawContent.slice(0, 500)

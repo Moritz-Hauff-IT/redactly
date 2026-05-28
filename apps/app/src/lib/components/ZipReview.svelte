@@ -14,7 +14,8 @@
   let { manifest, plan, loading, onClose, onApply, onRegeneratePlan }: Props = $props();
 
   // Local working copy of the plan so user toggles don't immediately apply.
-  let editedPlan = $state<FilePlan>(plan);
+  // Initialise to an empty plan; the $effect below mirrors prop changes.
+  let editedPlan = $state<FilePlan>({ summary: '', entries: [] });
   $effect(() => {
     editedPlan = plan;
   });
