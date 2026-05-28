@@ -118,6 +118,11 @@ Buchhaltung, Müller GmbH
     inputStore.text = value;
     onchange?.();
   }
+
+  // File mode: when a file is uploaded the text dump is hidden by default.
+  // User can expand to inspect/edit the extracted text if needed.
+  let textPreviewOpen = $state(false);
+  const isFileMode = $derived(inputStore.filename !== null);
 </script>
 
 <div class="pane">
@@ -144,7 +149,7 @@ Buchhaltung, Müller GmbH
     </div>
   </div>
 
-  <!-- Textarea + drop zone -->
+  <!-- Textarea + drop zone (text mode) OR file summary card (file mode) -->
   <div
     class="relative flex flex-1 flex-col transition-colors"
     class:bg-[color:var(--color-accent-soft)]={isDragOver}
@@ -164,11 +169,64 @@ Buchhaltung, Müller GmbH
       </div>
     {/if}
 
-    <HighlightedInput
-      text={inputStore.text}
-      entities={detectionStore.entities}
-      oninput={handleTextChange}
-    />
+    {#if isFileMode}
+      <!-- File card — no text dump unless user explicitly expands -->
+      <div class="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+        <div
+          class="flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--color-bg-sunk)] text-[color:var(--color-accent)]"
+        >
+          <svg
+            class="h-8 w-8"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M14 3v4a1 1 0 001 1h4" />
+            <path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div>
+          <p class="font-[family-name:var(--font-mono)] text-[13px] text-[color:var(--color-ink)]">
+            {inputStore.filename}
+          </p>
+          <p
+            class="mt-1 font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
+          >
+            {inputStore.format ?? 'txt'} · {formatBytes(inputStore.bytes)} · {inputStore.text
+              .length}
+            Zeichen extrahiert
+          </p>
+        </div>
+        <p class="max-w-xs text-[12px] text-[color:var(--color-ink-soft)]">
+          Klick „Maskieren". Der Text wird im Hintergrund analysiert, die maskierte Version landet
+          rechts als gleicher Dateityp zum Download.
+        </p>
+        <button class="btn-ghost mt-1" onclick={() => (textPreviewOpen = !textPreviewOpen)}>
+          {textPreviewOpen ? '↑ Vorschau ausblenden' : '↓ Text-Vorschau anzeigen'}
+        </button>
+        {#if textPreviewOpen}
+          <div
+            class="mt-3 max-h-64 w-full overflow-auto rounded border border-[color:var(--color-rule)] bg-[color:var(--color-bg)] p-3 text-left"
+          >
+            <HighlightedInput
+              text={inputStore.text}
+              entities={detectionStore.entities}
+              oninput={handleTextChange}
+            />
+          </div>
+        {/if}
+      </div>
+    {:else}
+      <HighlightedInput
+        text={inputStore.text}
+        entities={detectionStore.entities}
+        oninput={handleTextChange}
+      />
+    {/if}
   </div>
 
   <!-- Bottom toolbar: file upload + primary mask button -->
