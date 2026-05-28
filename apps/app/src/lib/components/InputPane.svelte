@@ -38,12 +38,17 @@
       return;
     }
     try {
+      // Keep original bytes for layout-preserving formats so the masked
+      // download can overlay redactions on the original document. We read
+      // before parsing because pdfjs detaches the buffer when it parses.
+      const rawBytes = new Uint8Array(await file.arrayBuffer());
       const result = await parseFile(file);
       inputStore.set({
         text: result.text,
         filename: file.name,
         format: result.meta.format,
         bytes: file.size,
+        rawBytes,
       });
       onchange?.();
     } catch (err) {

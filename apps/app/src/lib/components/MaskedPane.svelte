@@ -1,5 +1,6 @@
 <script lang="ts">
   import { inputStore } from '../stores/inputStore.svelte.js';
+  import { mappingStore } from '../stores/mappingStore.svelte.js';
   import { errorStore } from '../stores/errorStore.svelte.js';
 
   interface Props {
@@ -32,10 +33,20 @@
     if (!maskedText) return;
     const fmt = inputStore.format ?? 'txt';
     const baseName = inputStore.filename ? inputStore.filename.replace(/\.[^.]+$/, '') : 'masked';
+    const rawBytes = inputStore.rawBytes;
+    const mapping = mappingStore.get();
 
     try {
-      const { writeAsFormat } = await import('@de-pii/core/parsers');
-      const { blob, filename } = await writeAsFormat(maskedText, fmt, baseName);
+      const { writeAsFormat, writeAsRedactedFormat } = await import('@de-pii/core/parsers');
+
+      // Layout-preserving path: we have the original file bytes AND a mapping
+      // of detected entities → placeholders. Overlay redactions onto the
+      // original document instead of producing a plain-text dump.
+      const canRedact = rawBytes && mapping && (fmt === 'pdf' || fmt === 'docx');
+
+      const { blob, filename } = canRedact
+        ? await writeAsRedactedFormat(rawBytes, maskedText, mapping, fmt, baseName)
+        : await writeAsFormat(maskedText, fmt, baseName);
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
