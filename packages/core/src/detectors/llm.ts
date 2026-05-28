@@ -175,19 +175,28 @@ async function defaultEngineFactory(
 // ---------------------------------------------------------------------------
 
 function buildPrompt(text: string): string {
-  // Compact few-shot prompt — ~120 tokens vs. the old 250-token rule list.
-  // Small models (1B-3B) follow concrete examples far better than abstract
-  // rules. No confidence field requested (the parser defaults to 0.8) —
-  // confidence values from small models are noise and cost output tokens.
-  return `Finde PII im Text. Antworte nur mit JSON.
+  // Schema-only prompt. A previous few-shot version backfired catastrophically:
+  // small models hallucinated entities directly out of the example (e.g.
+  // "Berliner Str. 5, 10115 Berlin" appearing as a detected entity even
+  // though it was only in the prompt). The hallucinations still cost output
+  // tokens and were later dropped by the source-text filter — pure waste.
+  //
+  // Strong "WÖRTLICH aus dem Text" instruction + clear textual fence (XML-style
+  // <text> tags) helps small models distinguish instructions from input data.
+  return `Du bist ein PII-Extraktor. Antworte AUSSCHLIESSLICH mit gültigem JSON ohne Markdown, ohne Erklärungen.
 
-Typen: PERSON, ORG, LOCATION, EMAIL, PHONE, IBAN, SECRET
+Regeln:
+1. Jeder "text"-Wert MUSS Zeichen für Zeichen aus dem Input zwischen den <text>-Tags stammen. Nichts erfinden. Wenn du unsicher bist, lieber WEGLASSEN.
+2. Personennamen als komplettes Span (Vorname + Nachname zusammen, nicht getrennt).
+3. type ist einer von: PERSON, ORG, LOCATION, EMAIL, PHONE, IBAN, SECRET.
+4. Geldbeträge, Quartale, Datumsangaben und Versionsnummern sind KEINE PII — nicht markieren.
 
-Beispiel:
-Text: "Hallo Anna Schmidt, schicke die Mail an anna@bsp.de von Acme GmbH. Adresse: Berliner Str. 5, 10115 Berlin."
-JSON: {"entities":[{"text":"Anna Schmidt","type":"PERSON"},{"text":"anna@bsp.de","type":"EMAIL"},{"text":"Acme GmbH","type":"ORG"},{"text":"Berliner Str. 5, 10115 Berlin","type":"LOCATION"}]}
+Schema: {"entities":[{"text":"<wörtlicher Substring>","type":"<TYP>"}]}
 
-Text: "${text.replace(/"/g, '\\"').replace(/\n/g, ' ')}"
+<text>
+${text}
+</text>
+
 JSON:`;
 }
 
@@ -375,33 +384,82 @@ export class WebLlmDetector implements Detector {
     return this.loadPromise;
   }
 
-  async detect(text: string): Promise<Entity[]> {
-    // Unconditional ENTRY log — fires regardless of this.debug. If this never
-    // appears in the console, detect() is genuinely not being called by the
-    // pipeline (Promise.all may have an issue) or the detector instance
-    // running is a different one than what we think.
+  /** Max characters per LLM call. Small models lose track past ~2 KB context. */
+  private static readonly CHUNK_SIZE = 1500;
+  /** Overlap between chunks so entities at boundaries are caught in at least one. */
+  private static readonly CHUNK_OVERLAP = 200;
 
+  async detect(text: string): Promise<Entity[]> {
     console.log('[WebLlmDetector] ENTRY', {
       debug: this.debug,
       engineReady: this.engine !== null,
       textLength: text.length,
     });
 
-    // Lazy load if not yet initialized
-
-    console.log('[WebLlmDetector] before ready()');
     await this.ready();
-
-    console.log('[WebLlmDetector] after ready() — engine:', this.engine !== null);
-
-    // Capture engine reference — protect against concurrent dispose()
     const eng = this.engine;
     if (eng === null) {
       console.log('[WebLlmDetector] engine null after ready() — disposed?');
       return [];
     }
 
-    const prompt = buildPrompt(text);
+    // For short texts, run a single call. For longer texts, split into
+    // overlapping chunks — small LLMs degrade past ~2 KB context.
+    if (text.length <= WebLlmDetector.CHUNK_SIZE) {
+      return this.detectChunk(eng, text, text);
+    }
+
+    console.log(
+      `[WebLlmDetector] long text (${text.length} chars) — chunking into windows of ${WebLlmDetector.CHUNK_SIZE} chars (overlap ${WebLlmDetector.CHUNK_OVERLAP})`
+    );
+    const chunks: string[] = [];
+    let start = 0;
+    while (start < text.length) {
+      // Try to end at a natural boundary (paragraph or sentence)
+      let end = Math.min(start + WebLlmDetector.CHUNK_SIZE, text.length);
+      if (end < text.length) {
+        const tail = text.slice(start, end);
+        const lastBoundary = Math.max(tail.lastIndexOf('\n\n'), tail.lastIndexOf('. '));
+        if (lastBoundary > WebLlmDetector.CHUNK_SIZE / 2) {
+          end = start + lastBoundary + 1;
+        }
+      }
+      chunks.push(text.slice(start, end));
+      if (end >= text.length) break;
+      start = end - WebLlmDetector.CHUNK_OVERLAP;
+    }
+
+    const allEntities: Entity[] = [];
+    let i = 0;
+    for (const chunk of chunks) {
+      i++;
+      console.log(`[WebLlmDetector] chunk ${i}/${chunks.length} (${chunk.length} chars)`);
+      // Pass full source for indexOf — entities anchor to original text positions
+      // regardless of which chunk they were found in.
+      const chunkEntities = await this.detectChunk(eng, chunk, text);
+      allEntities.push(...chunkEntities);
+    }
+
+    // Dedupe by (start, end) — overlapping chunks may report the same entity twice
+    const seen = new Set<string>();
+    const deduped = allEntities.filter((e) => {
+      const key = `${e.start}-${e.end}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    deduped.sort((a, b) => a.start - b.start || b.end - a.end);
+    return deduped;
+  }
+
+  /**
+   * Run the LLM on a single chunk. Validates each returned entity against
+   * `fullText` (not the chunk) so positions are anchored to the original
+   * source. Entities whose `text` does not appear in `fullText` are dropped
+   * as hallucinations.
+   */
+  private async detectChunk(eng: MLCEngine, chunk: string, fullText: string): Promise<Entity[]> {
+    const prompt = buildPrompt(chunk);
 
     // Note: previously this called the WebLLM JSON-schema mode via
     // `response_format: { type: 'json_object' }`, but that triggers
@@ -463,10 +521,13 @@ export class WebLlmDetector implements Detector {
         continue;
       }
 
+      // Validate against FULL text (not just the chunk) — anchors entity to
+      // the original source-text position and rejects any hallucinated text
+      // that doesn't appear verbatim in the original.
       let foundAtLeastOne = false;
       let searchFrom = 0;
-      while (searchFrom < text.length) {
-        const idx = text.indexOf(needle, searchFrom);
+      while (searchFrom < fullText.length) {
+        const idx = fullText.indexOf(needle, searchFrom);
         if (idx === -1) break;
         foundAtLeastOne = true;
 
@@ -483,6 +544,11 @@ export class WebLlmDetector implements Detector {
         searchFrom = idx + 1;
       }
       if (!foundAtLeastOne) {
+        // HALLUCINATION caught — model invented text that doesn't appear in
+        // the source. Always log this so users see the safety net working.
+        console.warn(
+          `[WebLlmDetector] HALLUCINATION dropped: "${needle}" (type=${raw.type}) — not present in source text`
+        );
         droppedByMissingText.push(raw);
       }
     }
