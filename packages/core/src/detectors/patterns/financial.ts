@@ -5,22 +5,39 @@ export const financialRules: RegexRule[] = [
   {
     type: 'IBAN',
     category: 'financial',
-    // Country code + check digits + BBAN (11-30 alphanumeric chars)
-    // Spaces allowed (common human-readable format).
-    // High-confidence rule: requires valid ISO 7064 mod-97 checksum.
-    pattern: /\b[A-Z]{2}\d{2}[A-Z0-9 ]{11,34}\b/g,
+    // Spaced human-readable form: CC + 2 digits + 2-7 groups of 4 alphanum
+    // chars (separated by single spaces) + optional 1-3 char remainder.
+    // Structured so the regex CAN'T greedily absorb a following BIC like
+    // "...7200 7 KBTGCH22" (the suffix isn't a 4-char group separator).
+    pattern: /\b[A-Z]{2}\d{2}(?: [A-Z0-9]{4}){2,7}(?: [A-Z0-9]{1,3})?\b/g,
     confidence: 0.99,
     validate: (match) => ibanMod97(match),
   },
   {
     type: 'IBAN',
     category: 'financial',
-    // Lenient fallback: IBAN-shaped strings that fail mod-97 (e.g. typos in
-    // source documents). Restricted to common SEPA + selected ISO country
-    // codes so random uppercase-digit strings don't false-positive. Lower
-    // confidence than the strict rule, so the strict rule wins on dedup.
+    // Compact form (no spaces): CC + 2 digits + 11-30 alphanumeric chars.
+    pattern: /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g,
+    confidence: 0.99,
+    validate: (match) => ibanMod97(match),
+  },
+  {
+    type: 'IBAN',
+    category: 'financial',
+    // Lenient SEPA fallback for typos (mod-97 fails but format is plausible).
+    // Same 4-char-group structure so it can't greedily absorb adjacent tokens.
     pattern:
-      /\b(?:DE|AT|CH|LI|FR|IT|ES|NL|BE|LU|PT|IE|FI|EE|LV|LT|SK|SI|CZ|PL|HU|DK|SE|NO|GB|MT|CY|GR|BG|RO|HR|IS|MC|SM|AD|VA)\d{2}[A-Z0-9 ]{11,34}\b/g,
+      /\b(?:DE|AT|CH|LI|FR|IT|ES|NL|BE|LU|PT|IE|FI|EE|LV|LT|SK|SI|CZ|PL|HU|DK|SE|NO|GB|MT|CY|GR|BG|RO|HR|IS|MC|SM|AD|VA)\d{2}(?: [A-Z0-9]{4}){2,7}(?: [A-Z0-9]{1,3})?\b/g,
+    confidence: 0.5,
+  },
+  {
+    type: 'IBAN',
+    category: 'financial',
+    // Lenient SEPA fallback (compact form): catches IBAN-shaped strings with
+    // real ISO country codes whose mod-97 fails — typically source-document
+    // typos. Lower confidence than the strict rules so dedup prefers them.
+    pattern:
+      /\b(?:DE|AT|CH|LI|FR|IT|ES|NL|BE|LU|PT|IE|FI|EE|LV|LT|SK|SI|CZ|PL|HU|DK|SE|NO|GB|MT|CY|GR|BG|RO|HR|IS|MC|SM|AD|VA)\d{2}[A-Z0-9]{11,30}\b/g,
     confidence: 0.5,
   },
   {

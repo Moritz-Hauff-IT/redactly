@@ -45,26 +45,49 @@ export const contactRules: RegexRule[] = [
     },
   },
   {
-    // German / Swiss / Austrian street address: Straßenname + Hausnummer (+ optional PLZ Ort).
-    // Captures common suffixes (-straße/-strasse/-str./-weg/-platz/-allee/-gasse/-ring).
+    // German / Swiss / Austrian street address: Strassenname + Hausnummer.
+    // Only "safe" compound suffixes that don't appear inside common German
+    // words (would false-positive otherwise: "ring" matches "Engineering",
+    // "weg" matches "Bewegung", "hof" matches many compounds, etc.).
     // Example matches:
-    //   Marienplatz 8
     //   Bahnhofstrasse 42
-    //   Marienplatz 8, 80331 München
     //   Hauptstr. 12a
+    //   Marienplatz 8
+    //   Lindenallee 5
+    //   Marktgasse 7
     type: 'LOCATION',
     category: 'address',
     pattern:
-      /\b[A-ZÄÖÜ][\p{L}\-]+(?:[\s\-][\p{L}\-]+)*(?:str(?:asse|aße)?\.?|weg|platz|allee|gasse|ring|hof|markt|ufer|damm)\s+\d{1,4}[a-zA-Z]?(?:[,\s]+\d{4,5}\s+[A-ZÄÖÜ][\p{L}\-]+(?:[\s\-][\p{L}\-]+)*)?\b/gu,
+      /\b[A-ZÄÖÜ][\p{L}\-]*(?:strasse|straße|str\.|platz|gasse|allee)\s+\d{1,4}[a-zA-Z]?\b/gu,
     confidence: 0.85,
   },
   {
-    // Standalone PLZ Ort: 4 (CH) or 5 (DE/AT) digits + city name.
-    // Example: 80331 München, 8001 Zürich. Low confidence — fires often.
+    // Address with article prefix + standalone suffix: "Am Wollmatinger Ried 7",
+    // "An der alten Mühle Hof 5". The article (Am/An/In/...) is required so
+    // we don't match random capitalized words preceding a suffix-noun (e.g.
+    // "Rechnung Wollmatinger Ried 7" would otherwise match because "Ried"
+    // is a valid suffix). Suffix list intentionally trimmed to words that
+    // rarely appear standalone as people/business names.
     type: 'LOCATION',
     category: 'address',
-    pattern: /\b\d{4,5}\s+[A-ZÄÖÜ][\p{L}\-]+(?:[\s\-][A-ZÄÖÜ]?[\p{L}\-]+){0,3}\b/gu,
-    confidence: 0.55,
+    pattern:
+      /\b(?:Am|An|In|Bei|Zur|Zum|Auf|Beim)\s+(?:der\s+|dem\s+|den\s+)?[A-ZÄÖÜ][\p{L}\-]+(?:\s+[A-ZÄÖÜ][\p{L}\-]+)?\s(?:Weg|Ring|Hof|Markt|Ufer|Damm|Ried|Anger|Steig|Stieg|Pfad)\s+\d{1,4}[a-zA-Z]?\b/gu,
+    confidence: 0.78,
+  },
+  {
+    // Standalone PLZ Ort: 4 (CH) or 5 (DE/AT) digits + city name.
+    // Lookahead rejects 4-digit numbers that look like years (1900-2099)
+    // or invoice/serial numbers padded with leading zeros — both create
+    // false positives when the joined PDF text smushes "2025" against the
+    // following column header. City must be at least 3 chars to skip
+    // "2025 IT". Optional " am/im/... Main" suffix for Frankfurt am Main,
+    // Bad Tölz, etc.
+    // Example: 80331 München, 8001 Zürich, 60311 Frankfurt am Main
+    type: 'LOCATION',
+    category: 'address',
+    pattern:
+      /\b(?!19\d{2}\b|20\d{2}\b|0000\d?\b)\d{4,5}\s+[A-ZÄÖÜ][\p{L}\-]{2,}(?:\s+(?:am|im|an|bei|ob|unter|über|in der)\s+[A-ZÄÖÜ][\p{L}\-]+)?\b/gu,
+    confidence: 0.6,
   },
   {
     type: 'IP',
