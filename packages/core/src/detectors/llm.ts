@@ -30,21 +30,12 @@ export interface WebLlmModelInfo {
 
 export const SUPPORTED_WEBLLM_MODELS: WebLlmModelInfo[] = [
   {
-    id: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
-    label: 'Llama 3.2 1B',
-    sizeMB: 700,
-    vramMB: 1500,
-    description:
-      'Schnell und kompakt. Für ältere oder schwächere Geräte. Findet die meisten kontextuellen PII, aber kann Edge-Cases übersehen.',
-    recommendedFor: 'fast',
-  },
-  {
     id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
-    label: 'Llama 3.2 3B',
+    label: 'Llama 3.2 3B — empfohlen',
     sizeMB: 1700,
     vramMB: 3500,
     description:
-      'Empfohlene Standardwahl. Guter Trade-off zwischen Genauigkeit und Geschwindigkeit. Läuft auf den meisten modernen Laptops mit 8+ GB RAM.',
+      'Standardwahl. Guter Trade-off zwischen Genauigkeit und Geschwindigkeit. Läuft auf modernen Laptops mit 8+ GB RAM, typische Antwort 15-45 Sek.',
     recommendedFor: 'balanced',
   },
   {
@@ -53,8 +44,17 @@ export const SUPPORTED_WEBLLM_MODELS: WebLlmModelInfo[] = [
     sizeMB: 2200,
     vramMB: 4000,
     description:
-      'Microsofts kleines Modell, besonders stark bei strukturierten Aufgaben wie Entitäts-Extraktion. Etwas langsamer, aber präziser bei seltenen PII-Mustern.',
+      'Microsofts Modell, besonders stark bei strukturierten Aufgaben wie Entitäts-Extraktion. Langsamer als Llama 3B, aber präziser bei seltenen PII-Mustern.',
     recommendedFor: 'best',
+  },
+  {
+    id: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
+    label: 'Llama 3.2 1B — nur für schwache Geräte',
+    sizeMB: 700,
+    vramMB: 1500,
+    description:
+      'Schnell und kompakt, aber Recall fällt auf 60-70%. Nur empfohlen wenn 8+ GB RAM nicht verfügbar sind oder die Geschwindigkeit kritisch ist.',
+    recommendedFor: 'fast',
   },
 ];
 
@@ -175,30 +175,20 @@ async function defaultEngineFactory(
 // ---------------------------------------------------------------------------
 
 function buildPrompt(text: string): string {
-  return `Du bist ein PII-Detektor. Extrahiere AUSSCHLIESSLICH personenbezogene Daten und Geheimnisse aus dem folgenden Text.
+  // Compact few-shot prompt — ~120 tokens vs. the old 250-token rule list.
+  // Small models (1B-3B) follow concrete examples far better than abstract
+  // rules. No confidence field requested (the parser defaults to 0.8) —
+  // confidence values from small models are noise and cost output tokens.
+  return `Finde PII im Text. Antworte nur mit JSON.
 
-WICHTIGE REGELN:
-- Markiere NUR echte PII. Geldbeträge ("1.450 €"), Quartale ("Q2/2026"), Rechnungsnummern ohne Personenbezug, Datumsangaben ohne Personenbezug → NICHT markieren.
-- Jeder "text"-Wert muss ein WÖRTLICHES Substring aus dem Originaltext sein (Zeichen für Zeichen kopiert).
-- Confidence nur ≥0.7 wenn du sicher bist.
-- Personennamen IMMER als komplette Spans (Vorname + Nachname zusammen, nicht getrennt).
+Typen: PERSON, ORG, LOCATION, EMAIL, PHONE, IBAN, SECRET
 
-Typen:
-- PERSON: Echte Personennamen
-- ORG: Firmen-, Behörden-, Organisationsnamen (z.B. "Müller GmbH")
-- LOCATION: Postadressen, Städte, Länder
-- EMAIL: Email-Adressen
-- PHONE: Telefonnummern
-- FINANCIAL: IBAN, Kreditkarten, Kontonummern (KEINE Geldbeträge!)
-- SECRET: API-Keys, Tokens, Passwörter (KEINE Quartale, Datumsangaben, Versionsnummern!)
+Beispiel:
+Text: "Hallo Anna Schmidt, schicke die Mail an anna@bsp.de von Acme GmbH. Adresse: Berliner Str. 5, 10115 Berlin."
+JSON: {"entities":[{"text":"Anna Schmidt","type":"PERSON"},{"text":"anna@bsp.de","type":"EMAIL"},{"text":"Acme GmbH","type":"ORG"},{"text":"Berliner Str. 5, 10115 Berlin","type":"LOCATION"}]}
 
-Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Erklärung, ohne Markdown:
-{"entities":[{"text":"<exact substring>","type":"<PERSON|ORG|LOCATION|EMAIL|PHONE|FINANCIAL|SECRET>","confidence":0.0-1.0}]}
-
-Text:
-"""
-${text}
-"""`;
+Text: "${text.replace(/"/g, '\\"').replace(/\n/g, ' ')}"
+JSON:`;
 }
 
 // ---------------------------------------------------------------------------
