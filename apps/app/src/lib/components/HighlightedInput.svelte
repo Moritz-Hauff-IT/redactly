@@ -184,7 +184,7 @@
   <div
     bind:this={overlayEl}
     aria-hidden="true"
-    class="pointer-events-none absolute inset-0 overflow-hidden px-4 py-3.5 font-[family-name:var(--font-mono)] text-[13px] leading-[1.65] text-transparent"
+    class="overlay-highlights pointer-events-none absolute inset-0 overflow-hidden px-4 py-3.5 font-[family-name:var(--font-mono)] text-[13px] leading-[1.65] text-transparent"
     style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
   >
     {#each segments as seg}

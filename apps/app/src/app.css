@@ -253,12 +253,17 @@ body {
   }
 }
 
-/* Entity highlight — per-category bg + fg */
+/* Entity highlight — per-category bg + fg.
+   In the textarea overlay (.overlay-highlights), text must stay transparent
+   so it doesn't visually duplicate the textarea's own text on top. */
 .ent {
   padding: 0 2px;
   border-radius: 2px;
   cursor: pointer;
   transition: opacity 0.1s;
+}
+.overlay-highlights .ent {
+  color: transparent !important;
 }
 .ent[data-cat='person'] {
   background: var(--color-cat-person-bg);

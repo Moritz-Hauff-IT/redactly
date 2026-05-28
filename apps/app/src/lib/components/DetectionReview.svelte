@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { EntityCategory } from '@de-pii/core/types';
   import { detectionStore, type EntityWithId } from '../stores/detectionStore.svelte.js';
+  import { mappingStore } from '../stores/mappingStore.svelte.js';
 
   const CATEGORY_LABELS: Record<EntityCategory, string> = {
     person: 'Person',
@@ -16,16 +17,13 @@
     return `${text.slice(0, 6)}…${text.slice(-4)}`;
   }
 
+  /** Look up the actual placeholder allocated by the masker for this entity's text. */
   function placeholderFor(entity: EntityWithId): string {
-    const prefixMap: Record<EntityCategory, string> = {
-      person: 'PERSON',
-      contact: entity.type === 'EMAIL' ? 'EMAIL' : entity.type === 'PHONE' ? 'PHONE' : 'URL',
-      address: 'LOC',
-      financial: entity.type === 'IBAN' ? 'IBAN' : entity.type === 'CREDIT_CARD' ? 'CARD' : 'TAX',
-      secret: 'SECRET',
-      organization: 'ORG',
-    };
-    return `[${prefixMap[entity.category]}_n]`;
+    const m = mappingStore.current;
+    const real = m?.reverse.get(entity.text);
+    if (real) return real;
+    // Not yet masked (or entity ignored) — show a dimmed dash.
+    return '—';
   }
 
   function activeFilter(active: 'all' | 'on' | 'off') {
@@ -193,7 +191,22 @@
                 {displayText}
               </td>
               <td class="px-3 py-2">
-                <span class="token">{placeholderFor(entity)}</span>
+                {#if isActive}
+                  {@const ph = placeholderFor(entity)}
+                  {#if ph === '—'}
+                    <span
+                      class="font-[family-name:var(--font-mono)] text-[color:var(--color-ink-mute)]"
+                      >—</span
+                    >
+                  {:else}
+                    <span class="token">{ph}</span>
+                  {/if}
+                {:else}
+                  <span
+                    class="font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)] italic"
+                    >ignoriert</span
+                  >
+                {/if}
               </td>
               <td
                 class="px-3 py-2 text-right font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
