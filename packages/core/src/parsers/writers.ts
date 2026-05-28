@@ -61,18 +61,63 @@ function writeEml(text: string, baseName: string): WriteResult {
   return { blob, filename: `${baseName}-masked.eml`, mimeType: 'message/rfc822' };
 }
 
+/**
+ * Map Unicode characters that pdf-lib's WinAnsi-encoded Helvetica cannot
+ * render to safe equivalents. Anything still outside WinAnsi after this
+ * pre-processing is replaced with '?' as a final fallback.
+ */
+function sanitizeForWinAnsi(text: string): string {
+  return (
+    text
+      // smart quotes & guillemets
+      .replace(/[‘’‚‛]/g, "'")
+      .replace(/[“”„‟]/g, '"')
+      .replace(/[«»‹›]/g, '"')
+      // dashes & ellipsis
+      .replace(/[–—―−]/g, '-')
+      .replace(/…/g, '...')
+      // currency outside WinAnsi
+      .replace(/€/g, 'EUR')
+      .replace(/£/g, 'GBP')
+      .replace(/¥/g, 'JPY')
+      // check / cross / bullet marks
+      .replace(/[✓✔☑]/g, '(+)')
+      .replace(/[✗✘×]/g, '(x)')
+      .replace(/[•●○◦◯]/g, '*')
+      .replace(/[★☆]/g, '*')
+      // arrows
+      .replace(/→/g, '->')
+      .replace(/←/g, '<-')
+      .replace(/↔/g, '<->')
+      .replace(/↑/g, '^')
+      .replace(/↓/g, 'v')
+      .replace(/⇒/g, '=>')
+      .replace(/⇐/g, '<=')
+      // box-drawing (very common in PDFs with ASCII tables)
+      .replace(/[─━┄┅┈┉═]/g, '-')
+      .replace(/[│┃┆┇┊┋║]/g, '|')
+      .replace(/[┌┍┎┏┐┑┒┓└┕┖┗┘┙┚┛╔╗╚╝]/g, '+')
+      .replace(/[├┝┞┟┠┡┢┣┤┥┦┧┨┩┪┫┬┭┮┯┰┱┲┳┴┵┶┷┸┹┺┻┼┽┾┿╀╁╂╃╄╅╆╇╈╉╊╋╠╣╦╩╬]/g, '+')
+      // common math / misc that crops up in extracts
+      .replace(/[±]/g, '+/-')
+      .replace(/[°]/g, ' deg')
+      .replace(/[‰]/g, ' per mille')
+      .replace(/[√]/g, 'sqrt')
+      // non-breaking & zero-width space
+      .replace(/[ ]/g, ' ')
+      .replace(/[​-‏‪-‮﻿]/g, '')
+      // FINAL FALLBACK: any code point outside WinAnsi (basically > U+00FF
+      // with a few exceptions WinAnsi covers at U+0152, U+0153, U+0160…)
+      // becomes a literal '?'. This guarantees pdf-lib never throws.
+      .replace(/[^\x00-\xFFŒœŠšŸŽžƒˆ˜‰‹›€™]/g, '?')
+  );
+}
+
 async function writePdf(text: string, baseName: string): Promise<WriteResult> {
   const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  // pdf-lib StandardFonts use WinAnsi encoding which does NOT cover all
-  // Unicode characters (notably some German extended chars or curly quotes).
-  // We strip/replace unsupported chars to ASCII-safe equivalents.
-  const safeText = text
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”„]/g, '"')
-    .replace(/[–—]/g, '-')
-    .replace(/€/g, 'EUR');
+  const safeText = sanitizeForWinAnsi(text);
 
   const pageSize: [number, number] = [595.28, 841.89]; // A4 in points
   const margin = 50;
@@ -82,6 +127,35 @@ async function writePdf(text: string, baseName: string): Promise<WriteResult> {
   let page = doc.addPage(pageSize);
   let y = pageSize[1] - margin;
 
+  /** Defensive width calc: if pdf-lib still can't encode a char that slipped
+   * past the sanitizer, fall back to replacing remaining non-WinAnsi chars
+   * char-by-char with '?'. Never throws. */
+  function safeWidth(s: string): number {
+    try {
+      return font.widthOfTextAtSize(s, fontSize);
+    } catch {
+      // Strip anything non-ASCII as a last resort and try again
+      const ascii = s.replace(/[^\x20-\x7E]/g, '?');
+      try {
+        return font.widthOfTextAtSize(ascii, fontSize);
+      } catch {
+        return usableWidth; // force wrap
+      }
+    }
+  }
+  function safeDraw(s: string, xx: number, yy: number) {
+    try {
+      page.drawText(s, { x: xx, y: yy, size: fontSize, font, color: rgb(0.1, 0.1, 0.1) });
+    } catch {
+      const ascii = s.replace(/[^\x20-\x7E]/g, '?');
+      try {
+        page.drawText(ascii, { x: xx, y: yy, size: fontSize, font, color: rgb(0.1, 0.1, 0.1) });
+      } catch {
+        /* give up on this line — don't fail the whole document */
+      }
+    }
+  }
+
   // Word-wrap each input line to page width
   const lines = safeText.split(/\r?\n/);
   for (const rawLine of lines) {
@@ -89,14 +163,13 @@ async function writePdf(text: string, baseName: string): Promise<WriteResult> {
     let current = '';
     for (const word of words) {
       const test = current ? `${current} ${word}` : word;
-      const width = font.widthOfTextAtSize(test, fontSize);
+      const width = safeWidth(test);
       if (width > usableWidth && current) {
-        // Flush current line
         if (y < margin + lineHeight) {
           page = doc.addPage(pageSize);
           y = pageSize[1] - margin;
         }
-        page.drawText(current, { x: margin, y, size: fontSize, font, color: rgb(0.1, 0.1, 0.1) });
+        safeDraw(current, margin, y);
         y -= lineHeight;
         current = word;
       } else {
@@ -107,7 +180,7 @@ async function writePdf(text: string, baseName: string): Promise<WriteResult> {
       page = doc.addPage(pageSize);
       y = pageSize[1] - margin;
     }
-    page.drawText(current, { x: margin, y, size: fontSize, font, color: rgb(0.1, 0.1, 0.1) });
+    safeDraw(current, margin, y);
     y -= lineHeight;
   }
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { inputStore } from '../stores/inputStore.svelte.js';
+  import { errorStore } from '../stores/errorStore.svelte.js';
 
   interface Props {
     maskedText: string;
@@ -32,15 +33,22 @@
     const fmt = inputStore.format ?? 'txt';
     const baseName = inputStore.filename ? inputStore.filename.replace(/\.[^.]+$/, '') : 'masked';
 
-    const { writeAsFormat } = await import('@de-pii/core/parsers');
-    const { blob, filename } = await writeAsFormat(maskedText, fmt, baseName);
+    try {
+      const { writeAsFormat } = await import('@de-pii/core/parsers');
+      const { blob, filename } = await writeAsFormat(maskedText, fmt, baseName);
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unbekannter Fehler';
+      errorStore.show(`Download fehlgeschlagen: ${msg}. Versuche es mit „Text kopieren".`);
+      // eslint-disable-next-line no-console
+      console.error('[MaskedPane] download failed', err);
+    }
   }
 </script>
 
