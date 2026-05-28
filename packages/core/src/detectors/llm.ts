@@ -169,10 +169,25 @@ async function defaultEngineFactory(
 // ---------------------------------------------------------------------------
 
 function buildPrompt(text: string): string {
-  return `Du bist ein PII-Detektor. Analysiere den folgenden Text und gib JSON zurück mit allen erkannten PII-Entitäten (Personennamen, Organisationen, Orte, Email-Adressen, Telefonnummern, Adressen, Geburtsdaten, Finanzdaten, Geheimnisse).
+  return `Du bist ein PII-Detektor. Extrahiere AUSSCHLIESSLICH personenbezogene Daten und Geheimnisse aus dem folgenden Text.
 
-Antwort-Format (strikt JSON, keine Erklärung):
-{"entities":[{"text":"<exact substring>","type":"<PERSON|ORG|LOCATION|EMAIL|PHONE|ADDRESS|FINANCIAL|SECRET>","confidence":0.0-1.0}]}
+WICHTIGE REGELN:
+- Markiere NUR echte PII. Geldbeträge ("1.450 €"), Quartale ("Q2/2026"), Rechnungsnummern ohne Personenbezug, Datumsangaben ohne Personenbezug → NICHT markieren.
+- Jeder "text"-Wert muss ein WÖRTLICHES Substring aus dem Originaltext sein (Zeichen für Zeichen kopiert).
+- Confidence nur ≥0.7 wenn du sicher bist.
+- Personennamen IMMER als komplette Spans (Vorname + Nachname zusammen, nicht getrennt).
+
+Typen:
+- PERSON: Echte Personennamen
+- ORG: Firmen-, Behörden-, Organisationsnamen (z.B. "Müller GmbH")
+- LOCATION: Postadressen, Städte, Länder
+- EMAIL: Email-Adressen
+- PHONE: Telefonnummern
+- FINANCIAL: IBAN, Kreditkarten, Kontonummern (KEINE Geldbeträge!)
+- SECRET: API-Keys, Tokens, Passwörter (KEINE Quartale, Datumsangaben, Versionsnummern!)
+
+Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Erklärung, ohne Markdown:
+{"entities":[{"text":"<exact substring>","type":"<PERSON|ORG|LOCATION|EMAIL|PHONE|FINANCIAL|SECRET>","confidence":0.0-1.0}]}
 
 Text:
 """
@@ -294,12 +309,24 @@ export class WebLlmDetector implements Detector {
   }
 
   async detect(text: string): Promise<Entity[]> {
+    if (this.debug) {
+      // eslint-disable-next-line no-console
+      console.log('[WebLlmDetector] detect() called', {
+        modelId: this.modelId,
+        textLength: text.length,
+        engineReady: this.engine !== null,
+      });
+    }
+
     // Lazy load if not yet initialized
     await this.ready();
 
     // Capture engine reference — protect against concurrent dispose()
     const eng = this.engine;
-    if (eng === null) return []; // disposed mid-flight
+    if (eng === null) {
+      if (this.debug) console.log('[WebLlmDetector] engine null after ready() — disposed?');
+      return [];
+    }
 
     const prompt = buildPrompt(text);
 
