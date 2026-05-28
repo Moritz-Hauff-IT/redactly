@@ -77,19 +77,40 @@
 
   const segments = $derived(buildSegments(text, entities));
 
-  // Text escape for safe rendering
+  /** Escape HTML special chars. Whitespace is preserved by the
+   * white-space: pre-wrap on the overlay div — we do NOT replace spaces
+   * or newlines, because the textarea also uses pre-wrap and any
+   * substitution here would cause character-by-character drift. */
   function escapeHtml(s: string): string {
-    return (
-      s
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        // Preserve whitespace exactly as in textarea
-        .replace(/ /g, '&nbsp;')
-        .replace(/\n/g, '<br>')
-    );
+    return s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
+
+  /** Build the overlay HTML as a single string. Doing this in script
+   * avoids Svelte template whitespace artifacts (template indentation
+   * gets rendered as text under white-space: pre-wrap). */
+  function buildOverlayHtml(segs: Segment[]): string {
+    let html = '';
+    for (const seg of segs) {
+      const safe = escapeHtml(seg.text);
+      if (seg.entity) {
+        const isActive = detectionStore.enabledIds.has(seg.entity.id);
+        const cls = isActive ? 'ent' : 'ent disabled';
+        html += `<span class="${cls}" data-cat="${seg.entity.category}">${safe}</span>`;
+      } else {
+        html += safe;
+      }
+    }
+    // Trailing newline trick: textareas reserve space for the cursor on the
+    // line after the final character; a trailing newline in our overlay
+    // keeps line counts aligned in case the user ends input with \n.
+    return html;
+  }
+
+  const overlayHtml = $derived(buildOverlayHtml(segments));
 
   // Scroll sync between textarea and overlay
   let overlayEl = $state<HTMLDivElement | null>(null);
@@ -187,17 +208,11 @@
     class="overlay-highlights pointer-events-none absolute inset-0 overflow-hidden px-4 py-3.5 font-[family-name:var(--font-mono)] text-[13px] leading-[1.65] text-transparent"
     style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
   >
-    <!-- IMPORTANT: no whitespace between control-flow blocks. With
-         white-space: pre-wrap the template indentation would render as
-         literal characters in the overlay, shifting it off the textarea. -->
-    {#each segments as seg}{#if seg.entity}{@const isActive = detectionStore.enabledIds.has(
-          seg.entity.id
-        )}<span
-          class="ent"
-          class:disabled={!isActive}
-          aria-label="{seg.entity.category}: {seg.entity.type}"
-          data-cat={seg.entity.category}>{seg.text}</span
-        >{:else}{seg.text}{/if}{/each}
+    <!-- Rendered as pre-built HTML so no Svelte template whitespace leaks
+         into the overlay. eslint-disable required — the source is trusted
+         (built from escapeHtml() in script). -->
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+    {@html overlayHtml}
   </div>
 
   <!-- Editable textarea on top -->
