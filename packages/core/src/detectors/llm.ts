@@ -65,6 +65,9 @@ export interface WebLlmOptions {
   minConfidence?: number;
   /** Called during model initialization with progress information. */
   onProgress?: (event: WebLlmProgressEvent) => void;
+  /** Verbose console logging during detect — surfaces raw response, parse
+   * results, and per-rule drops. Off by default. */
+  debug?: boolean;
   /**
    * @internal — injectable engine factory for testing.
    * Do not rely on this in production code.
@@ -249,6 +252,7 @@ export class WebLlmDetector implements Detector {
   private readonly modelId: string;
   private readonly minConfidence: number;
   private readonly onProgress: ((event: WebLlmProgressEvent) => void) | undefined;
+  private readonly debug: boolean;
   private readonly engineFactory: EngineFactory;
 
   private engine: MLCEngine | null = null;
@@ -258,6 +262,7 @@ export class WebLlmDetector implements Detector {
     this.modelId = options.modelId;
     this.minConfidence = options.minConfidence ?? DEFAULT_MIN_CONFIDENCE;
     this.onProgress = options.onProgress;
+    this.debug = options.debug ?? false;
     this.engineFactory = options._engineFactory ?? defaultEngineFactory;
   }
 
