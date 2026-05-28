@@ -99,6 +99,9 @@ interface MLCEngine {
       create(params: {
         messages: Array<{ role: string; content: string }>;
         response_format?: { type: string };
+        max_tokens?: number;
+        temperature?: number;
+        stop?: string | string[];
       }): Promise<{
         choices: Array<{
           message: {
@@ -418,9 +421,10 @@ export class WebLlmDetector implements Detector {
     let rawContent: string;
     try {
       console.log('[WebLlmDetector] calling eng.chat.completions.create()');
-      // 60-second timeout protects against MLC worker deadlocks (silent hangs
-      // where the Promise neither resolves nor rejects — try/catch alone
-      // wouldn't surface them).
+      const t0 = performance.now();
+      // 180-second timeout — Llama-1B on consumer WebGPU produces ~30-60
+      // tokens/sec; allow headroom for slow devices and first-call shader
+      // compilation. max_tokens caps the runaway-JSON risk.
       const createPromise = eng.chat.completions.create({
         messages: [
           {
@@ -430,13 +434,15 @@ export class WebLlmDetector implements Detector {
           },
           { role: 'user', content: prompt },
         ],
+        max_tokens: 800,
+        temperature: 0.1,
       });
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('WebLLM create() timed out after 60s')), 60_000)
+        setTimeout(() => reject(new Error('WebLLM create() timed out after 180s')), 180_000)
       );
       const response = await Promise.race([createPromise, timeoutPromise]);
-
-      console.log('[WebLlmDetector] create() resolved');
+      const elapsed = Math.round(performance.now() - t0);
+      console.log(`[WebLlmDetector] create() resolved in ${elapsed}ms`);
       rawContent = response.choices[0]?.message?.content ?? '';
     } catch (err) {
       console.error('[WebLlmDetector] create() failed', err);
