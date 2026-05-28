@@ -255,7 +255,8 @@ body {
 
 /* Entity highlight — per-category bg + fg.
    In the textarea overlay (.overlay-highlights), text must stay transparent
-   so it doesn't visually duplicate the textarea's own text on top. */
+   AND have zero horizontal padding so the spans don't shift the wrap points
+   relative to the underlying textarea (which has no per-word padding). */
 .ent {
   padding: 0 2px;
   border-radius: 2px;
@@ -264,6 +265,8 @@ body {
 }
 .overlay-highlights .ent {
   color: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
 }
 .ent[data-cat='person'] {
   background: var(--color-cat-person-bg);
