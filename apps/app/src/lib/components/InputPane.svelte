@@ -3,6 +3,7 @@
     parseFile,
     UnsupportedFormatError,
     PdfWorkerNotConfiguredError,
+    ACCEPTED_EXTENSIONS,
   } from '@de-pii/core/parsers';
   import { inputStore } from '../stores/inputStore.svelte.js';
   import { detectionStore } from '../stores/detectionStore.svelte.js';
@@ -54,7 +55,8 @@
     } catch (err) {
       if (err instanceof UnsupportedFormatError) {
         errorStore.show(
-          `Format nicht unterstützt: ${file.name}. Erlaubt: .txt .md .eml .pdf .docx .zip`
+          `Format nicht unterstützt: ${file.name}. ` +
+            `Erlaubt: ${ACCEPTED_EXTENSIONS.replace(/,/g, ' ')}`
         );
       } else if (err instanceof PdfWorkerNotConfiguredError) {
         errorStore.show('PDF-Worker nicht konfiguriert. Seite neu laden und erneut versuchen.');
@@ -241,7 +243,7 @@ Buchhaltung, Müller GmbH
     <input
       bind:this={fileInputEl}
       type="file"
-      accept=".txt,.md,.eml,.pdf,.docx,.zip"
+      accept={ACCEPTED_EXTENSIONS}
       class="sr-only"
       onchange={handleFileChange}
       aria-label="Datei auswählen"
@@ -249,8 +251,9 @@ Buchhaltung, Müller GmbH
     <button class="btn-ghost" onclick={() => fileInputEl?.click()}>↑ datei</button>
     <span
       class="font-[family-name:var(--font-mono)] text-[10.5px] text-[color:var(--color-ink-mute)]"
+      title={ACCEPTED_EXTENSIONS.replace(/,/g, ' ')}
     >
-      .txt .md .eml .pdf .docx .zip
+      Dokumente, Text, Code, Configs, Logs, ZIP
     </span>
 
     <button

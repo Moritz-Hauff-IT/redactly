@@ -4,11 +4,13 @@
  * Strips a UTF-8 BOM (EF BB BF) if present.
  */
 
+import type { SupportedFormat } from './formats.js';
+
 export interface ParseResult {
   text: string;
   meta: {
     source: string;
-    format: 'txt' | 'md' | 'eml' | 'pdf' | 'docx';
+    format: SupportedFormat;
     bytes: number;
     [key: string]: unknown;
   };
@@ -38,7 +40,8 @@ async function toUint8Array(
 }
 
 export async function parseTxtBlob(
-  input: Blob | ArrayBuffer | Uint8Array | string
+  input: Blob | ArrayBuffer | Uint8Array | string,
+  format: SupportedFormat = 'txt'
 ): Promise<ParseResult> {
   const { bytes, size } = await toUint8Array(input);
   const raw = new TextDecoder('utf-8').decode(bytes);
@@ -47,7 +50,7 @@ export async function parseTxtBlob(
     text,
     meta: {
       source: 'txt',
-      format: 'txt',
+      format,
       bytes: size,
     },
   };

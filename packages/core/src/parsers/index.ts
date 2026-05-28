@@ -11,15 +11,16 @@ export { parsePdfBlob, PdfWorkerNotConfiguredError } from './pdf.js';
 export { parseDocxBlob } from './docx.js';
 export { writeAsFormat, writeAsRedactedFormat, type WriteResult } from './writers.js';
 export { extractZip, packZip, type ZipManifest, type ZipEntry, type ZipPackEntry } from './zip.js';
+export type { SupportedFormat } from './formats.js';
+export { FORMAT_META } from './formats.js';
 
 import { parseTxtBlob } from './txt.js';
 import { parseMdBlob } from './md.js';
 import { parseEmlBlob } from './eml.js';
 import { parsePdfBlob } from './pdf.js';
 import { parseDocxBlob } from './docx.js';
+import { FORMAT_META, type SupportedFormat } from './formats.js';
 import type { ParseResult } from './txt.js';
-
-export type SupportedFormat = 'txt' | 'md' | 'eml' | 'pdf' | 'docx';
 
 /**
  * Thrown when `parseFile` encounters a file format it cannot handle.
@@ -31,10 +32,29 @@ export class UnsupportedFormatError extends Error {
   }
 }
 
+/**
+ * Filename extensions → SupportedFormat. Order matters for the comma-joined
+ * hint shown in the UI (drives the accept attribute order).
+ */
 const EXT_MAP: Record<string, SupportedFormat> = {
   txt: 'txt',
   md: 'md',
   markdown: 'md',
+  csv: 'csv',
+  tsv: 'tsv',
+  json: 'json',
+  yaml: 'yaml',
+  yml: 'yaml',
+  toml: 'toml',
+  ini: 'ini',
+  cfg: 'conf',
+  conf: 'conf',
+  env: 'env',
+  log: 'log',
+  sql: 'sql',
+  html: 'html',
+  htm: 'html',
+  xml: 'xml',
   eml: 'eml',
   pdf: 'pdf',
   docx: 'docx',
@@ -43,6 +63,17 @@ const EXT_MAP: Record<string, SupportedFormat> = {
 const MIME_MAP: Record<string, SupportedFormat> = {
   'text/plain': 'txt',
   'text/markdown': 'md',
+  'text/csv': 'csv',
+  'text/tab-separated-values': 'tsv',
+  'application/json': 'json',
+  'application/yaml': 'yaml',
+  'text/yaml': 'yaml',
+  'application/toml': 'toml',
+  'application/sql': 'sql',
+  'text/html': 'html',
+  'application/xhtml+xml': 'html',
+  'application/xml': 'xml',
+  'text/xml': 'xml',
   'message/rfc822': 'eml',
   'application/pdf': 'pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
@@ -51,15 +82,16 @@ const MIME_MAP: Record<string, SupportedFormat> = {
 /**
  * Detect the supported format from a filename and optional MIME type.
  * Returns `null` if the format is not recognized.
+ *
+ * Filename extensions are checked FIRST because browser-supplied MIME types
+ * are unreliable (many text-like formats arrive as empty or `text/plain`).
  */
 export function detectFormat(filename: string, mimeType?: string): SupportedFormat | null {
-  // Try filename extension first
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
   if (ext && ext in EXT_MAP) {
     return EXT_MAP[ext] as SupportedFormat;
   }
 
-  // Fall back to MIME type
   if (mimeType) {
     const normalizedMime = mimeType.split(';')[0]?.trim().toLowerCase() ?? '';
     if (normalizedMime in MIME_MAP) {
@@ -75,6 +107,21 @@ export interface FileInput {
   type?: string;
   data: Blob | ArrayBuffer | Uint8Array;
 }
+
+/**
+ * Comma-separated list of accepted extensions (for `<input accept>`) and a
+ * human-readable hint string. Derived from FORMAT_META so all three lists
+ * — the accept attribute, the UI hint, and the parser dispatcher — stay in
+ * sync automatically when a new format is added.
+ */
+export const ACCEPTED_EXTENSIONS = (() => {
+  const exts = new Set<string>();
+  for (const ext of Object.keys(EXT_MAP)) {
+    exts.add(`.${ext}`);
+  }
+  exts.add('.zip'); // ZIP is routed separately by the app (multi-file flow)
+  return [...exts].join(',');
+})();
 
 /**
  * Parse a file by detecting its format from the filename / mime type and
@@ -102,9 +149,8 @@ export async function parseFile(file: File | FileInput): Promise<ParseResult> {
     data = file.data;
   }
 
+  // Dedicated parsers for formats with structure beyond plain text
   switch (format) {
-    case 'txt':
-      return parseTxtBlob(data as Blob | ArrayBuffer | Uint8Array | string);
     case 'md':
       return parseMdBlob(data as Blob | ArrayBuffer | Uint8Array | string);
     case 'eml':
@@ -113,5 +159,18 @@ export async function parseFile(file: File | FileInput): Promise<ParseResult> {
       return parsePdfBlob(data as Blob | ArrayBuffer | Uint8Array);
     case 'docx':
       return parseDocxBlob(data as Blob | ArrayBuffer | Uint8Array);
+    default: {
+      // All other formats are text-like (FORMAT_META[format].isText === true).
+      // Same UTF-8 decoder, format discriminant preserves the original
+      // extension/MIME for the download path.
+      const meta = FORMAT_META[format];
+      if (!meta.isText) {
+        // Defensive — every non-text format should be handled in a case above.
+        throw new UnsupportedFormatError(
+          `Internal error: format "${format}" has isText=false but no dedicated parser.`
+        );
+      }
+      return parseTxtBlob(data as Blob | ArrayBuffer | Uint8Array | string, format);
+    }
   }
 }

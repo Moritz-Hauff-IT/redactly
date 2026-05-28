@@ -17,7 +17,7 @@
  *
  * All processing happens client-side. No bytes ever leave the tab.
  */
-import type { SupportedFormat } from './index.js';
+import { FORMAT_META, type SupportedFormat } from './formats.js';
 import type { Mapping } from '../masker.js';
 
 export interface WriteResult {
@@ -37,16 +37,24 @@ export async function writeAsFormat(
   baseName: string
 ): Promise<WriteResult> {
   switch (format) {
-    case 'txt':
-      return writeTxt(text, baseName);
-    case 'md':
-      return writeMd(text, baseName);
     case 'eml':
       return writeEml(text, baseName);
     case 'pdf':
       return writePdf(text, baseName);
     case 'docx':
       return writeDocx(text, baseName);
+    default: {
+      // All text-like formats (txt/md/csv/tsv/json/yaml/etc) share the same
+      // writer: the masked text wrapped in a Blob with the format's MIME
+      // type and extension. PII placeholders are pure ASCII (no commas,
+      // newlines, quotes) so CSV/TSV/JSON structure is preserved as long
+      // as the source was well-formed.
+      const meta = FORMAT_META[format];
+      if (!meta.isText) {
+        throw new Error(`Internal: format "${format}" has no writer`);
+      }
+      return writeText(text, baseName, format);
+    }
   }
 }
 
@@ -75,10 +83,10 @@ export async function writeAsRedactedFormat(
       return writePdfRedacted(originalBytes, mapping, baseName);
     case 'docx':
       return writeDocxRedacted(originalBytes, mapping, baseName);
-    case 'txt':
-    case 'md':
-    case 'eml':
-      // Inherently text; no layout to preserve beyond what plain-text gives us
+    default:
+      // All other formats (txt/md/eml/csv/tsv/json/yaml/etc.) are inherently
+      // text — there's no layout beyond what's in the text itself, so the
+      // masked text + plain-text writer gives a correct result. Fall through.
       return writeAsFormat(maskedText, format, baseName);
   }
 }
@@ -87,14 +95,19 @@ export async function writeAsRedactedFormat(
 // Plain-text writers (used when there's no original file to overlay)
 // ---------------------------------------------------------------------------
 
-function writeTxt(text: string, baseName: string): WriteResult {
-  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-  return { blob, filename: `${baseName}-masked.txt`, mimeType: 'text/plain' };
-}
-
-function writeMd(text: string, baseName: string): WriteResult {
-  const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
-  return { blob, filename: `${baseName}-masked.md`, mimeType: 'text/markdown' };
+/**
+ * Generic text-blob writer: wraps the masked text in a Blob with the format's
+ * MIME type and produces a filename with the format's canonical extension.
+ * Used for all text-like formats (txt/md/csv/tsv/json/yaml/log/sql/etc).
+ */
+function writeText(text: string, baseName: string, format: SupportedFormat): WriteResult {
+  const meta = FORMAT_META[format];
+  const blob = new Blob([text], { type: `${meta.mime};charset=utf-8` });
+  return {
+    blob,
+    filename: `${baseName}-masked.${meta.extension}`,
+    mimeType: meta.mime,
+  };
 }
 
 function writeEml(text: string, baseName: string): WriteResult {
