@@ -1,9 +1,357 @@
 @import 'tailwindcss';
 
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap');
+
+@theme {
+  /* Warm paper palette — editorial/clinical, inspired by depii-tool reference */
+  --color-bg: #faf8f3;
+  --color-bg-elev: #ffffff;
+  --color-bg-sunk: #f3efe6;
+  --color-ink: #1a1814;
+  --color-ink-soft: #5e574c;
+  --color-ink-mute: #948a7a;
+  --color-rule: #e6dfd0;
+  --color-rule-strong: #cdc4b1;
+  --color-accent: #b8470c;
+  --color-accent-soft: #fceee2;
+  --color-highlight: #fde68a;
+  --color-danger: #b91c1c;
+  --color-ok: #15803d;
+
+  /* Per-category accents — pastel BG + dark FG */
+  --color-cat-person-bg: #fde2e4;
+  --color-cat-person-fg: #831843;
+  --color-cat-contact-bg: #dbeafe;
+  --color-cat-contact-fg: #1e3a8a;
+  --color-cat-address-bg: #dcfce7;
+  --color-cat-address-fg: #14532d;
+  --color-cat-financial-bg: #fed7aa;
+  --color-cat-financial-fg: #7c2d12;
+  --color-cat-secret-bg: #fecaca;
+  --color-cat-secret-fg: #7f1d1d;
+  --color-cat-organization-bg: #f3e8ff;
+  --color-cat-organization-fg: #581c87;
+
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-serif: 'IBM Plex Serif', Georgia, serif;
+}
+
+html,
 body {
-  background-color: #0f172a;
-  color: #e2e8f0;
-  font-family: system-ui, sans-serif;
   margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle paper grain — radial dot pattern, very low contrast */
+body {
   min-height: 100vh;
+  background-image: radial-gradient(circle at 1px 1px, rgba(140, 120, 90, 0.04) 1px, transparent 0);
+  background-size: 4px 4px;
+}
+
+/* Mono label — small caps for section markers */
+.label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-mute);
+}
+
+/* Segmented control */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--color-bg-elev);
+}
+.seg-btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: transparent;
+  border: 0;
+  padding: 7px 14px;
+  cursor: pointer;
+  color: var(--color-ink-soft);
+  border-right: 1px solid var(--color-rule);
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.seg-btn:last-child {
+  border-right: 0;
+}
+.seg-btn:hover:not(:disabled) {
+  background: var(--color-bg-sunk);
+  color: var(--color-ink);
+}
+.seg-btn.active {
+  background: var(--color-ink);
+  color: var(--color-bg);
+}
+.seg-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Pill chip — for category filters */
+.chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 999px;
+  background: var(--color-bg-elev);
+  padding: 4px 11px;
+  cursor: pointer;
+  color: var(--color-ink-soft);
+  transition: all 0.12s;
+}
+.chip:hover {
+  border-color: var(--color-ink-soft);
+  color: var(--color-ink);
+}
+.chip.active {
+  background: var(--color-ink);
+  color: var(--color-bg);
+  border-color: var(--color-ink);
+}
+.chip-all.active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* Primary action button */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 13px;
+  background: var(--color-accent);
+  color: white;
+  border: 1px solid var(--color-accent);
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    transform 0.06s;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #9a3909;
+}
+.btn-primary:active {
+  transform: translateY(1px);
+}
+.btn-primary:disabled {
+  background: var(--color-rule-strong);
+  border-color: var(--color-rule-strong);
+  color: var(--color-ink-mute);
+  cursor: not-allowed;
+}
+.btn-primary .kbd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  opacity: 0.8;
+  padding-left: 4px;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  margin-left: 2px;
+}
+
+/* Ghost button — secondary actions */
+.btn-ghost {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  background: transparent;
+  border: 1px solid var(--color-rule-strong);
+  padding: 5px 11px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--color-ink-soft);
+  transition: all 0.12s;
+}
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--color-ink-soft);
+  color: var(--color-ink);
+  background: var(--color-bg-sunk);
+}
+.btn-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Icon button — for header */
+.btn-icon {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-ink-soft);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.btn-icon:hover {
+  background: var(--color-bg-sunk);
+  color: var(--color-ink);
+}
+
+/* Backend / status pill */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ink-soft);
+  padding: 5px 11px;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: var(--color-bg-elev);
+}
+.pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-ink-mute);
+}
+.pill .dot.online {
+  background: var(--color-ok);
+  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
+}
+.pill .dot.loading {
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(184, 71, 12, 0.12);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.pill .dot.error {
+  background: var(--color-danger);
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Entity highlight — per-category bg + fg */
+.ent {
+  padding: 0 2px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+.ent[data-cat='person'] {
+  background: var(--color-cat-person-bg);
+  color: var(--color-cat-person-fg);
+}
+.ent[data-cat='contact'] {
+  background: var(--color-cat-contact-bg);
+  color: var(--color-cat-contact-fg);
+}
+.ent[data-cat='address'] {
+  background: var(--color-cat-address-bg);
+  color: var(--color-cat-address-fg);
+}
+.ent[data-cat='financial'] {
+  background: var(--color-cat-financial-bg);
+  color: var(--color-cat-financial-fg);
+}
+.ent[data-cat='secret'] {
+  background: var(--color-cat-secret-bg);
+  color: var(--color-cat-secret-fg);
+}
+.ent[data-cat='organization'] {
+  background: var(--color-cat-organization-bg);
+  color: var(--color-cat-organization-fg);
+}
+.ent.disabled {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+/* Placeholder token in output — small inline tag */
+.token {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--color-bg-sunk);
+  border: 1px solid var(--color-rule);
+  color: var(--color-accent);
+  padding: 0 5px;
+  border-radius: 3px;
+}
+
+/* Pane card */
+.pane {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-elev);
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 320px;
+}
+.pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-rule);
+  padding: 10px 14px;
+  background: var(--color-bg);
+}
+.pane-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-mute);
+}
+
+/* Focus ring — accent color */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Drawer */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 24, 20, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+}
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 480px;
+  background: var(--color-bg);
+  border-left: 1px solid var(--color-rule-strong);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 32px rgba(26, 24, 20, 0.08);
 }

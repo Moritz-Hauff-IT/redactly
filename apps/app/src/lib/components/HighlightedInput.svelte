@@ -171,31 +171,30 @@
 
   const categoryLabels: Record<EntityCategory, string> = {
     person: 'Person',
-    contact: 'Contact',
-    address: 'Address',
-    financial: 'Financial',
+    contact: 'Kontakt',
+    address: 'Adresse',
+    financial: 'Finanz',
     secret: 'Secret',
-    organization: 'Organization',
+    organization: 'Firma',
   };
 </script>
 
-<div bind:this={containerEl} class="relative flex-1">
+<div bind:this={containerEl} class="relative min-h-0 flex-1">
   <!-- Highlight overlay (pointer-events-none, synced scroll) -->
   <div
     bind:this={overlayEl}
     aria-hidden="true"
-    class="pointer-events-none absolute inset-0 overflow-hidden rounded-md border border-transparent p-3 font-mono text-sm text-transparent"
+    class="pointer-events-none absolute inset-0 overflow-hidden px-4 py-3.5 font-[family-name:var(--font-mono)] text-[13px] leading-[1.65] text-transparent"
     style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
   >
     {#each segments as seg}
       {#if seg.entity}
-        {@const colors = categoryColors[seg.entity.category]}
         {@const isActive = detectionStore.enabledIds.has(seg.entity.id)}
-        <mark
-          class="rounded-sm {isActive ? colors.bg : colors.bgDisabled} pointer-events-none"
-          role="mark"
+        <span
+          class="ent"
+          class:disabled={!isActive}
           aria-label="{seg.entity.category}: {seg.entity.type}"
-          data-cat={seg.entity.category}>{seg.text}</mark
+          data-cat={seg.entity.category}>{seg.text}</span
         >
       {:else}
         {seg.text}
@@ -207,9 +206,12 @@
   <textarea
     bind:this={textareaEl}
     data-testid="input-textarea"
-    class="relative min-h-64 w-full flex-1 resize-none rounded-md border border-slate-700 bg-transparent p-3 font-mono text-sm text-slate-100 placeholder-slate-600 focus:border-slate-500 focus:outline-none"
-    style="caret-color: #e2e8f0;"
-    placeholder="Paste or type text here to detect and mask PII..."
+    class="relative h-full min-h-64 w-full resize-none border-0 bg-transparent px-4 py-3.5 font-[family-name:var(--font-mono)] text-[13px] leading-[1.65] text-[color:var(--color-ink)] placeholder-[color:var(--color-ink-mute)] focus:outline-none"
+    style="caret-color: var(--color-ink);"
+    placeholder="Text hier einfügen — wird lokal verarbeitet, verlässt deinen Browser nicht.
+
+⌘↵ zum Maskieren"
+    spellcheck="false"
     value={text}
     oninput={handleInput}
     onchange={handleChange}
@@ -221,23 +223,26 @@
   <!-- Selection popover for manual add -->
   {#if selectionInfo}
     <div
-      class="absolute z-20 flex gap-1 rounded-lg border border-slate-600 bg-slate-800 p-2 shadow-xl"
+      class="absolute z-20 flex gap-1 rounded-md border border-[color:var(--color-rule-strong)] bg-[color:var(--color-bg-elev)] p-1.5 shadow-lg"
       style="top: {selectionInfo.top -
         52}px; left: {selectionInfo.left}px; transform: translateX(-50%);"
     >
-      <span class="self-center pr-1 text-xs text-slate-400">Add as:</span>
+      <span
+        class="self-center pr-1.5 pl-1 font-[family-name:var(--font-mono)] text-[10.5px] tracking-[0.04em] text-[color:var(--color-ink-mute)] uppercase"
+        >+ markieren als</span
+      >
       {#each Object.entries(categoryLabels) as [cat, label]}
         <button
-          class="rounded px-2 py-1 text-xs font-medium transition-colors hover:bg-slate-700"
+          class="rounded px-2 py-1 text-[11.5px] font-medium text-[color:var(--color-ink-soft)] transition-colors hover:bg-[color:var(--color-bg-sunk)] hover:text-[color:var(--color-ink)]"
           onclick={() => addManualEntity(cat as EntityCategory)}
         >
           {label}
         </button>
       {/each}
       <button
-        class="ml-1 rounded px-2 py-1 text-xs text-slate-400 transition-colors hover:bg-slate-700"
+        class="ml-0.5 rounded px-1.5 py-1 text-[11px] text-[color:var(--color-ink-mute)] transition-colors hover:bg-[color:var(--color-bg-sunk)] hover:text-[color:var(--color-ink)]"
         onclick={() => (selectionInfo = null)}
-        aria-label="Close popover"
+        aria-label="Schließen"
       >
         ✕
       </button>

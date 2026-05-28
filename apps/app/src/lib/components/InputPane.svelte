@@ -39,14 +39,12 @@
     } catch (err) {
       if (err instanceof UnsupportedFormatError) {
         errorStore.show(
-          `Unsupported file format: ${file.name}. Supported: .txt, .md, .eml, .pdf, .docx`
+          `Format nicht unterstützt: ${file.name}. Erlaubt: .txt .md .eml .pdf .docx`
         );
       } else if (err instanceof PdfWorkerNotConfiguredError) {
-        errorStore.show('PDF worker not configured. Please refresh the page and try again.');
+        errorStore.show('PDF-Worker nicht konfiguriert. Seite neu laden und erneut versuchen.');
       } else {
-        errorStore.show(
-          `Failed to parse file: ${err instanceof Error ? err.message : 'Unknown error'}`
-        );
+        errorStore.show(`Fehler beim Parsen: ${err instanceof Error ? err.message : 'Unbekannt'}`);
       }
     }
   }
@@ -79,9 +77,30 @@
     }
   }
 
-  function clearFile() {
+  function clearInput() {
     inputStore.reset();
     detectionStore.clear();
+    onchange?.();
+  }
+
+  function loadSample() {
+    inputStore.set({
+      text: `Hallo Martin Müller,
+
+anbei die Rechnung über 1.450 € für Q2/2026.
+Bitte überweisen auf IBAN DE89 3704 0044 0532 0130 00.
+
+Kontakt bei Rückfragen: martin@müller-gmbh.de oder +49 89 12345678.
+Adresse: Marienplatz 8, 80331 München.
+
+Mit freundlichen Grüßen
+Sabine Hofmann
+Buchhaltung, Müller GmbH
+`,
+      filename: null,
+      format: 'txt',
+      bytes: 0,
+    });
     onchange?.();
   }
 
@@ -91,69 +110,47 @@
   }
 </script>
 
-<div class="flex h-full flex-col gap-2">
-  <!-- Header -->
-  <div class="flex items-center justify-between">
-    <span class="text-sm font-medium text-slate-300">
-      {inputStore.filename ? inputStore.filename : 'Input text'}
+<div class="pane">
+  <div class="pane-head">
+    <span class="pane-title">
+      {inputStore.filename ? inputStore.filename : 'eingabe'}
     </span>
     <div class="flex items-center gap-2">
       {#if inputStore.filename}
         <span
-          class="inline-flex items-center rounded bg-slate-700 px-2 py-0.5 text-xs text-slate-300"
+          class="font-[family-name:var(--font-mono)] text-[10.5px] tracking-[0.04em] text-[color:var(--color-ink-mute)] uppercase"
         >
-          {inputStore.format ?? 'txt'}
+          {inputStore.format ?? 'txt'} · {formatBytes(inputStore.bytes)}
+        </span>
+      {:else if inputStore.text.length > 0}
+        <span
+          class="font-[family-name:var(--font-mono)] text-[10.5px] text-[color:var(--color-ink-mute)]"
+        >
+          {inputStore.text.length} chars
         </span>
       {/if}
-      <span class="text-xs text-slate-500">
-        {inputStore.text.length} chars · {formatBytes(inputStore.bytes)}
-      </span>
+      <button class="btn-ghost" onclick={loadSample} title="Beispieltext laden">beispiel</button>
+      <button class="btn-ghost" disabled={!inputStore.text} onclick={clearInput}>leeren</button>
     </div>
   </div>
 
-  <!-- File info chip + Clear button -->
-  {#if inputStore.filename}
-    <div
-      class="flex items-center gap-2 rounded-md border border-slate-700 bg-slate-800/50 px-3 py-2"
-    >
-      <svg
-        class="h-4 w-4 flex-shrink-0 text-slate-400"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 20 20"
-        fill="currentColor"
-        aria-hidden="true"
-      >
-        <path
-          d="M3 3.5A1.5 1.5 0 014.5 2h6.879a1.5 1.5 0 011.06.44l4.122 4.12A1.5 1.5 0 0117 7.622V16.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 013 16.5v-13z"
-        />
-      </svg>
-      <span class="flex-1 truncate text-xs text-slate-300">{inputStore.filename}</span>
-      <span class="text-xs text-slate-500">{formatBytes(inputStore.bytes)}</span>
-      <button
-        class="rounded px-2 py-0.5 text-xs text-slate-400 transition-colors hover:bg-slate-700 hover:text-slate-200"
-        onclick={clearFile}
-      >
-        Clear file
-      </button>
-    </div>
-  {/if}
-
-  <!-- Drop zone + textarea area -->
+  <!-- Textarea + drop zone -->
   <div
-    class="relative flex flex-1 flex-col rounded-md border transition-colors {isDragOver
-      ? 'border-blue-500 ring-2 ring-blue-500/30'
-      : 'border-slate-700'} bg-slate-900"
+    class="relative flex flex-1 flex-col transition-colors"
+    class:bg-[color:var(--color-accent-soft)]={isDragOver}
     role="region"
-    aria-label="File drop zone"
+    aria-label="Eingabe-Bereich, Dateien ablegen möglich"
     ondragover={handleDragOver}
     ondragleave={handleDragLeave}
     ondrop={handleDrop}
   >
     {#if isDragOver}
-      <div
-        class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md bg-blue-900/30"
-      >
-        <span class="text-sm font-medium text-blue-300">Drop file to parse</span>
+      <div class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+        <span
+          class="font-[family-name:var(--font-mono)] text-[12px] font-medium text-[color:var(--color-accent)]"
+        >
+          → Datei hier ablegen zum Parsen
+        </span>
       </div>
     {/if}
 
@@ -164,68 +161,55 @@
     />
   </div>
 
-  <!-- Primary action row: Maskieren button, full-width, prominent -->
-  <button
-    type="button"
-    data-testid="mask-button"
-    class="inline-flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-    disabled={!inputStore.text.trim() || isAnalyzing}
-    onclick={() => onmask?.()}
-    title="Erkennt PII jetzt und maskiert den Text"
+  <!-- Bottom toolbar: file upload + primary mask button -->
+  <div
+    class="flex items-center gap-3 border-t border-[color:var(--color-rule)] bg-[color:var(--color-bg)] px-4 py-3"
   >
-    {#if isAnalyzing}
-      <svg class="h-4 w-4 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-opacity="0.3" stroke-width="2" />
-        <path
-          d="M14 8a6 6 0 00-6-6"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-        />
-      </svg>
-      Analysiere & maskiere…
-    {:else}
-      Maskieren
-      <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-        <path
-          fill-rule="evenodd"
-          d="M3 8a.75.75 0 01.75-.75h6.69L7.97 4.78a.75.75 0 011.06-1.06l3.75 3.75a.75.75 0 010 1.06l-3.75 3.75a.75.75 0 11-1.06-1.06l2.47-2.47H3.75A.75.75 0 013 8z"
-          clip-rule="evenodd"
-        />
-      </svg>
-    {/if}
-  </button>
-
-  <!-- File picker toolbar (secondary) -->
-  <div class="flex items-center gap-2">
     <input
       bind:this={fileInputEl}
       type="file"
       accept=".txt,.md,.eml,.pdf,.docx"
       class="sr-only"
       onchange={handleFileChange}
-      aria-label="Choose file to parse"
+      aria-label="Datei auswählen"
     />
-    <button
-      class="flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-slate-100"
-      onclick={() => fileInputEl?.click()}
+    <button class="btn-ghost" onclick={() => fileInputEl?.click()}>↑ datei</button>
+    <span
+      class="font-[family-name:var(--font-mono)] text-[10.5px] text-[color:var(--color-ink-mute)]"
     >
-      <svg
-        class="h-3.5 w-3.5"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 20 20"
-        fill="currentColor"
-        aria-hidden="true"
-      >
-        <path
-          d="M9.25 13.25a.75.75 0 001.5 0V4.636l2.955 3.129a.75.75 0 001.09-1.03l-4.25-4.5a.75.75 0 00-1.09 0l-4.25 4.5a.75.75 0 101.09 1.03L9.25 4.636v8.614z"
-        />
-        <path
-          d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"
-        />
-      </svg>
-      Upload file
+      .txt .md .eml .pdf .docx
+    </span>
+
+    <button
+      type="button"
+      data-testid="mask-button"
+      class="btn-primary ml-auto"
+      disabled={!inputStore.text.trim() || isAnalyzing}
+      onclick={() => onmask?.()}
+      title="Erkennt PII und maskiert (⌘↵)"
+    >
+      {#if isAnalyzing}
+        <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle
+            cx="8"
+            cy="8"
+            r="6"
+            stroke="currentColor"
+            stroke-opacity="0.35"
+            stroke-width="2"
+          />
+          <path
+            d="M14 8a6 6 0 00-6-6"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+        Analysiere …
+      {:else}
+        <span>Maskieren</span>
+        <span class="kbd">⌘↵</span>
+      {/if}
     </button>
-    <span class="text-xs text-slate-600">or drag &amp; drop · .txt .md .eml .pdf .docx</span>
   </div>
 </div>
