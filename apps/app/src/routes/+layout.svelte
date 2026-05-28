@@ -18,7 +18,7 @@
 
   onMount(() => {
     // Diagnostic dump on every mount so we can see WHY a detector is/isn't loading.
-    /* eslint-disable no-console */
+
     console.log('[auto-load] mount', {
       nerEnabled: settingsStore.nerEnabled,
       webllmEnabled: settingsStore.webllmEnabled,
@@ -26,10 +26,8 @@
       hasNavigator: typeof navigator !== 'undefined',
       hasWebGPU: typeof navigator !== 'undefined' && 'gpu' in navigator,
     });
-    /* eslint-enable no-console */
 
     if (settingsStore.nerEnabled) {
-      // eslint-disable-next-line no-console
       console.log('[auto-load] starting NER…');
       import('$lib/core/nerLoader.js').then(({ loadNer }) => {
         loadNer().catch((err: unknown) => {
@@ -37,13 +35,12 @@
         });
       });
     } else {
-      // eslint-disable-next-line no-console
       console.log('[auto-load] NER skipped (not enabled in settings)');
     }
 
     if (settingsStore.webllmEnabled && typeof navigator !== 'undefined' && 'gpu' in navigator) {
       const modelId = settingsStore.webllmModelId;
-      // eslint-disable-next-line no-console
+
       console.log('[auto-load] starting WebLLM…', { modelId });
       import('$lib/core/llmLoader.js').then(({ loadWebLlm }) => {
         loadWebLlm(modelId).catch((err: unknown) => {
@@ -51,7 +48,6 @@
         });
       });
     } else {
-      // eslint-disable-next-line no-console
       console.log('[auto-load] WebLLM skipped', {
         webllmEnabled: settingsStore.webllmEnabled,
         hasWebGPU: typeof navigator !== 'undefined' && 'gpu' in navigator,

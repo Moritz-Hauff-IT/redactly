@@ -208,10 +208,6 @@ interface RawLlmEntity {
   confidence: number;
 }
 
-interface LlmResponse {
-  entities: RawLlmEntity[];
-}
-
 /**
  * Coerce a value from various possible field names into a RawLlmEntity.
  * Small LLMs use inconsistent field naming — accept common variants.
@@ -391,7 +387,7 @@ export class WebLlmDetector implements Detector {
     // appears in the console, detect() is genuinely not being called by the
     // pipeline (Promise.all may have an issue) or the detector instance
     // running is a different one than what we think.
-    // eslint-disable-next-line no-console
+
     console.log('[WebLlmDetector] ENTRY', {
       debug: this.debug,
       engineReady: this.engine !== null,
@@ -399,16 +395,15 @@ export class WebLlmDetector implements Detector {
     });
 
     // Lazy load if not yet initialized
-    // eslint-disable-next-line no-console
+
     console.log('[WebLlmDetector] before ready()');
     await this.ready();
-    // eslint-disable-next-line no-console
+
     console.log('[WebLlmDetector] after ready() — engine:', this.engine !== null);
 
     // Capture engine reference — protect against concurrent dispose()
     const eng = this.engine;
     if (eng === null) {
-      // eslint-disable-next-line no-console
       console.log('[WebLlmDetector] engine null after ready() — disposed?');
       return [];
     }
@@ -422,7 +417,6 @@ export class WebLlmDetector implements Detector {
     // reliable across all supported models and we parse defensively below.
     let rawContent: string;
     try {
-      // eslint-disable-next-line no-console
       console.log('[WebLlmDetector] calling eng.chat.completions.create()');
       // 60-second timeout protects against MLC worker deadlocks (silent hangs
       // where the Promise neither resolves nor rejects — try/catch alone
@@ -441,11 +435,10 @@ export class WebLlmDetector implements Detector {
         setTimeout(() => reject(new Error('WebLLM create() timed out after 60s')), 60_000)
       );
       const response = await Promise.race([createPromise, timeoutPromise]);
-      // eslint-disable-next-line no-console
+
       console.log('[WebLlmDetector] create() resolved');
       rawContent = response.choices[0]?.message?.content ?? '';
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('[WebLlmDetector] create() failed', err);
       return [];
     }
@@ -502,7 +495,6 @@ export class WebLlmDetector implements Detector {
     entities.sort((a, b) => a.start - b.start || b.end - a.end);
 
     if (this.debug) {
-      // eslint-disable-next-line no-console
       console.log('[WebLlmDetector]', {
         modelId: this.modelId,
         rawResponseLength: rawContent.length,
