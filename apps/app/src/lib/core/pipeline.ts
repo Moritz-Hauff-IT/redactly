@@ -24,7 +24,11 @@ function buildPipeline(): Pipeline {
   if (nerDetector !== null) {
     detectors.push(nerDetector);
   }
-  if (webllmDetector !== null) {
+  // WebLLM only enters the text-PII pipeline when the user explicitly opts in
+  // (Settings → "WebLLM auch für Text-PII"). By default, an active WebLLM is
+  // reserved for orchestration tasks (file routing, plan generation) where
+  // small-LLM strengths fit better than primary entity extraction.
+  if (webllmDetector !== null && settingsStore.webllmTextPii) {
     detectors.push(webllmDetector);
   }
   const cats = [...settingsStore.enabledCategories] as EntityCategory[];

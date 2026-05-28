@@ -14,6 +14,7 @@ const LS_CATEGORIES_KEY = 'de-pii:settings:categories';
 const LS_NER_KEY = 'de-pii:settings:ner-enabled';
 const LS_WEBLLM_KEY = 'de-pii:settings:webllm-enabled';
 const LS_WEBLLM_MODEL_KEY = 'de-pii:settings:webllm-model';
+const LS_WEBLLM_TEXT_PII_KEY = 'de-pii:settings:webllm-text-pii';
 
 const DEFAULT_WEBLLM_MODEL = 'Llama-3.2-3B-Instruct-q4f16_1-MLC';
 
@@ -74,11 +75,20 @@ function loadWebllmModelId(): string {
   return safeLocalStorageGet(LS_WEBLLM_MODEL_KEY) ?? DEFAULT_WEBLLM_MODEL;
 }
 
+function loadWebllmTextPii(): boolean {
+  // Off by default — small browser LLMs are too slow/unreliable for primary
+  // text-PII extraction. WebLLM is preferred for orchestration (file routing,
+  // plan generation) where its strengths actually fit.
+  const raw = safeLocalStorageGet(LS_WEBLLM_TEXT_PII_KEY);
+  return raw === 'true';
+}
+
 function createSettingsStore() {
   let enabledCategories = $state<Set<EntityCategory>>(loadEnabledCategories());
   let nerEnabled = $state<boolean>(loadNerEnabled());
   let webllmEnabled = $state<boolean>(loadWebllmEnabled());
   let webllmModelId = $state<string>(loadWebllmModelId());
+  let webllmTextPii = $state<boolean>(loadWebllmTextPii());
 
   return {
     get enabledCategories() {
@@ -92,6 +102,12 @@ function createSettingsStore() {
     },
     get webllmModelId() {
       return webllmModelId;
+    },
+    /** When true, WebLLM also runs in the text-PII detection pipeline (slow).
+     * When false (default), WebLLM is only used for orchestration tasks
+     * (file routing, document classification, plan generation). */
+    get webllmTextPii() {
+      return webllmTextPii;
     },
     get allCategories() {
       return ALL_CATEGORIES;
@@ -139,6 +155,15 @@ function createSettingsStore() {
     clearWebllmPreference(): void {
       webllmEnabled = false;
       safeLocalStorageRemove(LS_WEBLLM_KEY);
+    },
+
+    setWebllmTextPii(b: boolean): void {
+      webllmTextPii = b;
+      if (b) {
+        safeLocalStorageSet(LS_WEBLLM_TEXT_PII_KEY, 'true');
+      } else {
+        safeLocalStorageRemove(LS_WEBLLM_TEXT_PII_KEY);
+      }
     },
   };
 }

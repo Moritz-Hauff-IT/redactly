@@ -214,10 +214,11 @@
 
       <!-- WebLLM -->
       <section>
-        <span class="label">WebLLM · Kontextuelles LLM (experimentell)</span>
+        <span class="label">WebLLM · Lokales LLM (für Orchestrierung)</span>
         <p class="mt-1 text-[12.5px] leading-snug text-[color:var(--color-ink-soft)]">
-          Lokales LLM im Browser via WebGPU. Versteht Kontext, fängt Edge-Cases ab, die NER
-          übersieht. Modell-Download in GB-Größe, bleibt im Browser-Cache (IndexedDB).
+          Lokales LLM im Browser via WebGPU. Standardrolle: <strong>Orchestrierung</strong> — entscheidet
+          bei ZIP-Uploads welche Files maskiert werden sollen, klassifiziert Dokumente, schlägt Custom-Rules
+          vor. Für reine Text-PII-Erkennung sind Regex und NER schneller und zuverlässiger.
         </p>
 
         {#if !webgpuSupported}
@@ -316,6 +317,42 @@
               <button class="btn-primary" onclick={handleWebLlmToggle}>WebLLM aktivieren</button>
             {/if}
           </div>
+
+          <!-- Text-PII opt-in: WebLLM also runs as a detector for raw text -->
+          {#if engineStore.webllm.status === 'ready'}
+            <div
+              class="mt-4 rounded-md border border-[color:var(--color-rule)] bg-[color:var(--color-bg-elev)] p-3.5"
+            >
+              <button
+                type="button"
+                class="flex w-full items-start justify-between gap-3 text-left"
+                onclick={() => settingsStore.setWebllmTextPii(!settingsStore.webllmTextPii)}
+              >
+                <span class="flex-1">
+                  <span class="block text-[13px] font-medium text-[color:var(--color-ink)]">
+                    WebLLM auch für Text-PII (langsam)
+                  </span>
+                  <span
+                    class="mt-0.5 block font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
+                  >
+                    Das LLM läuft zusätzlich zur Regex+NER-Pipeline auf deinem Text. Fängt manchmal
+                    Edge-Cases ab, kostet 10–60 s pro Maskierung. Empfohlen: aus.
+                  </span>
+                </span>
+                <span
+                  class="mt-0.5 inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full p-0.5 transition-colors {settingsStore.webllmTextPii
+                    ? 'bg-[color:var(--color-accent)]'
+                    : 'bg-[color:var(--color-rule-strong)]'}"
+                >
+                  <span
+                    class="h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform {settingsStore.webllmTextPii
+                      ? 'translate-x-4'
+                      : 'translate-x-0'}"
+                  ></span>
+                </span>
+              </button>
+            </div>
+          {/if}
         {/if}
       </section>
 
