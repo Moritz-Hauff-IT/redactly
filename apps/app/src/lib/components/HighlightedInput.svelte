@@ -187,19 +187,17 @@
     class="overlay-highlights pointer-events-none absolute inset-0 overflow-hidden px-4 py-3.5 font-[family-name:var(--font-mono)] text-[13px] leading-[1.65] text-transparent"
     style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
   >
-    {#each segments as seg}
-      {#if seg.entity}
-        {@const isActive = detectionStore.enabledIds.has(seg.entity.id)}
-        <span
+    <!-- IMPORTANT: no whitespace between control-flow blocks. With
+         white-space: pre-wrap the template indentation would render as
+         literal characters in the overlay, shifting it off the textarea. -->
+    {#each segments as seg}{#if seg.entity}{@const isActive = detectionStore.enabledIds.has(
+          seg.entity.id
+        )}<span
           class="ent"
           class:disabled={!isActive}
           aria-label="{seg.entity.category}: {seg.entity.type}"
           data-cat={seg.entity.category}>{seg.text}</span
-        >
-      {:else}
-        {seg.text}
-      {/if}
-    {/each}
+        >{:else}{seg.text}{/if}{/each}
   </div>
 
   <!-- Editable textarea on top -->
