@@ -327,20 +327,34 @@ export class WebLlmDetector implements Detector {
 
     const rawEntities = parseJsonResponse(rawContent);
     const entities: Entity[] = [];
+    const droppedByLabel: RawLlmEntity[] = [];
+    const droppedByConfidence: RawLlmEntity[] = [];
+    const droppedByMissingText: RawLlmEntity[] = [];
 
     for (const raw of rawEntities) {
       const mapping = mapLlmLabel(raw.type);
-      if (mapping === null) continue;
-      if (raw.confidence < this.minConfidence) continue;
+      if (mapping === null) {
+        droppedByLabel.push(raw);
+        continue;
+      }
+      if (raw.confidence < this.minConfidence) {
+        droppedByConfidence.push(raw);
+        continue;
+      }
 
       // Find all occurrences of the text in the input
       const needle = raw.text;
-      if (!needle || needle.length === 0) continue;
+      if (!needle || needle.length === 0) {
+        droppedByMissingText.push(raw);
+        continue;
+      }
 
+      let foundAtLeastOne = false;
       let searchFrom = 0;
       while (searchFrom < text.length) {
         const idx = text.indexOf(needle, searchFrom);
         if (idx === -1) break;
+        foundAtLeastOne = true;
 
         entities.push({
           start: idx,
@@ -354,10 +368,30 @@ export class WebLlmDetector implements Detector {
 
         searchFrom = idx + 1;
       }
+      if (!foundAtLeastOne) {
+        droppedByMissingText.push(raw);
+      }
     }
 
     // Sort by start offset
     entities.sort((a, b) => a.start - b.start || b.end - a.end);
+
+    if (this.debug) {
+      // eslint-disable-next-line no-console
+      console.log('[WebLlmDetector]', {
+        modelId: this.modelId,
+        rawResponseLength: rawContent.length,
+        rawResponse: rawContent,
+        parsedEntities: rawEntities.length,
+        emitted: entities.length,
+        droppedByLabel: droppedByLabel.length,
+        droppedByConfidence: droppedByConfidence.length,
+        droppedByMissingText: droppedByMissingText.length,
+        parsedDetail: rawEntities,
+        emittedDetail: entities,
+        droppedByMissingTextDetail: droppedByMissingText,
+      });
+    }
 
     return entities;
   }

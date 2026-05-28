@@ -243,33 +243,55 @@ export class NerDetector implements Detector {
         entityText = trimmed;
       }
 
-      // If word and slice diverge in length, treat the slice as the source of
-      // truth — the offsets are reliable, the tokenizer's `word` field may
-      // contain decoded variants. This recovers entities that previously got
-      // dropped due to Unicode normalization mismatches.
+      // Slice/offset reconciliation. Three reasons offsets can diverge from
+      // the tokenizer's decoded `word`:
+      //   1. Unicode normalization (NFC vs NFD)
+      //   2. Sub-word artifacts (## prefixes stripped by aggregator)
+      //   3. UTF-8 byte offsets vs UTF-16 code-unit offsets (BERT issue,
+      //      shifts everything after a multibyte char like ü/ö/ä/ß)
+      // Strategy: trust the WORD over the offsets — search for it in the
+      // source text and emit one entity per occurrence (like the LLM path).
       const sliced = text.slice(start, end);
-      if (sliced !== entityText) {
-        // Try Unicode NFC normalization on both sides
-        if (sliced.normalize('NFC') === entityText.normalize('NFC')) {
-          entityText = sliced;
-        } else if (sliced.length === end - start) {
-          // Offsets look valid even if word doesn't match — prefer the slice
-          entityText = sliced;
-        } else {
+      if (sliced === entityText || sliced.normalize('NFC') === entityText.normalize('NFC')) {
+        // Offsets are correct — use them as-is
+        entities.push({
+          start,
+          end,
+          type: mapping.type,
+          category: mapping.category,
+          text: sliced,
+          confidence: raw.score,
+          source: 'ner',
+        });
+      } else {
+        // Offsets are off (typical BERT UTF-8/UTF-16 issue with German text).
+        // Fall back to finding the word ourselves. Skip very short/ambiguous
+        // words (1–2 chars) to avoid spurious matches.
+        if (entityText.length < 3) {
           droppedBySlice.push({ raw, expected: entityText, got: sliced });
           continue;
         }
+        let foundAny = false;
+        let searchFrom = 0;
+        while (searchFrom < text.length) {
+          const idx = text.indexOf(entityText, searchFrom);
+          if (idx === -1) break;
+          foundAny = true;
+          entities.push({
+            start: idx,
+            end: idx + entityText.length,
+            type: mapping.type,
+            category: mapping.category,
+            text: entityText,
+            confidence: raw.score,
+            source: 'ner',
+          });
+          searchFrom = idx + entityText.length;
+        }
+        if (!foundAny) {
+          droppedBySlice.push({ raw, expected: entityText, got: sliced });
+        }
       }
-
-      entities.push({
-        start,
-        end,
-        type: mapping.type,
-        category: mapping.category,
-        text: entityText,
-        confidence: raw.score,
-        source: 'ner',
-      });
     }
 
     if (this.debug) {
