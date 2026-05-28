@@ -53,7 +53,9 @@ export async function loadWebLlm(modelId: string, reAnalyze?: ReAnalyzeFn): Prom
       }
     };
 
-    const webllmDetector = new WebLlmDetector({ modelId, onProgress });
+    // debug: true → console.log on every detect() call (early + summary) so
+    // users can diagnose silent LLM failures during alpha.
+    const webllmDetector = new WebLlmDetector({ modelId, onProgress, debug: true });
     detector = webllmDetector as unknown as WebLlmDetectorLike;
 
     await detector.ready();
