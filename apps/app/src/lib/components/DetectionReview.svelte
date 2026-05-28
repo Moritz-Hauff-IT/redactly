@@ -8,6 +8,7 @@
     contact: 'Kontakt',
     address: 'Adresse',
     financial: 'Finanz',
+    identity: 'ID',
     secret: 'Secret',
     organization: 'Firma',
   };

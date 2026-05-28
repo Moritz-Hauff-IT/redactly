@@ -7,6 +7,7 @@ export type EntityCategory =
   | 'organization' // companies, institutions (filled in by NER)
   | 'address' // postal / street / city (later NER)
   | 'financial' // IBAN, BIC, credit-card, tax IDs
+  | 'identity' // gov-issued IDs not directly financial: passport, AHV, license plate, employee ID, case ref
   | 'secret'; // API keys, tokens, JWT, private keys
 
 export type EntityType =
@@ -27,6 +28,14 @@ export type EntityType =
   | 'CREDIT_CARD'
   | 'TAX_ID_DE'
   | 'VAT_ID'
+  // identity — DACH-specific IDs
+  | 'CH_AHV'
+  | 'CH_UID'
+  | 'CH_PASSPORT'
+  | 'DE_PERSONALAUSWEIS'
+  | 'LICENSE_PLATE'
+  | 'EMPLOYEE_ID'
+  | 'INTERNAL_REF'
   // secrets
   | 'AWS_ACCESS_KEY'
   | 'AWS_SECRET_KEY'

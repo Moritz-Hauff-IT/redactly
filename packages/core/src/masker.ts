@@ -72,6 +72,14 @@ const DEFAULT_PREFIXES: Record<EntityType, string> = {
   CREDIT_CARD: 'CARD',
   TAX_ID_DE: 'TAX_ID',
   VAT_ID: 'VAT_ID',
+  // Identity (DACH-specific IDs)
+  CH_AHV: 'AHV',
+  CH_UID: 'UID',
+  CH_PASSPORT: 'PASS',
+  DE_PERSONALAUSWEIS: 'AUSWEIS',
+  LICENSE_PLATE: 'KFZ',
+  EMPLOYEE_ID: 'EMP_ID',
+  INTERNAL_REF: 'REF',
   // Secrets - all map to 'SECRET'
   AWS_ACCESS_KEY: 'SECRET',
   AWS_SECRET_KEY: 'SECRET',

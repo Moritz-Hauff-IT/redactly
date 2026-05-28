@@ -279,8 +279,9 @@ export class NerDetector implements Detector {
           // Word-boundary check: don't match inside a larger word (e.g. don't
           // match 'Buch' inside 'Buchhaltung'). A boundary is the string edge
           // OR a non-letter/digit character. Unicode-aware for German chars.
-          const before = idx > 0 ? text[idx - 1] : '';
-          const after = idx + entityText.length < text.length ? text[idx + entityText.length] : '';
+          const before = idx > 0 ? (text[idx - 1] ?? '') : '';
+          const after =
+            idx + entityText.length < text.length ? (text[idx + entityText.length] ?? '') : '';
           const isLetterOrDigit = (c: string): boolean => /[\p{L}\p{N}]/u.test(c);
           if (
             (before !== '' && isLetterOrDigit(before)) ||
@@ -325,7 +326,34 @@ export class NerDetector implements Detector {
     // Sort by start offset
     entities.sort((a, b) => a.start - b.start || b.end - a.end);
 
-    return entities;
+    // Merge adjacent same-type entities separated only by whitespace.
+    // BERT-multilingual often splits a name like "Sabine Hofmann" into two
+    // PERSON spans because of subword tokenization. We coalesce them so the
+    // user gets one [PERSON_1] instead of [PERSON_1] [PERSON_2].
+    const merged: Entity[] = [];
+    for (const ent of entities) {
+      const last = merged[merged.length - 1];
+      if (
+        last !== undefined &&
+        last.type === ent.type &&
+        last.category === ent.category &&
+        ent.start > last.end &&
+        ent.start - last.end <= 2 &&
+        /^\s+$/.test(text.slice(last.end, ent.start))
+      ) {
+        const newEnd = ent.end;
+        merged[merged.length - 1] = {
+          ...last,
+          end: newEnd,
+          text: text.slice(last.start, newEnd),
+          confidence: Math.max(last.confidence, ent.confidence),
+        };
+      } else {
+        merged.push(ent);
+      }
+    }
+
+    return merged;
   }
 
   /** Free underlying model weights from memory. */

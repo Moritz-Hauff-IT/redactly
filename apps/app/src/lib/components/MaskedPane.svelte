@@ -18,14 +18,14 @@
     }, 2000);
   }
 
-  function downloadMasked() {
+  async function downloadMasked() {
     if (!maskedText) return;
-    const fmt = inputStore.format;
-    const ext = fmt === 'md' ? 'md' : 'txt';
+    const fmt = inputStore.format ?? 'txt';
     const baseName = inputStore.filename ? inputStore.filename.replace(/\.[^.]+$/, '') : 'masked';
-    const filename = `${baseName}-masked.${ext}`;
 
-    const blob = new Blob([maskedText], { type: 'text/plain;charset=utf-8' });
+    const { writeAsFormat } = await import('@de-pii/core/parsers');
+    const { blob, filename } = await writeAsFormat(maskedText, fmt, baseName);
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

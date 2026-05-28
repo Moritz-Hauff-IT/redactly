@@ -14,11 +14,16 @@
   let { open = $bindable() }: Props = $props();
 
   const CATEGORY_INFO: Array<{ cat: EntityCategory; label: string; description: string }> = [
-    { cat: 'person', label: 'Personen', description: 'Namen (NER)' },
+    { cat: 'person', label: 'Personen', description: 'Namen (Regex Anrede + NER)' },
     { cat: 'contact', label: 'Kontakt', description: 'Email, Telefon, URL, IP' },
-    { cat: 'address', label: 'Adressen', description: 'Orte, Straßen (NER)' },
-    { cat: 'financial', label: 'Finanz', description: 'IBAN, Kreditkarte, Steuer-ID' },
-    { cat: 'secret', label: 'Secrets', description: 'API-Keys, JWTs, Tokens' },
+    { cat: 'address', label: 'Adressen', description: 'Straßen, Orte, Postleitzahlen' },
+    { cat: 'financial', label: 'Finanz', description: 'IBAN, BIC, Kreditkarte, Steuer-ID' },
+    {
+      cat: 'identity',
+      label: 'IDs (DACH)',
+      description: 'AHV-Nr, UID, Pass, Personalausweis, KFZ, Mitarbeiter-Nr, Aktenzeichen',
+    },
+    { cat: 'secret', label: 'Secrets', description: 'API-Keys, JWTs, Tokens, Passwörter' },
     { cat: 'organization', label: 'Organisationen', description: 'Firmennamen (NER)' },
   ];
 

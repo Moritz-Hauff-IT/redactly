@@ -31,6 +31,8 @@
   --color-cat-secret-fg: #7f1d1d;
   --color-cat-organization-bg: #f3e8ff;
   --color-cat-organization-fg: #581c87;
+  --color-cat-identity-bg: #fef3c7;
+  --color-cat-identity-fg: #78350f;
 
   --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
@@ -291,6 +293,10 @@ body {
 .ent[data-cat='organization'] {
   background: var(--color-cat-organization-bg);
   color: var(--color-cat-organization-fg);
+}
+.ent[data-cat='identity'] {
+  background: var(--color-cat-identity-bg);
+  color: var(--color-cat-identity-fg);
 }
 .ent.disabled {
   opacity: 0.4;

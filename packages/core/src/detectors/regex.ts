@@ -7,6 +7,7 @@ import type { Detector, Entity } from '../types.js';
 import { contactRules, type RegexRule } from './patterns/contact.js';
 import { financialRules } from './patterns/financial.js';
 import { secretRules } from './patterns/secrets.js';
+import { dachRules } from './patterns/dach.js';
 
 /**
  * Rules where the actual entity text lives in a capture group rather than the
@@ -14,12 +15,31 @@ import { secretRules } from './patterns/secrets.js';
  */
 const CAPTURE_GROUP_RULES = new Set<string>(['AWS_SECRET_KEY', 'GCP_KEY', 'AZURE_KEY']);
 
+/** Window (chars) around a match in which to look for context words. */
+const CONTEXT_WINDOW = 60;
+
+/**
+ * Check whether any of the rule's context words appears within ±CONTEXT_WINDOW
+ * chars of the given match position. Case-insensitive.
+ */
+function hasContextNear(text: string, contextWords: string[], start: number, end: number): boolean {
+  const windowStart = Math.max(0, start - CONTEXT_WINDOW);
+  const windowEnd = Math.min(text.length, end + CONTEXT_WINDOW);
+  const window = text.slice(windowStart, windowEnd).toLowerCase();
+  for (const word of contextWords) {
+    if (window.includes(word.toLowerCase())) return true;
+  }
+  return false;
+}
+
 export class RegexDetector implements Detector {
   readonly name = 'regex';
 
   private readonly rules: RegexRule[];
 
-  constructor(rules: RegexRule[] = [...contactRules, ...financialRules, ...secretRules]) {
+  constructor(
+    rules: RegexRule[] = [...contactRules, ...financialRules, ...secretRules, ...dachRules]
+  ) {
     this.rules = rules;
   }
 
@@ -36,16 +56,11 @@ export class RegexDetector implements Detector {
         let entityText: string;
 
         if (CAPTURE_GROUP_RULES.has(rule.type) && match[1] !== undefined) {
-          // The entity is the first capture group (e.g. the value after =).
-          // Compute the offset within the full match string so we never
-          // accidentally resolve to an earlier occurrence of the same value.
           const groupOffsetInMatch = match[0].indexOf(match[1]);
           const captureStart = match.index + groupOffsetInMatch;
           start = captureStart;
           entityText = match[1];
         } else if (rule.type === 'ENV_SECRET' && match[1] !== undefined) {
-          // ENV_SECRET captures the value portion in group 1.
-          // Same approach: resolve from match.index to avoid false earlier hits.
           const rawValue = match[1];
           const groupOffsetInMatch = match[0].indexOf(rawValue);
           start = match.index + groupOffsetInMatch;
@@ -66,13 +81,25 @@ export class RegexDetector implements Detector {
           continue;
         }
 
+        // Context check: boost confidence if context word nearby, OR drop
+        // entirely when `requiresContext` is set and no context word was found.
+        let confidence = rule.confidence;
+        if (rule.context && rule.context.length > 0) {
+          const ctxFound = hasContextNear(text, rule.context, start, end);
+          if (ctxFound) {
+            confidence = Math.min(0.99, confidence + 0.3);
+          } else if (rule.requiresContext) {
+            continue;
+          }
+        }
+
         entities.push({
           start,
           end,
           type: rule.type,
           category: rule.category,
           text: entityText,
-          confidence: rule.confidence,
+          confidence,
           source: 'regex',
         });
       }

@@ -38,6 +38,10 @@
       bg: 'bg-purple-300/40 text-purple-100',
       bgDisabled: 'bg-purple-300/10 text-purple-500 line-through',
     },
+    identity: {
+      bg: 'bg-amber-300/40 text-amber-100',
+      bgDisabled: 'bg-amber-300/10 text-amber-500 line-through',
+    },
   };
 
   // Build highlighted HTML from text + entities (sorted, non-overlapping)
@@ -175,6 +179,7 @@
       contact: 'EMAIL',
       address: 'LOCATION',
       financial: 'IBAN',
+      identity: 'INTERNAL_REF',
       secret: 'GENERIC_SECRET',
       organization: 'ORG',
     };
@@ -195,6 +200,7 @@
     contact: 'Kontakt',
     address: 'Adresse',
     financial: 'Finanz',
+    identity: 'ID',
     secret: 'Secret',
     organization: 'Firma',
   };

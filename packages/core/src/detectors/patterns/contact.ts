@@ -6,6 +6,12 @@ export interface RegexRule {
   pattern: RegExp; // must have global flag
   confidence: number;
   validate?: (match: string) => boolean;
+  /** Words that should appear within ±60 chars of the match. When provided
+   * and at least one is nearby, the emitted confidence is boosted by 0.3
+   * (capped at 0.99). When `requiresContext` is true, the match is dropped
+   * if no context word is found. */
+  context?: string[];
+  requiresContext?: boolean;
 }
 
 export const contactRules: RegexRule[] = [

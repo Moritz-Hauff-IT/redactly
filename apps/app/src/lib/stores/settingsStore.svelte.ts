@@ -5,6 +5,7 @@ const ALL_CATEGORIES: EntityCategory[] = [
   'contact',
   'address',
   'financial',
+  'identity',
   'secret',
   'organization',
 ];

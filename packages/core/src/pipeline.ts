@@ -154,6 +154,7 @@ export class Pipeline {
           'organization',
           'address',
           'financial',
+          'identity',
           'secret',
         ];
         this.enabledCategories = new Set(ALL.filter((c) => c !== category));

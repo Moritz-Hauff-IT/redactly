@@ -9,6 +9,7 @@ export { parseMdBlob } from './md.js';
 export { parseEmlBlob } from './eml.js';
 export { parsePdfBlob, PdfWorkerNotConfiguredError } from './pdf.js';
 export { parseDocxBlob } from './docx.js';
+export { writeAsFormat, type WriteResult } from './writers.js';
 
 import { parseTxtBlob } from './txt.js';
 import { parseMdBlob } from './md.js';
