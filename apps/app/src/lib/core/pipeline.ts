@@ -45,7 +45,16 @@ export function getPipeline(): Pipeline {
  * Analyze text for PII entities using the current pipeline configuration.
  */
 export async function analyze(text: string): Promise<Entity[]> {
+  /* eslint-disable no-console */
+  console.log('[pipeline.analyze] called', {
+    textLength: text.length,
+    nerDetectorPresent: nerDetector !== null,
+    webllmDetectorPresent: webllmDetector !== null,
+  });
+  /* eslint-enable no-console */
   const result = await getPipeline().analyze(text);
+  // eslint-disable-next-line no-console
+  console.log('[pipeline.analyze] returned', { entityCount: result.entities.length });
   return result.entities;
 }
 
