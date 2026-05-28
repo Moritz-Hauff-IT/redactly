@@ -68,12 +68,20 @@ describe('URL detection', () => {
     expect(hasMatch('See http://localhost:3000/api', 'URL')).toBe(true);
   });
 
-  it('does NOT match ftp:// (only http/https)', () => {
-    expect(noMatch('ftp://example.com/file', 'URL')).toBe(true);
+  it('does NOT match the ftp:// scheme as a full URL', () => {
+    // ftp:// itself isn't a recognized URL scheme by the http-only rule.
+    // The naked-domain rule does pick up `example.com` (the host part is
+    // PII regardless of scheme), which is the intended new behaviour.
+    const matches = findType('ftp://example.com/file', 'URL');
+    // ensure we don't grab "ftp://" or include the path
+    expect(matches.every((e) => !e.text.includes('ftp://'))).toBe(true);
+    expect(matches.every((e) => !e.text.includes('/file'))).toBe(true);
   });
 
-  it('does NOT match plain domain with no scheme', () => {
-    expect(noMatch('example.com is a domain', 'URL')).toBe(true);
+  it('detects bare domain without scheme via naked-domain rule', () => {
+    // Email signatures often list a website as just "company.ch" with no
+    // scheme. The naked-domain pattern (TLD whitelist) covers this.
+    expect(hasMatch('Visit haeberlinag.ch for details', 'URL')).toBe(true);
   });
 });
 

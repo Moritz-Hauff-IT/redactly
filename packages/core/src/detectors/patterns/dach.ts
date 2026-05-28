@@ -105,6 +105,37 @@ export const dachRules: RegexRule[] = [
     requiresContext: true,
   },
 
+  // ---- Organization with legal-form suffix (AG/GmbH/Co.KG/Ltd/Inc/etc.) ----
+  // Captures company names ending in a known legal-form abbreviation.
+  // Multilingual BERT NER reliably misses these — the deterministic suffix
+  // makes a high-precision regex match instead.
+  // Examples:
+  //   Häberlin Architekten AG
+  //   Müller GmbH
+  //   Schmidt & Partner GbR
+  //   Foo Bar Co. KG
+  //   Acme Inc.
+  {
+    type: 'ORG',
+    category: 'organization',
+    pattern:
+      /\b[A-ZÄÖÜ][\p{L}\-]+(?:[ \t](?:&[ \t])?[A-ZÄÖÜ][\p{L}\-]+){0,4}[ \t](?:AG|GmbH|GbR|KG|OHG|UG|SE|mbH|Co\.[ \t]*KG|e\.[ \t]?V\.|gAG|gGmbH|Sàrl|S\.[ \t]?à[ \t]?r\.[ \t]?l\.|Inc\.?|Ltd\.?|LLC|S\.A\.|N\.V\.|B\.V\.|S\.r\.l\.|S\.p\.A\.|S\.A\.S\.|Pty\.?[ \t]*Ltd\.?)\b/gu,
+    confidence: 0.9,
+  },
+
+  // ---- Naked domain (without https://) — common in email signatures ----
+  // TLD whitelist keeps precision high; lookbehind rejects @-prefixed
+  // matches so we don't double-detect email-domain parts (the EMAIL rule
+  // already covers those). Lowercase-only host part since real domains
+  // are case-insensitive but written lowercase by convention.
+  {
+    type: 'URL',
+    category: 'contact',
+    pattern:
+      /(?<![@\w.])[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?)*\.(?:com|net|org|io|app|dev|eu|ch|de|at|li|fr|it|es|uk|nl|be|info|biz|me|co|us|ca|au|jp|cn|tv|fm|ai|tech|store|online|site|cloud|email|news|blog|shop|pro|name|gov|edu)\b/g,
+    confidence: 0.7,
+  },
+
   // ---- Internal reference IDs: Aktenzeichen / Auftragsnummer / Ticket-Nr ----
   // Examples: VB-2024-0317, FOR-2024-019, SOC-2024-44719, #FOR-2024-019
   {
@@ -153,6 +184,19 @@ export const dachRules: RegexRule[] = [
     pattern:
       /(?<=\b(?:Hallo|Hi|Liebe[rn]?|Sehr geehrte[rn]?|Werte[rn]?|Herr|Frau|Hr\.|Fr\.|Dr\.|Prof\.|Mag\.|Dipl\.) )(?:[A-ZÄÖÜ][a-zäöüß\-]+(?:[\s\-][A-ZÄÖÜ][a-zäöüß\-]+){0,3})/g,
     confidence: 0.8,
+  },
+  // Closing-salutation + person name: "Mit freundlichen Grüßen [NAME]".
+  // Captures the FULL name (first + last + optional middle) so NER's
+  // single-name splits get covered by this regex. Required because the
+  // multilingual BERT NER reliably misses names after closing-salutation
+  // signature blocks. Supports DE/CH (Grüße/Grüsse), formal & informal,
+  // and English equivalents commonly used in DACH business mail.
+  {
+    type: 'PERSON',
+    category: 'person',
+    pattern:
+      /(?<=\b(?:Mit freundlichen Grü(?:ß|ss)en|Freundliche Grü(?:ß|ss)e|Beste Grü(?:ß|ss)e|Herzliche Grü(?:ß|ss)e|Liebe Grü(?:ß|ss)e|Viele Grü(?:ß|ss)e|MfG|LG|VG|Best regards|Kind regards|Regards|Sincerely|Cheers|Hochachtungsvoll|Gru(?:ß|ss))[ \t,]*(?:\n[ \t]*){0,3})[A-ZÄÖÜ][a-zäöüß\-]+(?:[ \-][A-ZÄÖÜ][a-zäöüß\-]+){1,3}(?=\s|[,.;:]|$)/gu,
+    confidence: 0.78,
   },
   // Signature line: "Dr. K. Schmidt", "M. Bianchi" with strong context (Grüsse/Grüßen/MfG)
   {
