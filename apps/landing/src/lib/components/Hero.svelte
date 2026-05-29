@@ -1,6 +1,31 @@
 <script lang="ts">
   import CtaButton from './CtaButton.svelte';
-  import { localizedHref } from '$lib/i18n/locale.svelte.js';
+  import { loc, localizedHref } from '$lib/i18n/locale.svelte.js';
+
+  const demoInputPrefix = $derived(loc({ de: 'Hallo ', en: 'Hi ' }));
+  const demoInputMid = $derived(
+    loc({ de: ', anbei die Rechnung an ', en: ', invoice attached, billed to ' })
+  );
+  const demoInputAfter = $derived(
+    loc({ de: '. Bitte überweisen auf IBAN ', en: '. Please pay to IBAN ' })
+  );
+  const demoYourDraft = $derived(loc({ de: 'dein Entwurf', en: 'your draft' }));
+  const demoRedactedTo = $derived(loc({ de: '→ ans LLM', en: '→ to llm' }));
+  const demoEntitiesPre = $derived(
+    loc({ de: ' Entitäten erkannt · ', en: ' entities detected · ' })
+  );
+  const demoReversible = $derived(loc({ de: 'reversibles', en: 'reversible' }));
+  const demoMappingSaved = $derived(
+    loc({ de: ' Mapping gespeichert · ', en: ' mapping stored · ' })
+  );
+  const metaCmd = $derived(loc({ de: '> redactly_init', en: '> redactly_init' }));
+  const metaTag = $derived(
+    loc({
+      de: '// browser-resident pii masking',
+      en: '// browser-resident pii masking',
+    })
+  );
+  const docsLabel = $derived(loc({ de: 'cat readme.md', en: 'cat readme.md' }));
 </script>
 
 <section
@@ -17,8 +42,8 @@
   <div class="mx-auto max-w-7xl px-5 sm:px-8">
     <!-- Top meta row -->
     <div class="mb-12 flex flex-wrap items-center gap-x-6 gap-y-2">
-      <span class="label-signal label">> redactly_init</span>
-      <span class="label">// browser-resident pii masking</span>
+      <span class="label-signal label">{metaCmd}</span>
+      <span class="label">{metaTag}</span>
     </div>
 
     <!-- Massive headline -->
@@ -53,7 +78,7 @@
             href={localizedHref('/docs')}
             class="group inline-flex items-center gap-2 border border-[color:var(--color-line-strong)] px-6 py-4 font-[family-name:var(--font-mono)] text-[0.8rem] tracking-[0.1em] uppercase text-[color:var(--color-text-dim)] transition-all hover:border-[color:var(--color-text)] hover:text-[color:var(--color-text)]"
           >
-            cat readme.md
+            {docsLabel}
             <span class="transition-transform group-hover:translate-x-0.5" aria-hidden="true"
               >→</span
             >
@@ -123,20 +148,20 @@
             <span class="label">input</span>
             <span
               class="font-[family-name:var(--font-mono)] text-[0.65rem] text-[color:var(--color-text-mute)]"
-              >your draft</span
+              >{demoYourDraft}</span
             >
           </div>
           <p
             class="font-[family-name:var(--font-mono)] text-[0.875rem] leading-[1.85] text-[color:var(--color-text)]"
           >
-            Hallo <span
-              class="bg-[color:var(--color-signal-soft)] text-[color:var(--color-signal)] px-1"
+            {demoInputPrefix}<span
+              class="bg-[color:var(--color-signal-soft)] px-1 text-[color:var(--color-signal)]"
               >Martin Müller</span
-            >, anbei die Rechnung an
-            <span class="bg-[color:var(--color-signal-soft)] text-[color:var(--color-signal)] px-1"
+            >{demoInputMid}<span
+              class="bg-[color:var(--color-signal-soft)] px-1 text-[color:var(--color-signal)]"
               >martin@müller.de</span
-            >. Bitte überweisen auf IBAN
-            <span class="bg-[color:var(--color-signal-soft)] text-[color:var(--color-signal)] px-1"
+            >{demoInputAfter}<span
+              class="bg-[color:var(--color-signal-soft)] px-1 text-[color:var(--color-signal)]"
               >DE89 3704 0044 0532 0130 00</span
             >.
           </p>
@@ -148,15 +173,17 @@
             <span class="label label-signal">redacted</span>
             <span
               class="font-[family-name:var(--font-mono)] text-[0.65rem] text-[color:var(--color-text-mute)]"
-              >→ to llm</span
+              >{demoRedactedTo}</span
             >
           </div>
           <p
             class="font-[family-name:var(--font-mono)] text-[0.875rem] leading-[1.85] text-[color:var(--color-text-dim)]"
           >
-            Hallo <span class="placeholder-token">[PERSON_1]</span>, anbei die Rechnung an
-            <span class="placeholder-token">[EMAIL_1]</span>. Bitte überweisen auf IBAN
-            <span class="placeholder-token">[IBAN_1]</span>.<span class="cursor ml-0.5"></span>
+            {demoInputPrefix}<span class="placeholder-token">[PERSON_1]</span>{demoInputMid}<span
+              class="placeholder-token">[EMAIL_1]</span
+            >{demoInputAfter}<span class="placeholder-token">[IBAN_1]</span>.<span
+              class="cursor ml-0.5"
+            ></span>
           </p>
         </div>
       </div>
@@ -165,9 +192,9 @@
       <div
         class="border-t border-[color:var(--color-line-strong)] bg-[color:var(--color-shell-sunken)] px-4 py-2 font-[family-name:var(--font-mono)] text-[0.7rem] text-[color:var(--color-text-mute)]"
       >
-        > <span class="text-[color:var(--color-signal)]">3</span> entities detected ·
-        <span class="text-[color:var(--color-ok)]">reversible</span> mapping stored ·
-        <span class="text-[color:var(--color-text-dim)]">tab.local</span>
+        > <span class="text-[color:var(--color-signal)]">3</span>{demoEntitiesPre}<span
+          class="text-[color:var(--color-ok)]">{demoReversible}</span
+        >{demoMappingSaved}<span class="text-[color:var(--color-text-dim)]">tab.local</span>
       </div>
     </div>
   </div>

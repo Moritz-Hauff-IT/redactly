@@ -1,6 +1,30 @@
 <script lang="ts">
   import type { ZipManifest } from '@de-pii/core/parsers';
   import type { FilePlan, FileAction } from '@de-pii/core/orchestrator';
+  import { loc } from '$lib/i18n/locale.svelte.js';
+
+  const s = {
+    title: { de: 'Archiv-Maskierung', en: 'Archive masking' },
+    files: { de: 'Dateien', en: 'files' },
+    close: { de: 'Schließen', en: 'Close' },
+    planning: { de: 'Plan wird generiert …', en: 'Generating plan…' },
+    suggestion: { de: 'Vorschlag:', en: 'Suggestion:' },
+    defaultPlan: { de: 'Heuristik-basierter Standard-Plan.', en: 'Heuristic default plan.' },
+    mask: { de: 'maskieren', en: 'mask' },
+    skip: { de: 'überspringen', en: 'skip' },
+    review: { de: 'prüfen', en: 'review' },
+    allMask: { de: 'alle maskieren', en: 'mask all' },
+    allSkip: { de: 'alle überspringen', en: 'skip all' },
+    replan: { de: '↻ neu planen', en: '↻ re-plan' },
+    keep: { de: 'behalten', en: 'keep' },
+    drop: { de: 'weglassen', en: 'drop' },
+    outputNote: {
+      de: 'Output: ZIP mit gleichem Verzeichnis-Layout, maskierte Dateien ersetzen Originale.',
+      en: 'Output: ZIP with the same directory layout, masked files replace originals.',
+    },
+    cancel: { de: 'abbrechen', en: 'cancel' },
+    apply: { de: 'Plan ausführen', en: 'Apply plan' },
+  } as const;
 
   interface Props {
     manifest: ZipManifest;
@@ -65,15 +89,16 @@
           id="zip-review-title"
           class="font-[family-name:var(--font-serif)] text-[20px] leading-none font-medium tracking-[-0.01em]"
         >
-          Archiv-Maskierung
+          {loc(s.title)}
         </h2>
         <p
           class="mt-2 font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
         >
-          {manifest.filename} · {manifest.totalEntries} Dateien · {formatSize(manifest.totalBytes)}
+          {manifest.filename} · {manifest.totalEntries}
+          {loc(s.files)} · {formatSize(manifest.totalBytes)}
         </p>
       </div>
-      <button class="btn-icon" onclick={onClose} aria-label="Schließen">
+      <button class="btn-icon" onclick={onClose} aria-label={loc(s.close)}>
         <svg
           width="18"
           height="18"
@@ -92,23 +117,23 @@
       class="border-b border-[color:var(--color-rule)] bg-[color:var(--color-bg-sunk)] px-6 py-3"
     >
       {#if loading}
-        <p class="text-[12.5px] text-[color:var(--color-ink-soft)]">Plan wird generiert …</p>
+        <p class="text-[12.5px] text-[color:var(--color-ink-soft)]">{loc(s.planning)}</p>
       {:else}
         <p class="text-[12.5px] text-[color:var(--color-ink)]">
-          <strong class="text-[color:var(--color-accent)]">Vorschlag:</strong>
-          {editedPlan.summary || 'Heuristik-basierter Standard-Plan.'}
+          <strong class="text-[color:var(--color-accent)]">{loc(s.suggestion)}</strong>
+          {editedPlan.summary || loc(s.defaultPlan)}
         </p>
         <div class="mt-2 flex flex-wrap items-center gap-3 text-[11.5px]">
-          <span class="text-[color:var(--color-ink-mute)]">{counts.mask} maskieren</span>
+          <span class="text-[color:var(--color-ink-mute)]">{counts.mask} {loc(s.mask)}</span>
           <span class="text-[color:var(--color-ink-mute)]">·</span>
-          <span class="text-[color:var(--color-ink-mute)]">{counts.skip} überspringen</span>
+          <span class="text-[color:var(--color-ink-mute)]">{counts.skip} {loc(s.skip)}</span>
           <span class="text-[color:var(--color-ink-mute)]">·</span>
-          <span class="text-[color:var(--color-ink-mute)]">{counts.review} prüfen</span>
+          <span class="text-[color:var(--color-ink-mute)]">{counts.review} {loc(s.review)}</span>
           <span class="ml-auto flex items-center gap-1.5">
-            <button class="btn-ghost" onclick={() => bulkSet('mask')}>alle maskieren</button>
-            <button class="btn-ghost" onclick={() => bulkSet('skip')}>alle überspringen</button>
+            <button class="btn-ghost" onclick={() => bulkSet('mask')}>{loc(s.allMask)}</button>
+            <button class="btn-ghost" onclick={() => bulkSet('skip')}>{loc(s.allSkip)}</button>
             {#if onRegeneratePlan}
-              <button class="btn-ghost" onclick={onRegeneratePlan}>↻ neu planen</button>
+              <button class="btn-ghost" onclick={onRegeneratePlan}>{loc(s.replan)}</button>
             {/if}
           </span>
         </div>
@@ -144,17 +169,17 @@
               <button
                 class="seg-btn"
                 class:active={entry.action === 'mask'}
-                onclick={() => setAction(entry.path, 'mask')}>maskieren</button
+                onclick={() => setAction(entry.path, 'mask')}>{loc(s.mask)}</button
               >
               <button
                 class="seg-btn"
                 class:active={entry.action === 'review'}
-                onclick={() => setAction(entry.path, 'review')}>behalten</button
+                onclick={() => setAction(entry.path, 'review')}>{loc(s.keep)}</button
               >
               <button
                 class="seg-btn"
                 class:active={entry.action === 'skip'}
-                onclick={() => setAction(entry.path, 'skip')}>weglassen</button
+                onclick={() => setAction(entry.path, 'skip')}>{loc(s.drop)}</button
               >
             </div>
           </li>
@@ -166,16 +191,16 @@
       class="flex items-center justify-between gap-3 border-t border-[color:var(--color-rule)] px-6 py-4"
     >
       <span class="text-[11.5px] text-[color:var(--color-ink-mute)]">
-        Output: ZIP mit gleichem Verzeichnis-Layout, maskierte Dateien ersetzen Originale.
+        {loc(s.outputNote)}
       </span>
       <div class="flex items-center gap-2">
-        <button class="btn-ghost" onclick={onClose}>abbrechen</button>
+        <button class="btn-ghost" onclick={onClose}>{loc(s.cancel)}</button>
         <button
           class="btn-primary"
           disabled={loading || counts.mask === 0}
           onclick={() => onApply(editedPlan)}
         >
-          Plan ausführen
+          {loc(s.apply)}
         </button>
       </div>
     </footer>

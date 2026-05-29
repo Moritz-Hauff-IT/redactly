@@ -29,3 +29,12 @@ export function switchLocaleHref(currentPath: string, toLocale: Locale): string 
   const bare = currentPath.replace(/^\/en(?=\/|$)/, '') || '/';
   return localizedHref(bare, toLocale);
 }
+
+/**
+ * Pick the current-locale value from a `{ de, en }` pair. Use this for
+ * component-local bilingual data structures where defining flat keys in
+ * `messages.ts` would be more friction than it's worth.
+ */
+export function loc<T>(value: { de: T; en: T }): T {
+  return value[currentLocale()];
+}

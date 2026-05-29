@@ -7,7 +7,16 @@
   import { onMount } from 'svelte';
   import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
   import { engineStore } from '$lib/stores/engineStore.svelte.js';
+  import { page } from '$app/state';
+  import { t } from '$lib/i18n/locale.svelte.js';
   import type { Snippet } from 'svelte';
+
+  // Mirror URL locale onto <html lang> for a11y / browser hints.
+  $effect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = page.params.lang === 'en' ? 'en' : 'de';
+    }
+  });
 
   interface Props {
     children: Snippet;
@@ -98,7 +107,7 @@
       <span
         class="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.02em] text-[color:var(--color-ink-mute)]"
       >
-        local redaction · läuft in deinem Browser
+        {t('app_brand_tagline')}
       </span>
     </a>
 
@@ -111,8 +120,8 @@
       <button
         class="btn-icon"
         onclick={() => (drawerOpen = true)}
-        title="Einstellungen"
-        aria-label="Einstellungen öffnen"
+        title={t('app_settings')}
+        aria-label={t('app_settings_open')}
       >
         <svg
           width="18"

@@ -67,6 +67,77 @@ export const messages = {
 
   // ---- Language switcher ----
   lang_switch_label: { de: 'Sprache', en: 'Language' },
+
+  // ---- App chrome ----
+  app_brand_tagline: {
+    de: 'local redaction · läuft in deinem Browser',
+    en: 'local redaction · runs in your browser',
+  },
+  app_settings: { de: 'Einstellungen', en: 'Settings' },
+  app_settings_open: { de: 'Einstellungen öffnen', en: 'Open settings' },
+  app_settings_close: { de: 'Schließen', en: 'Close' },
+
+  // ---- Detection review ----
+  detection_title: { de: 'Erkannte Entities', en: 'Detected entities' },
+  detection_none: {
+    de: 'Noch keine Entities erkannt — klick „Maskieren" um zu starten.',
+    en: 'No entities yet — click "Mask" to start.',
+  },
+  detection_toggle_on: { de: 'aktiv', en: 'on' },
+  detection_toggle_off: { de: 'aus', en: 'off' },
+  detection_count: { de: '{n} erkannt', en: '{n} detected' },
+
+  // ---- Restore pane ----
+  restore_title: { de: 'wiederherstellung', en: 'restore' },
+  restore_input_placeholder: {
+    de: 'LLM-Antwort hier einfügen — Platzhalter werden mit Original-Werten ersetzt',
+    en: "Paste the LLM's reply here — placeholders are swapped for original values",
+  },
+  restore_output_title: { de: 'Wiederhergestellt', en: 'Restored' },
+  restore_output_empty: {
+    de: 'Die wiederhergestellte Version landet hier.',
+    en: 'The restored text will appear here.',
+  },
+  restore_unknown_placeholder_warn: {
+    de: '{n} Platzhalter konnten nicht aufgelöst werden (waren nicht im Mapping).',
+    en: "{n} placeholders couldn't be resolved (they weren't in the mapping).",
+  },
+
+  // ---- ZIP review ----
+  zip_review_title: { de: 'ZIP-Verarbeitung', en: 'ZIP review' },
+  zip_review_subtitle: {
+    de: 'Entscheide pro Datei, was passieren soll.',
+    en: 'Choose what to do for each file.',
+  },
+  zip_action_mask: { de: 'maskieren', en: 'mask' },
+  zip_action_keep: { de: 'behalten', en: 'keep' },
+  zip_action_skip: { de: 'weglassen', en: 'skip' },
+  zip_bulk_all_mask: { de: 'alle maskieren', en: 'mask all' },
+  zip_bulk_all_keep: { de: 'alle behalten', en: 'keep all' },
+  zip_bulk_all_skip: { de: 'alle weglassen', en: 'skip all' },
+  zip_btn_apply: { de: 'Plan anwenden', en: 'Apply plan' },
+  zip_btn_cancel: { de: 'Abbrechen', en: 'Cancel' },
+  zip_progress_running: {
+    de: 'Verarbeite {current}/{total}…',
+    en: 'Processing {current}/{total}…',
+  },
+  zip_progress_done: { de: 'Fertig. Download bereit.', en: 'Done. Download ready.' },
+
+  // ---- Highlight overlay ----
+  highlight_placeholder: {
+    de: 'Text einfügen oder Datei hochladen …',
+    en: 'Paste text or upload a file …',
+  },
+
+  // ---- Errors / toasts ----
+  error_zip_failed: {
+    de: 'ZIP-Verarbeitung fehlgeschlagen: {message}',
+    en: 'ZIP processing failed: {message}',
+  },
+  error_mask_failed: {
+    de: 'Maskierung fehlgeschlagen: {message}',
+    en: 'Masking failed: {message}',
+  },
 } as const;
 
 export type MessageKey = keyof typeof messages;

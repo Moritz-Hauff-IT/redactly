@@ -6,6 +6,12 @@
   import { loadWebLlm, unloadWebLlm } from '$lib/core/llmLoader.js';
   import { SUPPORTED_WEBLLM_MODELS } from '@de-pii/core';
   import type { EntityCategory } from '@de-pii/core/types';
+  import { loc } from '$lib/i18n/locale.svelte.js';
+
+  interface BL {
+    de: string;
+    en: string;
+  }
 
   interface Props {
     open: boolean;
@@ -13,19 +19,124 @@
 
   let { open = $bindable() }: Props = $props();
 
-  const CATEGORY_INFO: Array<{ cat: EntityCategory; label: string; description: string }> = [
-    { cat: 'person', label: 'Personen', description: 'Namen (Regex Anrede + NER)' },
-    { cat: 'contact', label: 'Kontakt', description: 'Email, Telefon, URL, IP' },
-    { cat: 'address', label: 'Adressen', description: 'Straßen, Orte, Postleitzahlen' },
-    { cat: 'financial', label: 'Finanz', description: 'IBAN, BIC, Kreditkarte, Steuer-ID' },
+  const CATEGORY_INFO: Array<{ cat: EntityCategory; label: BL; description: BL }> = [
+    {
+      cat: 'person',
+      label: { de: 'Personen', en: 'People' },
+      description: { de: 'Namen (Regex Anrede + NER)', en: 'Names (salutation regex + NER)' },
+    },
+    {
+      cat: 'contact',
+      label: { de: 'Kontakt', en: 'Contact' },
+      description: { de: 'Email, Telefon, URL, IP', en: 'Email, phone, URL, IP' },
+    },
+    {
+      cat: 'address',
+      label: { de: 'Adressen', en: 'Addresses' },
+      description: {
+        de: 'Straßen, Orte, Postleitzahlen',
+        en: 'Streets, cities, postal codes',
+      },
+    },
+    {
+      cat: 'financial',
+      label: { de: 'Finanz', en: 'Financial' },
+      description: {
+        de: 'IBAN, BIC, Kreditkarte, Steuer-ID',
+        en: 'IBAN, BIC, credit card, tax ID',
+      },
+    },
     {
       cat: 'identity',
-      label: 'IDs (DACH)',
-      description: 'AHV-Nr, UID, Pass, Personalausweis, KFZ, Mitarbeiter-Nr, Aktenzeichen',
+      label: { de: 'IDs (DACH)', en: 'IDs (DACH)' },
+      description: {
+        de: 'AHV-Nr, UID, Pass, Personalausweis, KFZ, Mitarbeiter-Nr, Aktenzeichen',
+        en: 'AHV no., UID, passport, ID card, plates, employee no., case ref.',
+      },
     },
-    { cat: 'secret', label: 'Secrets', description: 'API-Keys, JWTs, Tokens, Passwörter' },
-    { cat: 'organization', label: 'Organisationen', description: 'Firmennamen (NER)' },
+    {
+      cat: 'secret',
+      label: { de: 'Secrets', en: 'Secrets' },
+      description: {
+        de: 'API-Keys, JWTs, Tokens, Passwörter',
+        en: 'API keys, JWTs, tokens, passwords',
+      },
+    },
+    {
+      cat: 'organization',
+      label: { de: 'Organisationen', en: 'Organisations' },
+      description: { de: 'Firmennamen (NER)', en: 'Company names (NER)' },
+    },
   ];
+
+  // Inline UI strings used by the drawer template.
+  const s = {
+    title: { de: 'Einstellungen', en: 'Settings' },
+    close: { de: 'Schließen', en: 'Close' },
+    backdropClose: { de: 'Drawer schließen', en: 'Close drawer' },
+    categoriesLabel: { de: 'Kategorien', en: 'Categories' },
+    categoriesIntro: {
+      de: 'Was soll erkannt werden? Deaktivierte Kategorien werden im Detection-Review nicht angezeigt.',
+      en: "What should be detected? Disabled categories don't appear in the detection review.",
+    },
+    nerLabel: {
+      de: 'NER · Named Entity Recognition',
+      en: 'NER · Named entity recognition',
+    },
+    nerIntro: {
+      de: 'Erkennt Personennamen, Organisationen und Orte, die kein vorhersagbares Muster haben. Multilingual BERT, ~140 MB Download, danach offline. DE + EN out of the box.',
+      en: 'Detects person names, organisations, and places that have no predictable pattern. Multilingual BERT, ~140 MB download, then offline. German + English out of the box.',
+    },
+    nerLoading: { de: 'Lade NER-Modell …', en: 'Loading NER model…' },
+    nerActive: { de: 'NER aktiv', en: 'NER active' },
+    nerTitle: { de: 'NER bereit', en: 'NER ready' },
+    nerDisable: { de: 'Deaktivieren', en: 'Disable' },
+    nerError: {
+      de: 'Fehler beim Laden des NER-Modells',
+      en: 'Error loading NER model',
+    },
+    nerRetry: { de: 'Erneut versuchen', en: 'Try again' },
+    nerEnable: { de: 'NER aktivieren', en: 'Enable NER' },
+    webllmLabel: {
+      de: 'WebLLM · Lokales LLM (für Orchestrierung)',
+      en: 'WebLLM · Local LLM (for orchestration)',
+    },
+    webllmIntroA: {
+      de: 'Lokales LLM im Browser via WebGPU. Standardrolle: ',
+      en: 'Local LLM in the browser via WebGPU. Default role: ',
+    },
+    webllmIntroEm: { de: 'Orchestrierung', en: 'orchestration' },
+    webllmIntroB: {
+      de: ' — entscheidet bei ZIP-Uploads welche Files maskiert werden sollen, klassifiziert Dokumente, schlägt Custom-Rules vor. Für reine Text-PII-Erkennung sind Regex und NER schneller und zuverlässiger.',
+      en: ' — decides which files in a ZIP upload should be masked, classifies documents, suggests custom rules. For raw text PII detection, regex + NER are faster and more reliable.',
+    },
+    webgpuMissing: {
+      de: 'WebGPU nicht verfügbar. Aktuelle Chrome oder Edge Desktop nötig.',
+      en: 'WebGPU not available. A current Chrome or Edge on desktop is required.',
+    },
+    modelLabel: { de: 'Modell', en: 'Model' },
+    webllmLoading: { de: 'Lade WebLLM …', en: 'Loading WebLLM…' },
+    webllmActive: { de: 'WebLLM aktiv', en: 'WebLLM active' },
+    webllmError: {
+      de: 'Fehler beim Laden des WebLLM-Modells',
+      en: 'Error loading WebLLM model',
+    },
+    webllmEnable: { de: 'WebLLM aktivieren', en: 'Enable WebLLM' },
+    webllmTextPiiTitle: {
+      de: 'WebLLM auch für Text-PII (langsam)',
+      en: 'Use WebLLM for text PII too (slow)',
+    },
+    webllmTextPiiBody: {
+      de: 'Das LLM läuft zusätzlich zur Regex+NER-Pipeline auf deinem Text. Fängt manchmal Edge-Cases ab, kostet 10–60 s pro Maskierung. Empfohlen: aus.',
+      en: 'The LLM runs in addition to the regex + NER pipeline on your text. Catches occasional edge cases at a cost of 10–60 s per mask. Recommended: off.',
+    },
+    infoLabel: { de: 'Info', en: 'Info' },
+    infoBody: {
+      de: 'Redactly läuft 100 % in deinem Browser. Es gibt keinen Server, der deinen Text empfängt. Modelle werden einmalig vom HuggingFace-CDN geladen und im Browser gecacht.',
+      en: 'Redactly runs 100% in your browser. There is no server that receives your text. Models are downloaded once from the HuggingFace CDN and cached in the browser.',
+    },
+    infoVersion: { de: 'v0.1.0-alpha · MIT-Lizenz', en: 'v0.1.0-alpha · MIT licence' },
+  } as const;
 
   function isEnabled(cat: EntityCategory): boolean {
     return settingsStore.enabledCategories.has(cat);
@@ -68,7 +179,7 @@
 
 {#if open}
   <!-- backdrop — click closes -->
-  <button class="drawer-backdrop" onclick={close} aria-label="Drawer schließen" type="button"
+  <button class="drawer-backdrop" onclick={close} aria-label={loc(s.backdropClose)} type="button"
   ></button>
 
   <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
@@ -79,9 +190,9 @@
         id="drawer-title"
         class="font-[family-name:var(--font-serif)] text-[20px] leading-none font-medium tracking-[-0.01em]"
       >
-        Einstellungen
+        {loc(s.title)}
       </h2>
-      <button class="btn-icon" onclick={close} aria-label="Schließen">
+      <button class="btn-icon" onclick={close} aria-label={loc(s.close)}>
         <svg
           width="18"
           height="18"
@@ -99,10 +210,9 @@
     <div class="flex-1 overflow-y-auto px-7 py-6">
       <!-- Detection categories -->
       <section>
-        <span class="label">Kategorien</span>
+        <span class="label">{loc(s.categoriesLabel)}</span>
         <p class="mt-1 text-[12.5px] leading-snug text-[color:var(--color-ink-soft)]">
-          Was soll erkannt werden? Deaktivierte Kategorien werden im Detection-Review nicht
-          angezeigt.
+          {loc(s.categoriesIntro)}
         </p>
         <ul class="mt-4 space-y-2">
           {#each CATEGORY_INFO as info}
@@ -114,12 +224,12 @@
               >
                 <span class="flex-1">
                   <span class="block text-[13px] font-medium text-[color:var(--color-ink)]"
-                    >{info.label}</span
+                    >{loc(info.label)}</span
                   >
                   <span
                     class="block font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
                   >
-                    {info.description}
+                    {loc(info.description)}
                   </span>
                 </span>
                 <span
@@ -147,10 +257,9 @@
 
       <!-- NER -->
       <section>
-        <span class="label">NER · Named Entity Recognition</span>
+        <span class="label">{loc(s.nerLabel)}</span>
         <p class="mt-1 text-[12.5px] leading-snug text-[color:var(--color-ink-soft)]">
-          Erkennt Personennamen, Organisationen und Orte, die kein vorhersagbares Muster haben.
-          Multilingual BERT, ~140 MB Download, danach offline. DE + EN out of the box.
+          {loc(s.nerIntro)}
         </p>
 
         <div class="mt-4">
@@ -160,7 +269,7 @@
             >
               <div class="flex items-center justify-between">
                 <span class="text-[12px] font-medium text-[color:var(--color-accent)]"
-                  >Lade NER-Modell …</span
+                  >{loc(s.nerLoading)}</span
                 >
                 <span
                   class="font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-accent)]"
@@ -184,16 +293,16 @@
             </div>
           {:else if engineStore.ner.status === 'ready'}
             <div class="flex items-center justify-between gap-3">
-              <span class="pill" title="NER bereit">
+              <span class="pill" title={loc(s.nerTitle)}>
                 <span class="dot online"></span>
-                NER aktiv
+                {loc(s.nerActive)}
               </span>
-              <button class="btn-ghost" onclick={handleNerToggle}>Deaktivieren</button>
+              <button class="btn-ghost" onclick={handleNerToggle}>{loc(s.nerDisable)}</button>
             </div>
           {:else if engineStore.ner.status === 'error'}
             <div class="rounded-md border border-[color:var(--color-danger)] bg-red-50 px-3.5 py-3">
               <p class="text-[12px] font-medium text-[color:var(--color-danger)]">
-                Fehler beim Laden des NER-Modells
+                {loc(s.nerError)}
               </p>
               {#if engineStore.ner.message}
                 <p
@@ -202,10 +311,10 @@
                   {engineStore.ner.message}
                 </p>
               {/if}
-              <button class="btn-ghost mt-3" onclick={handleNerToggle}>Erneut versuchen</button>
+              <button class="btn-ghost mt-3" onclick={handleNerToggle}>{loc(s.nerRetry)}</button>
             </div>
           {:else}
-            <button class="btn-primary" onclick={handleNerToggle}> NER aktivieren </button>
+            <button class="btn-primary" onclick={handleNerToggle}>{loc(s.nerEnable)}</button>
           {/if}
         </div>
       </section>
@@ -214,11 +323,9 @@
 
       <!-- WebLLM -->
       <section>
-        <span class="label">WebLLM · Lokales LLM (für Orchestrierung)</span>
+        <span class="label">{loc(s.webllmLabel)}</span>
         <p class="mt-1 text-[12.5px] leading-snug text-[color:var(--color-ink-soft)]">
-          Lokales LLM im Browser via WebGPU. Standardrolle: <strong>Orchestrierung</strong> — entscheidet
-          bei ZIP-Uploads welche Files maskiert werden sollen, klassifiziert Dokumente, schlägt Custom-Rules
-          vor. Für reine Text-PII-Erkennung sind Regex und NER schneller und zuverlässiger.
+          {loc(s.webllmIntroA)}<strong>{loc(s.webllmIntroEm)}</strong>{loc(s.webllmIntroB)}
         </p>
 
         {#if !webgpuSupported}
@@ -226,7 +333,7 @@
             class="mt-4 rounded-md border border-[color:var(--color-rule-strong)] bg-[color:var(--color-bg-sunk)] px-3.5 py-3"
           >
             <p class="text-[12px] text-[color:var(--color-ink-soft)]">
-              WebGPU nicht verfügbar. Aktuelle Chrome oder Edge Desktop nötig.
+              {loc(s.webgpuMissing)}
             </p>
           </div>
         {:else}
@@ -235,7 +342,7 @@
               for="webllm-model-select"
               class="block font-[family-name:var(--font-mono)] text-[10.5px] tracking-[0.08em] text-[color:var(--color-ink-mute)] uppercase"
             >
-              Modell
+              {loc(s.modelLabel)}
             </label>
             <select
               id="webllm-model-select"
@@ -265,7 +372,7 @@
               >
                 <div class="flex items-center justify-between">
                   <span class="text-[12px] font-medium text-[color:var(--color-accent)]"
-                    >Lade WebLLM …</span
+                    >{loc(s.webllmLoading)}</span
                   >
                   <span
                     class="font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-accent)]"
@@ -291,16 +398,16 @@
               <div class="flex items-center justify-between gap-3">
                 <span class="pill">
                   <span class="dot online"></span>
-                  WebLLM aktiv
+                  {loc(s.webllmActive)}
                 </span>
-                <button class="btn-ghost" onclick={handleWebLlmToggle}>Deaktivieren</button>
+                <button class="btn-ghost" onclick={handleWebLlmToggle}>{loc(s.nerDisable)}</button>
               </div>
             {:else if engineStore.webllm.status === 'error'}
               <div
                 class="rounded-md border border-[color:var(--color-danger)] bg-red-50 px-3.5 py-3"
               >
                 <p class="text-[12px] font-medium text-[color:var(--color-danger)]">
-                  Fehler beim Laden des WebLLM-Modells
+                  {loc(s.webllmError)}
                 </p>
                 {#if engineStore.webllm.message}
                   <p
@@ -310,11 +417,12 @@
                   </p>
                 {/if}
                 <button class="btn-ghost mt-3" onclick={handleWebLlmToggle}>
-                  Erneut versuchen
+                  {loc(s.nerRetry)}
                 </button>
               </div>
             {:else}
-              <button class="btn-primary" onclick={handleWebLlmToggle}>WebLLM aktivieren</button>
+              <button class="btn-primary" onclick={handleWebLlmToggle}>{loc(s.webllmEnable)}</button
+              >
             {/if}
           </div>
 
@@ -330,13 +438,12 @@
               >
                 <span class="flex-1">
                   <span class="block text-[13px] font-medium text-[color:var(--color-ink)]">
-                    WebLLM auch für Text-PII (langsam)
+                    {loc(s.webllmTextPiiTitle)}
                   </span>
                   <span
                     class="mt-0.5 block font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
                   >
-                    Das LLM läuft zusätzlich zur Regex+NER-Pipeline auf deinem Text. Fängt manchmal
-                    Edge-Cases ab, kostet 10–60 s pro Maskierung. Empfohlen: aus.
+                    {loc(s.webllmTextPiiBody)}
                   </span>
                 </span>
                 <span
@@ -359,13 +466,12 @@
       <hr class="my-7 border-[color:var(--color-rule)]" />
 
       <section>
-        <span class="label">Info</span>
+        <span class="label">{loc(s.infoLabel)}</span>
         <p class="mt-2 text-[12.5px] leading-snug text-[color:var(--color-ink-soft)]">
-          Redactly läuft 100 % in deinem Browser. Es gibt keinen Server, der deinen Text empfängt.
-          Modelle werden einmalig vom HuggingFace-CDN geladen und im Browser gecacht.
+          {loc(s.infoBody)}
         </p>
         <p class="mt-2 text-[11.5px] text-[color:var(--color-ink-mute)]">
-          v0.1.0-alpha · MIT-Lizenz
+          {loc(s.infoVersion)}
         </p>
       </section>
     </div>

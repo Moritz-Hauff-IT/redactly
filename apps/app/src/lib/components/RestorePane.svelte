@@ -2,10 +2,56 @@
   import { restore } from '@de-pii/core/restorer';
   import { mappingStore } from '../stores/mappingStore.svelte.js';
   import { restoreStore } from '../stores/restoreStore.svelte.js';
+  import { loc } from '$lib/i18n/locale.svelte.js';
 
   let tolerant = $state(true);
   let copied = $state(false);
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const s = {
+    heading: { de: 'LLM-Antwort wiederherstellen', en: 'Restore LLM response' },
+    tolerantTip: {
+      de: 'Erlaubt LLM-Schreibvarianten wie [PERSON 1], <PERSON_1>, …',
+      en: 'Accepts LLM variants like [PERSON 1], <PERSON_1>, …',
+    },
+    tolerantLabel: { de: 'tolerant', en: 'tolerant' },
+    noMappingWarn: {
+      de: 'Kein aktives Mapping — erst etwas oben unter „redact" maskieren.',
+      en: "No active mapping yet — mask something above under 'redact' first.",
+    },
+    emptyTitle: {
+      de: 'Erst oben maskieren, um ein Mapping zu erzeugen.',
+      en: 'Mask something above to create a mapping first.',
+    },
+    emptyBody: {
+      de: 'Sobald ein Mapping existiert, kannst du hier die LLM-Antwort einfügen und die echten Werte werden lokal restauriert.',
+      en: 'Once a mapping exists, paste the LLM response here and the originals are restored locally.',
+    },
+    inputLabel: { de: 'LLM-Antwort (mit Platzhaltern)', en: 'LLM response (with placeholders)' },
+    inputPlaceholder: {
+      de: 'LLM-Antwort hier einfügen — z.B. „Klar, schicke die Rechnung an [EMAIL_1] (IBAN [IBAN_1])."',
+      en: 'Paste the LLM response here — e.g. "Sure, sending the invoice to [EMAIL_1] (IBAN [IBAN_1])."',
+    },
+    outputLabel: { de: 'Wiederhergestellt', en: 'Restored' },
+    copy: { de: 'kopieren', en: 'copy' },
+    copied: { de: 'kopiert ✓', en: 'copied ✓' },
+    outputEmpty: {
+      de: 'Wiederhergestellter Text erscheint hier …',
+      en: 'Restored text will appear here…',
+    },
+    restoredCount: { de: '{n} restauriert', en: '{n} restored' },
+    unusedTip: { de: 'Das LLM hat diese nicht erwähnt', en: "The LLM didn't reference these" },
+    unusedCount: { de: '{n} ungenutzt', en: '{n} unused' },
+    unknownTip: {
+      de: 'Das LLM hat Platzhalter halluziniert — sorgfältig prüfen',
+      en: 'The LLM hallucinated placeholders — check carefully',
+    },
+    unknownCount: { de: '{n} unbekannt', en: '{n} unknown' },
+  } as const;
+
+  function tsub(template: string, params: Record<string, string | number>): string {
+    return template.replace(/\{(\w+)\}/g, (_m, n) => String(params[n] ?? `{${n}}`));
+  }
 
   const mappingEmpty = $derived(!mappingStore.current || mappingStore.current.forward.size === 0);
 
@@ -59,18 +105,18 @@
     <h2
       class="font-[family-name:var(--font-serif)] text-[16px] leading-none font-medium text-[color:var(--color-ink)]"
     >
-      LLM-Antwort wiederherstellen
+      {loc(s.heading)}
     </h2>
     <label
       class="flex items-center gap-2 text-[11.5px] text-[color:var(--color-ink-soft)]"
-      title="Erlaubt LLM-Schreibvarianten wie [PERSON 1], <PERSON_1>, …"
+      title={loc(s.tolerantTip)}
     >
       <input
         type="checkbox"
         bind:checked={tolerant}
         class="h-3.5 w-3.5 accent-[color:var(--color-accent)]"
       />
-      tolerant
+      {loc(s.tolerantLabel)}
     </label>
   </header>
 
@@ -79,30 +125,29 @@
       <div
         class="mb-4 rounded-md border border-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)] px-3 py-2 text-[12px] text-[color:var(--color-accent)]"
       >
-        Kein aktives Mapping — erst etwas oben unter „redact" maskieren.
+        {loc(s.noMappingWarn)}
       </div>
     {/if}
 
     {#if mappingEmpty && !hasInput}
       <div class="flex flex-col items-center gap-2 py-10 text-center">
         <p class="text-[13px] text-[color:var(--color-ink-soft)]">
-          Erst oben maskieren, um ein Mapping zu erzeugen.
+          {loc(s.emptyTitle)}
         </p>
         <p
           class="max-w-md font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
         >
-          Sobald ein Mapping existiert, kannst du hier die LLM-Antwort einfügen und die echten Werte
-          werden lokal restauriert.
+          {loc(s.emptyBody)}
         </p>
       </div>
     {:else}
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div class="flex flex-col gap-2">
-          <span class="label">LLM-Antwort (mit Platzhaltern)</span>
+          <span class="label">{loc(s.inputLabel)}</span>
           <textarea
             data-testid="restore-textarea"
             class="min-h-48 w-full resize-none rounded-md border border-[color:var(--color-rule)] bg-[color:var(--color-bg)] p-3 font-[family-name:var(--font-mono)] text-[13px] leading-[1.6] text-[color:var(--color-ink)] placeholder-[color:var(--color-ink-mute)] focus:border-[color:var(--color-accent)] focus:outline-none"
-            placeholder={`LLM-Antwort hier einfügen — z.B. „Klar, schicke die Rechnung an [EMAIL_1] (IBAN [IBAN_1])."`}
+            placeholder={loc(s.inputPlaceholder)}
             spellcheck="false"
             value={restoreStore.input}
             oninput={handleInputChange}
@@ -111,12 +156,12 @@
 
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
-            <span class="label">Wiederhergestellt</span>
+            <span class="label">{loc(s.outputLabel)}</span>
             <button class="btn-ghost" disabled={!restoredText} onclick={copyRestoredText}>
               {#if copied}
-                <span class="text-[color:var(--color-ok)]">kopiert ✓</span>
+                <span class="text-[color:var(--color-ok)]">{loc(s.copied)}</span>
               {:else}
-                kopieren
+                {loc(s.copy)}
               {/if}
             </button>
           </div>
@@ -126,7 +171,7 @@
               {hasUnknown
               ? 'border-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]/40'
               : 'border-[color:var(--color-rule)] bg-[color:var(--color-bg)]'}">{restoredText ||
-              'Wiederhergestellter Text erscheint hier …'}</pre>
+              loc(s.outputEmpty)}</pre>
         </div>
       </div>
 
@@ -146,17 +191,17 @@
                 ? 'bg-[color:var(--color-ok)]'
                 : 'bg-[color:var(--color-rule-strong)]'}"
             ></span>
-            {restored.length} restauriert
+            {tsub(loc(s.restoredCount), { n: restored.length })}
           </span>
 
           <span
             data-testid="restore-count-unused"
             class="flex items-center gap-1.5 text-[color:var(--color-ink-mute)]"
-            title="Das LLM hat diese nicht erwähnt"
+            title={loc(s.unusedTip)}
           >
             <span class="inline-block h-2 w-2 rounded-full bg-[color:var(--color-rule-strong)]"
             ></span>
-            {unused.length} ungenutzt
+            {tsub(loc(s.unusedCount), { n: unused.length })}
           </span>
 
           <span
@@ -164,14 +209,14 @@
             class="flex items-center gap-1.5 {unknown.length > 0
               ? 'text-[color:var(--color-danger)]'
               : 'text-[color:var(--color-ink-mute)]'}"
-            title="Das LLM hat Platzhalter halluziniert — sorgfältig prüfen"
+            title={loc(s.unknownTip)}
           >
             <span
               class="inline-block h-2 w-2 rounded-full {unknown.length > 0
                 ? 'bg-[color:var(--color-danger)]'
                 : 'bg-[color:var(--color-rule-strong)]'}"
             ></span>
-            {unknown.length} unbekannt
+            {tsub(loc(s.unknownCount), { n: unknown.length })}
           </span>
 
           {#if unknown.length > 0}

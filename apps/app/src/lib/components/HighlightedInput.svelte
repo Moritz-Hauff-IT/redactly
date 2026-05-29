@@ -2,6 +2,7 @@
   import type { EntityCategory } from '@de-pii/core/types';
   import type { EntityWithId } from '../stores/detectionStore.svelte.js';
   import { detectionStore } from '../stores/detectionStore.svelte.js';
+  import { loc } from '$lib/i18n/locale.svelte.js';
 
   interface Props {
     text: string;
@@ -195,15 +196,24 @@
     selectionInfo = null;
   }
 
-  const categoryLabels: Record<EntityCategory, string> = {
-    person: 'Person',
-    contact: 'Kontakt',
-    address: 'Adresse',
-    financial: 'Finanz',
-    identity: 'ID',
-    secret: 'Secret',
-    organization: 'Firma',
+  const categoryLabels: Record<EntityCategory, { de: string; en: string }> = {
+    person: { de: 'Person', en: 'Person' },
+    contact: { de: 'Kontakt', en: 'Contact' },
+    address: { de: 'Adresse', en: 'Address' },
+    financial: { de: 'Finanz', en: 'Finance' },
+    identity: { de: 'ID', en: 'ID' },
+    secret: { de: 'Secret', en: 'Secret' },
+    organization: { de: 'Firma', en: 'Org' },
   };
+
+  const markAsLabel = $derived(loc({ de: '+ markieren als', en: '+ mark as' }));
+  const placeholderText = $derived(
+    loc({
+      de: 'Text hier einfügen — wird lokal verarbeitet, verlässt deinen Browser nicht.\n\n⌘↵ zum Maskieren',
+      en: 'Paste text here — processed locally, never leaves your browser.\n\n⌘↵ to mask',
+    })
+  );
+  const closeLabel = $derived(loc({ de: 'Schließen', en: 'Close' }));
 </script>
 
 <div bind:this={containerEl} class="relative min-h-0 flex-1">
@@ -227,9 +237,7 @@
     data-testid="input-textarea"
     class="relative h-full min-h-64 w-full resize-none border-0 bg-transparent px-4 py-3.5 font-[family-name:var(--font-mono)] text-[13px] leading-[1.65] text-[color:var(--color-ink)] placeholder-[color:var(--color-ink-mute)] focus:outline-none"
     style="caret-color: var(--color-ink);"
-    placeholder="Text hier einfügen — wird lokal verarbeitet, verlässt deinen Browser nicht.
-
-⌘↵ zum Maskieren"
+    placeholder={placeholderText}
     spellcheck="false"
     value={text}
     oninput={handleInput}
@@ -248,20 +256,20 @@
     >
       <span
         class="self-center pr-1.5 pl-1 font-[family-name:var(--font-mono)] text-[10.5px] tracking-[0.04em] text-[color:var(--color-ink-mute)] uppercase"
-        >+ markieren als</span
+        >{markAsLabel}</span
       >
       {#each Object.entries(categoryLabels) as [cat, label]}
         <button
           class="rounded px-2 py-1 text-[11.5px] font-medium text-[color:var(--color-ink-soft)] transition-colors hover:bg-[color:var(--color-bg-sunk)] hover:text-[color:var(--color-ink)]"
           onclick={() => addManualEntity(cat as EntityCategory)}
         >
-          {label}
+          {loc(label)}
         </button>
       {/each}
       <button
         class="ml-0.5 rounded px-1.5 py-1 text-[11px] text-[color:var(--color-ink-mute)] transition-colors hover:bg-[color:var(--color-bg-sunk)] hover:text-[color:var(--color-ink)]"
         onclick={() => (selectionInfo = null)}
-        aria-label="Schließen"
+        aria-label={closeLabel}
       >
         ✕
       </button>

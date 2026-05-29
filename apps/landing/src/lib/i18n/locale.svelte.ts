@@ -62,3 +62,13 @@ export function switchLocaleHref(currentPath: string, toLocale: Locale): string 
   const bare = currentPath.replace(/^\/en(?=\/|$)/, '') || '/';
   return localizedHref(bare, toLocale);
 }
+
+/**
+ * Pick the current-locale value from a `{ de, en }` pair. Use this for
+ * page-local content blocks (FAQ entries, feature lists, hero copy) where
+ * defining flat keys in `messages.ts` would be more friction than it's worth.
+ *   loc({ de: 'Hallo', en: 'Hi' })  // → 'Hallo' or 'Hi' depending on URL
+ */
+export function loc<T>(value: { de: T; en: T }): T {
+  return value[currentLocale()];
+}

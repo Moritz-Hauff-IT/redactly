@@ -2,16 +2,42 @@
   import type { EntityCategory } from '@de-pii/core/types';
   import { detectionStore, type EntityWithId } from '../stores/detectionStore.svelte.js';
   import { mappingStore } from '../stores/mappingStore.svelte.js';
+  import { loc } from '$lib/i18n/locale.svelte.js';
 
-  const CATEGORY_LABELS: Record<EntityCategory, string> = {
-    person: 'Person',
-    contact: 'Kontakt',
-    address: 'Adresse',
-    financial: 'Finanz',
-    identity: 'ID',
-    secret: 'Secret',
-    organization: 'Firma',
+  const CATEGORY_LABELS: Record<EntityCategory, { de: string; en: string }> = {
+    person: { de: 'Person', en: 'Person' },
+    contact: { de: 'Kontakt', en: 'Contact' },
+    address: { de: 'Adresse', en: 'Address' },
+    financial: { de: 'Finanz', en: 'Finance' },
+    identity: { de: 'ID', en: 'ID' },
+    secret: { de: 'Secret', en: 'Secret' },
+    organization: { de: 'Firma', en: 'Org' },
   };
+
+  // UI strings local to this component
+  const s = {
+    heading: { de: 'Mapping', en: 'Mapping' },
+    countSummary: { de: '{a} aktiv / {t} erkannt', en: '{a} active / {t} detected' },
+    filterAll: { de: 'alle', en: 'all' },
+    filterOn: { de: 'aktiv', en: 'active' },
+    filterOff: { de: 'ignoriert', en: 'ignored' },
+    emptyTitle: { de: 'Noch keine PII erkannt', en: 'No PII detected yet' },
+    emptyBody: {
+      de: 'Tippe oder lade Text und klick „Maskieren". Was hier nicht auftaucht, wurde nicht erkannt — prüf ggf. NER oder WebLLM in den Einstellungen.',
+      en: 'Type or load text and click "Mask". Anything not shown here wasn\'t detected — enable NER or WebLLM in settings if you need broader coverage.',
+    },
+    catAll: { de: 'alles', en: 'all' },
+    colCategory: { de: 'Kategorie', en: 'Category' },
+    colOriginal: { de: 'Original', en: 'Original' },
+    colReplacement: { de: 'Ersatz', en: 'Replacement' },
+    colActions: { de: 'Aktionen', en: 'Actions' },
+    toggleAria: { de: 'Toggle {x}', en: 'Toggle {x}' },
+    removeAria: { de: 'Manuellen Eintrag entfernen', en: 'Remove manual entry' },
+  } as const;
+
+  function tsub(template: string, params: Record<string, string | number>): string {
+    return template.replace(/\{(\w+)\}/g, (_m, n) => String(params[n] ?? `{${n}}`));
+  }
 
   function truncateSecret(text: string): string {
     if (text.length <= 16) return text;
@@ -64,13 +90,13 @@
       <h2
         class="font-[family-name:var(--font-serif)] text-[16px] leading-none font-medium text-[color:var(--color-ink)]"
       >
-        Mapping
+        {loc(s.heading)}
       </h2>
       {#if totalEntities > 0}
         <span
           class="font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
         >
-          {totalActive} aktiv / {totalEntities} erkannt
+          {tsub(loc(s.countSummary), { a: totalActive, t: totalEntities })}
         </span>
       {/if}
     </div>
@@ -78,13 +104,13 @@
       <div class="flex flex-wrap items-center gap-1.5">
         <!-- Status filter chips -->
         <button class="chip" class:active={filter === 'all'} onclick={() => (filter = 'all')}
-          >alle</button
+          >{loc(s.filterAll)}</button
         >
         <button class="chip" class:active={filter === 'on'} onclick={() => (filter = 'on')}
-          >aktiv</button
+          >{loc(s.filterOn)}</button
         >
         <button class="chip" class:active={filter === 'off'} onclick={() => (filter = 'off')}
-          >ignoriert</button
+          >{loc(s.filterOff)}</button
         >
       </div>
     {/if}
@@ -92,12 +118,11 @@
 
   {#if totalEntities === 0}
     <div class="flex flex-col items-center gap-1.5 py-12 text-center">
-      <p class="text-[13px] text-[color:var(--color-ink-soft)]">Noch keine PII erkannt</p>
+      <p class="text-[13px] text-[color:var(--color-ink-soft)]">{loc(s.emptyTitle)}</p>
       <p
         class="max-w-md font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
       >
-        Tippe oder lade Text und klick „Maskieren". Was hier nicht auftaucht, wurde nicht erkannt —
-        prüf ggf. NER oder WebLLM in den Einstellungen.
+        {loc(s.emptyBody)}
       </p>
     </div>
   {:else}
@@ -110,7 +135,7 @@
         class:active={categoryFilter === 'ALL'}
         onclick={() => (categoryFilter = 'ALL')}
       >
-        alles · {totalEntities}
+        {loc(s.catAll)} · {totalEntities}
       </button>
       {#each Object.entries(CATEGORY_LABELS) as [cat, label]}
         {@const count = categoryCounts[cat] ?? 0}
@@ -120,7 +145,7 @@
             class:active={categoryFilter === cat}
             onclick={() => (categoryFilter = cat as EntityCategory)}
           >
-            {label} · {count}
+            {loc(label)} · {count}
           </button>
         {/if}
       {/each}
@@ -141,23 +166,23 @@
               class="px-3 py-2 text-left font-[family-name:var(--font-mono)] text-[10.5px] font-medium tracking-[0.08em] uppercase"
               style="width: 110px;"
             >
-              Kategorie
+              {loc(s.colCategory)}
             </th>
             <th
               class="px-3 py-2 text-left font-[family-name:var(--font-mono)] text-[10.5px] font-medium tracking-[0.08em] uppercase"
             >
-              Original
+              {loc(s.colOriginal)}
             </th>
             <th
               class="px-3 py-2 text-left font-[family-name:var(--font-mono)] text-[10.5px] font-medium tracking-[0.08em] uppercase"
             >
-              Ersatz
+              {loc(s.colReplacement)}
             </th>
             <th
               class="px-3 py-2 text-right font-[family-name:var(--font-mono)] text-[10.5px] font-medium tracking-[0.08em] uppercase"
               style="width: 70px;"
             >
-              Konf.
+              {loc({ de: 'Konf.', en: 'Conf.' })}
             </th>
             <th class="px-3 py-2" style="width: 40px;"></th>
           </tr>
@@ -177,12 +202,12 @@
                   checked={isActive}
                   class="h-3.5 w-3.5 accent-[color:var(--color-accent)]"
                   onchange={() => detectionStore.toggleEntity(entity.id)}
-                  aria-label="Toggle {entity.text}"
+                  aria-label={tsub(loc(s.toggleAria), { x: entity.text })}
                 />
               </td>
               <td class="px-3 py-2">
                 <span class="ent" data-cat={entity.category}>
-                  {CATEGORY_LABELS[entity.category]}
+                  {loc(CATEGORY_LABELS[entity.category])}
                 </span>
               </td>
               <td
@@ -205,7 +230,7 @@
                 {:else}
                   <span
                     class="font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)] italic"
-                    >ignoriert</span
+                    >{loc({ de: 'ignoriert', en: 'ignored' })}</span
                   >
                 {/if}
               </td>
@@ -219,8 +244,8 @@
                   <button
                     class="text-[color:var(--color-ink-mute)] transition-colors hover:text-[color:var(--color-danger)]"
                     onclick={() => detectionStore.removeEntity(entity.id)}
-                    aria-label="Manuellen Eintrag entfernen"
-                    title="entfernen"
+                    aria-label={loc(s.removeAria)}
+                    title={loc({ de: 'entfernen', en: 'remove' })}
                   >
                     ×
                   </button>
