@@ -8,7 +8,6 @@ RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/core/package.json packages/core/
 COPY apps/app/package.json apps/app/
-COPY apps/landing/package.json apps/landing/
 
 RUN pnpm install --frozen-lockfile
 

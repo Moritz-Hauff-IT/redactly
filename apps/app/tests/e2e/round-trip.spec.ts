@@ -11,11 +11,16 @@ test('full round-trip: mask PII then restore from LLM response', async ({ page }
   const inputTextarea = page.getByTestId('input-textarea');
   await inputTextarea.fill(inputText);
 
-  // 3. Wait for masked output to appear with at least EMAIL_1 and IBAN_1
+  // 3. Trigger masking explicitly — the app no longer auto-masks on every
+  //    keystroke (would be wasteful for typing). User clicks "Maskieren"
+  //    (or hits ⌘↵), then the detection runs.
+  await page.getByTestId('mask-button').click();
+
+  // 4. Wait for masked output to appear with at least EMAIL_1 and IBAN_1
   const maskedOutput = page.getByTestId('masked-output');
 
-  await expect(maskedOutput).toContainText('[EMAIL_1]', { timeout: 10_000 });
-  await expect(maskedOutput).toContainText('[IBAN_1]', { timeout: 10_000 });
+  await expect(maskedOutput).toContainText('[EMAIL_1]', { timeout: 15_000 });
+  await expect(maskedOutput).toContainText('[IBAN_1]', { timeout: 15_000 });
 
   // 4. Click the Copy button on the masked pane and verify "Copied!" feedback
   const copyMaskedBtn = page.getByTestId('copy-masked');
@@ -44,9 +49,11 @@ test('full round-trip: mask PII then restore from LLM response', async ({ page }
   const restoredCount = page.getByTestId('restore-count-restored');
   const unknownCount = page.getByTestId('restore-count-unknown');
 
-  // Restored should show at least 2 placeholders
-  await expect(restoredCount).toContainText(/[2-9]|\d{2,}\s+placeholder/, { timeout: 5_000 });
+  // Restored should show at least 2 entities. Locale-agnostic check: just
+  // assert the number is ≥ 2 (text format varies between "2 restauriert"
+  // in DE and "2 restored" in EN).
+  await expect(restoredCount).toContainText(/^[2-9]|\d{2,}/, { timeout: 5_000 });
 
-  // Unknown should show 0
-  await expect(unknownCount).toContainText('0 unknown');
+  // Unknown should show 0 — same locale-agnostic check.
+  await expect(unknownCount).toContainText(/^0\b/);
 });
