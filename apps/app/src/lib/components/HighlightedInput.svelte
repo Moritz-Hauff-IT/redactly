@@ -117,14 +117,22 @@
 
   const overlayHtml = $derived(buildOverlayHtml(segments));
 
-  // Scroll sync between textarea and overlay
-  let overlayEl = $state<HTMLDivElement | null>(null);
+  // Scroll sync between textarea and overlay.
+  //
+  // Earlier versions set `overlayEl.scrollTop = textareaEl.scrollTop`, but on
+  // `overflow: hidden` containers the browser silently subpixel-rounds the
+  // value, causing the overlay's content to drift below the textarea content
+  // as you scroll (visible as highlight rectangles appearing one line below
+  // the actual entity). Switched to a translate3d on an INNER wrapper:
+  // pixel-perfect, GPU-composited, and immune to scrollTop quirks.
+  let overlayInnerEl = $state<HTMLDivElement | null>(null);
   let textareaEl = $state<HTMLTextAreaElement | null>(null);
 
   function syncScroll() {
-    if (overlayEl && textareaEl) {
-      overlayEl.scrollTop = textareaEl.scrollTop;
-      overlayEl.scrollLeft = textareaEl.scrollLeft;
+    if (overlayInnerEl && textareaEl) {
+      const x = textareaEl.scrollLeft;
+      const y = textareaEl.scrollTop;
+      overlayInnerEl.style.transform = `translate3d(${-x}px, ${-y}px, 0)`;
     }
   }
 
@@ -217,18 +225,22 @@
 </script>
 
 <div bind:this={containerEl} class="relative min-h-0 flex-1">
-  <!-- Highlight overlay (pointer-events-none, synced scroll) -->
+  <!-- Highlight overlay (pointer-events-none, synced via transform on inner) -->
   <div
-    bind:this={overlayEl}
     aria-hidden="true"
-    class="overlay-highlights pointer-events-none absolute inset-0 overflow-hidden px-4 py-3.5 font-[family-name:var(--font-mono)] text-[13px] leading-[1.65] text-transparent"
-    style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
+    class="overlay-highlights pointer-events-none absolute inset-0 overflow-hidden"
   >
-    <!-- Rendered as pre-built HTML so no Svelte template whitespace leaks
-         into the overlay. eslint-disable required — the source is trusted
-         (built from escapeHtml() in script). -->
-    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-    {@html overlayHtml}
+    <div
+      bind:this={overlayInnerEl}
+      class="px-4 py-3.5 font-[family-name:var(--font-mono)] text-[13px] leading-[1.65] text-transparent"
+      style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; transform: translate3d(0, 0, 0); will-change: transform;"
+    >
+      <!-- Rendered as pre-built HTML so no Svelte template whitespace leaks
+           into the overlay. eslint-disable required — the source is trusted
+           (built from escapeHtml() in script). -->
+      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+      {@html overlayHtml}
+    </div>
   </div>
 
   <!-- Editable textarea on top -->
