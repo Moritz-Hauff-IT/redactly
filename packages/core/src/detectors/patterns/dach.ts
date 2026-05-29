@@ -177,6 +177,21 @@ export const dachRules: RegexRule[] = [
   },
 
   // ---- Person name patterns ----
+  // Email-header prefix: "Von: Max Mustermann <mail@…>", "An: Erika Mustermann",
+  // "From: Max Power", "To: Lisa Müller", "Cc: …", "Bcc: …", "Reply-To: …".
+  // Quoted-email replies in business correspondence are the single most common
+  // place where person names appear in structured form — covering this raises
+  // detection recall on real-world emails dramatically.
+  // The pattern stops at the first non-capitalised-word boundary (so
+  // "An: Thomas Lemmer — CDH GmbH" captures only "Thomas Lemmer", not the
+  // company suffix, and "Von: Max Mustermann <mail@x.de>" stops before the <).
+  {
+    type: 'PERSON',
+    category: 'person',
+    pattern:
+      /(?<=(?:^|\n|\r)\s*(?:Von|An|Cc|Bcc|From|To|Sender|Reply-To|Sent\sTo):[ \t]+)[A-ZÄÖÜ][a-zäöüß\-]+(?:[ \t][A-ZÄÖÜ][a-zäöüß\-]+){0,3}/gm,
+    confidence: 0.85,
+  },
   // Salutation + capitalized name(s): "Hallo Martin Müller", "Sehr geehrte Frau Schmidt"
   {
     type: 'PERSON',
