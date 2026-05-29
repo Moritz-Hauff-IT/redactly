@@ -1,19 +1,19 @@
 ---
-# NetworkPolicy for de-pii-app
+# NetworkPolicy for redactly-app
 # Allows ingress only from ingress-nginx; egress only to DNS.
 # These are static SPAs — the server process cannot phone home.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: de-pii-app
-  namespace: de-pii
+  name: redactly-app
+  namespace: redactly
   labels:
-    app.kubernetes.io/name: de-pii-app
-    app.kubernetes.io/part-of: de-pii
+    app.kubernetes.io/name: redactly-app
+    app.kubernetes.io/part-of: redactly
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: de-pii-app
+      app.kubernetes.io/name: redactly-app
   policyTypes:
     - Ingress
     - Egress
@@ -35,19 +35,19 @@ spec:
           protocol: TCP
 
 ---
-# NetworkPolicy for de-pii-landing
+# NetworkPolicy for redactly-landing
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: de-pii-landing
-  namespace: de-pii
+  name: redactly-landing
+  namespace: redactly
   labels:
-    app.kubernetes.io/name: de-pii-landing
-    app.kubernetes.io/part-of: de-pii
+    app.kubernetes.io/name: redactly-landing
+    app.kubernetes.io/part-of: redactly
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: de-pii-landing
+      app.kubernetes.io/name: redactly-landing
   policyTypes:
     - Ingress
     - Egress

@@ -1,16 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: de-pii-app
-  namespace: de-pii
+  name: redactly-app
+  namespace: redactly
   labels:
-    app.kubernetes.io/name: de-pii-app
-    app.kubernetes.io/part-of: de-pii
+    app.kubernetes.io/name: redactly-app
+    app.kubernetes.io/part-of: redactly
     app.kubernetes.io/component: app
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: de-pii-app
+    app.kubernetes.io/name: redactly-app
   ports:
     - name: http
       port: 80

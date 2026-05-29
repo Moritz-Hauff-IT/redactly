@@ -45,7 +45,6 @@ Pasting a support ticket, medical record, or internal email into an LLM exposes 
 ```bash
 pnpm install
 pnpm -F @de-pii/app dev      # http://localhost:5173
-pnpm -F @de-pii/landing dev  # http://localhost:5174
 ```
 
 Run all checks:
@@ -59,26 +58,34 @@ pnpm lint        # ESLint + Prettier
 ## Architecture
 
 ```
-de-pii/
+redactly/
 ├── packages/
 │   └── core/          # Headless detection + masking engine (TS, framework-agnostic)
 ├── apps/
-│   ├── app/           # SvelteKit app  →  app.redactly.dev
-│   └── landing/       # SvelteKit landing  →  redactly.dev
+│   └── app/           # SvelteKit app  →  intended for app.<your-domain>
 ├── deploy/
-│   ├── argocd/        # ArgoCD App-of-Apps root Application
-│   ├── k8s/           # Kubernetes manifests (namespace, ingress, deployments, HPA)
-│   └── nginx/         # nginx config shared by both containers
-└── .github/workflows/ # CI (lint/test/typecheck) + image build/push
+│   ├── docker-compose.yml  # Single-host quick start
+│   ├── k8s/                # Kubernetes manifests (generic templates)
+│   └── nginx/              # nginx config used inside the container
+└── .github/workflows/      # CI (lint/test/typecheck) + image build/push
 ```
 
-Internal package scope is `@de-pii/*` — external brand is **Redactly**.
+Internal package scope is `@de-pii/*` — historical naming, external product
+is **Redactly**. The marketing landing site that runs at
+[redactly.dev](https://redactly.dev) is operator-specific and not part of
+this repository.
 
 ## Deployment
 
-Both apps build to a static `build/` directory (SvelteKit adapter-static) and are served by a minimal nginx container. Images are published to `ghcr.io/moritz-hauff-it/redactly-{app,landing}` on every push to `main`.
+The app builds to a static `build/` directory (SvelteKit adapter-static)
+and is served by a minimal non-root nginx container. Images are published
+to `ghcr.io/moritz-hauff-it/redactly-app` on every push to `main`.
 
-This repo includes Kubernetes manifests under `deploy/k8s/` and an ArgoCD root Application under `deploy/argocd/`. See [deploy/README.md](deploy/README.md) for full self-hosting instructions (ingress-nginx + cert-manager required).
+Two self-hosting paths are documented in [deploy/README.md](deploy/README.md):
+
+- **Docker Compose** (quick start, single host)
+- **Kubernetes** (ingress-nginx + cert-manager) with generic templates
+  you point at your own domain.
 
 ## Contributing
 

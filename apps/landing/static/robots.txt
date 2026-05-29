@@ -1,7 +1,0 @@
-# Redactly — open source, privacy-first PII masking
-# https://redactly.dev
-
-User-agent: *
-Allow: /
-
-Sitemap: https://redactly.dev/sitemap.xml

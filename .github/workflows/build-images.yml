@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [app, landing]
+        target: [app]
 
     steps:
       - name: Checkout
