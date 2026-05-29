@@ -1,0 +1,17 @@
+# Kustomize entrypoint for the generic Redactly app templates.
+#
+# Self-hosters can either:
+#   kubectl apply -k deploy/k8s/
+# (which uses these resources unchanged), or write their own overlay
+# that references this directory as a base and patches in their own
+# hostnames / image tags.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - networkpolicy.yaml
+  - app/deployment.yaml
+  - app/service.yaml
+  - app/ingress.yaml
+  - app/hpa.yaml
