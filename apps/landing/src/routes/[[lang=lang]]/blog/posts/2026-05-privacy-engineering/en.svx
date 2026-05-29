@@ -1,0 +1,72 @@
+---
+title: Privacy engineering in the LLM era
+date: "2026-05-29"
+author: Moritz Hauff
+slug: 2026-05-privacy-engineering
+description: Cloud LLMs have redrawn the attack surface for data leakage. A look at what has actually changed — and which engineering principles matter now.
+---
+
+<SeoHead
+  title="Privacy engineering in the LLM era"
+  description="Cloud LLMs have redrawn the attack surface for data leakage. A look at what has actually changed — and which engineering principles matter now."
+  path="/blog/posts/2026-05-privacy-engineering"
+  ogType="article"
+  publishedTime="2026-05-29"
+/>
+
+<DocLayout title="Privacy engineering in the LLM era" backHref="/blog" backLabel="Blog">
+
+<div class="mb-6 flex items-center gap-3 text-sm text-slate-500 not-prose">
+  <time datetime="2026-05-29">May 29, 2026</time>
+  <span>&middot;</span>
+  <span>Moritz Hauff</span>
+</div>
+
+# Privacy engineering in the LLM era
+
+Over the last two years, the definition of "sensitive data in an enterprise context" has quietly shifted. Not because the data itself has changed — but because the way it leaves the building has changed fundamentally.
+
+## The old world: data crossing clear borders
+
+Classical privacy engineering had well-defined chokepoints. An API request, an upload form, a database export — each of those was a control point with logs, an audit trail, and usually an approval workflow too.
+
+GDPR compliance was built on top of that reality: identify the personal data, document the processing, secure the interfaces. It works as long as employees only move data through official channels.
+
+## The new world: sensitive data as copy-paste
+
+Today, a back-office clerk pastes parts of an email containing a customer name and IBAN into ChatGPT because she wants to draft a polite reply. A developer drops a stack trace with embedded session IDs into Claude to get to a fix faster. An HR manager asks for a summary of a job application PDF.
+
+None of these actions go through an approval process. None get logged (on the company's side). And most of them happen with the best intentions — the LLMs are simply too useful not to reach for.
+
+The problem isn't a lack of discipline. The problem is friction: as long as copying sensitive data is easier than protecting it, copying wins.
+
+## What changes for engineering teams
+
+Classical DLP (data loss prevention) responds to known egress points. It was never designed for a world in which every browser tab is a potential egress channel. Three concrete shifts:
+
+**1. Detection has to happen where the data originates.** Server-side filters see nothing when the browser talks directly to `chat.openai.com`. Privacy engineering has to move into the client — as a browser extension, as a native part of the workflow, or as a deliberate intermediate stop that users voluntarily route their data through.
+
+**2. Reversibility becomes a UX requirement.** When you mask PII before sending, the real values disappear. The LLM's response then contains placeholders like `[CUSTOMER_1]`. Without a local mapping that resolves those placeholders back, the response is worthless. That mapping has to stay local — otherwise you've only relocated the problem.
+
+**3. Detection has to be context-sensitive.** A 16-digit number could be a credit card, an order ID, or a hash. Pure regex patterns either produce too many false positives or miss context-dependent hits. Hybrid approaches (regex + NER + LLM-based classification) are the bare minimum.
+
+## Three principles for privacy-by-design in an LLM context
+
+**Data only leaves the browser in masked form.** This is a verifiable property — open DevTools, watch the Network tab. If clicking "Mask" produces an outbound request with the original text, the property has been violated. That kind of verifiability is far more valuable than any compliance certificate.
+
+**No telemetry on the privacy tool itself.** Anyone who claims to protect your data while embedding Plausible, Segment, or Mixpanel has broken the promise before the first use. Even "anonymized" telemetry can leak content fragments into error reports.
+
+**Open source isn't optional.** There's no way to believe a closed-source privacy tool. The source code has to be auditable — otherwise the claim "runs locally" isn't falsifiable.
+
+## Where Redactly sits in this
+
+Redactly is built explicitly against those three principles: a static web app with no backend, no tracking on the app itself, full source code on GitHub. The hybrid detection (regex + NER + WebLLM) covers the most important categories; masking is reversible via a tab-local mapping.
+
+The goal isn't to be the one tool for every use case. The goal is to set a verifiable standard for "browser-native PII masking" — and to show that the privacy property doesn't have to be in conflict with usability.
+
+</DocLayout>
+
+<script>
+  import DocLayout from '$lib/components/DocLayout.svelte';
+  import SeoHead from '$lib/components/SeoHead.svelte';
+</script>
