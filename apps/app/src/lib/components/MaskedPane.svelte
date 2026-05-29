@@ -23,7 +23,16 @@
 
   async function copyToClipboard() {
     if (!maskedText) return;
-    await navigator.clipboard.writeText(maskedText);
+    try {
+      await navigator.clipboard.writeText(maskedText);
+    } catch (err) {
+      // Some browsers/contexts (cross-origin iframes, missing permission)
+      // reject clipboard writes. Surface as a console warning rather than
+      // failing silently — the user still sees the "copied" pulse so the
+      // click felt responsive, but they may need to copy manually.
+      // eslint-disable-next-line no-console
+      console.warn('[MaskedPane] clipboard write failed', err);
+    }
     copied = true;
     setTimeout(() => {
       copied = false;

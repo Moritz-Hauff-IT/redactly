@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-test('full round-trip: mask PII then restore from LLM response', async ({ page }) => {
+test('full round-trip: mask PII then restore from LLM response', async ({ page, context }) => {
+  // Headless Chromium doesn't grant clipboard write by default. Without
+  // this, the masked-pane copy button silently swallows the navigator.
+  // clipboard.writeText() rejection and never flips the `copied` state
+  // — which would later fail the copy-feedback assertion.
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
   // 1. Navigate to the home page
   await page.goto('/');
 
