@@ -17,7 +17,10 @@ Pasting a support ticket, medical record, or internal email into an LLM exposes 
 - **Browser-only** — no server processing of your text or files; verify via the Network tab
 - **Reversible** — paste the LLM's response back to restore originals locally, session-scoped
 - **Hybrid detection** — Regex (always-on, instant) + NER (opt-in, ~80 MB download) + WebLLM (opt-in, 1–4 GB)
-- **File support** — `.txt`, `.md`, `.eml`, `.pdf`, `.docx` via drag & drop or file picker
+- **Layout-preserving redaction** — PDF / DOCX / XLSX / PPTX downloads keep the original styling, fonts, images, tables; only PII regions get whited out and labelled
+- **OCR for images** — PNG / JPG / WebP via Tesseract.js, masked output drawn back onto the original raster
+- **Wide file support** — documents (`.pdf`, `.docx`, `.xlsx`, `.pptx`, `.eml`), text & code (`.txt`, `.md`, `.csv`, `.tsv`, `.json`, `.yaml`, `.toml`, `.ini`, `.env`, `.conf`, `.log`, `.sql`, `.html`, `.xml`), images (`.png`, `.jpg`, `.webp`), ZIP archives
+- **Bilingual UI** — German + English with localStorage-backed switcher
 - **Open source, MIT** — self-host or audit the code
 
 ## How it works
