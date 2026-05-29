@@ -1,19 +1,29 @@
 /**
  * Self-host the runtime parts of the NER pipeline.
  *
- * Two things move off external CDNs:
- *   1. onnxruntime-web WASM (~32MB total): served from `/ort/...`. We copy
- *      the relevant files at build time into `apps/app/static/ort/` from the
- *      `onnxruntime-web/dist/` package directory.
- *   2. (Optional) the NER model weights themselves: by default still fetched
- *      from huggingface.co because the quantized `bert-base-multilingual-
- *      cased-ner-hrl` model is ~80MB and would bloat the static bundle for
- *      every visitor whether they use NER or not. To go fully self-hosted,
- *      download the model files from
- *        https://huggingface.co/Xenova/bert-base-multilingual-cased-ner-hrl
- *      and place them under `apps/app/static/models/Xenova/
- *      bert-base-multilingual-cased-ner-hrl/`, then flip the
- *      `allowRemoteModels: false` line below.
+ * What's self-hosted:
+ *   - onnxruntime-web WASM (~32MB total): served from `/ort/…`. We copy the
+ *     relevant files at build time into `apps/app/static/ort/` from the
+ *     `onnxruntime-web/dist/` package directory.
+ *
+ * What's NOT self-hosted (yet):
+ *   - The NER model weights themselves (Xenova/bert-base-multilingual-
+ *     cased-ner-hrl, ~80MB quantized). Still fetched from huggingface.co
+ *     on first NER enable because bundling 80MB in static/ would slow every
+ *     page load whether or not the visitor uses NER.
+ *
+ *     To go fully self-hosted, download the model files from
+ *       https://huggingface.co/Xenova/bert-base-multilingual-cased-ner-hrl
+ *     into `apps/app/static/models/Xenova/bert-base-multilingual-cased-ner-hrl/`,
+ *     then add to the configureNerModelHosting() call below:
+ *       localModelPath: '/models/',
+ *       allowRemoteModels: false,
+ *
+ *     IMPORTANT: do NOT set `localModelPath` without also placing the model
+ *     files there. transformers.js tries the local path first; if it 404s
+ *     into the SPA fallback (index.html), JSON.parse() throws
+ *     "Unexpected token '<', \"<!doctype \" ... is not valid JSON" and the
+ *     model never loads.
  */
 import { configureNerModelHosting } from '@de-pii/core/ner';
 
@@ -22,14 +32,13 @@ configureNerModelHosting({
   // tab as a same-origin fetch instead of cdn.jsdelivr.net.
   wasmPaths: '/ort/',
 
-  // Model weights: where to look IF you opted into local hosting (see header
-  // comment). Even when files aren't present locally, this just sets the
-  // search path — remote fetch from HF still works because allowRemoteModels
-  // stays true below.
-  localModelPath: '/models/',
-
-  // Set to `false` to lock down model loading to local files only (no HF CDN
-  // fetch). Keep true for the public default so the app works without the
-  // operator having to pre-download model weights.
+  // Model weights: HF CDN. Switch to local once weights are pre-downloaded
+  // into static/models/ (see header note above for the exact path).
   allowRemoteModels: true,
+
+  // CRITICAL: skip local lookup entirely. transformers.js defaults to
+  // tries-local-first; with no model files at /models/ this hits the
+  // SPA fallback (index.html) and produces "Unexpected token '<'" on
+  // JSON.parse. Explicitly disable until we actually bundle the weights.
+  allowLocalModels: false,
 });

@@ -23,6 +23,12 @@ export interface NerHostingConfig {
   /** When false, transformers.js won't fetch from huggingface.co; only local
    * paths are allowed. Default true (remote fetch allowed). */
   allowRemoteModels?: boolean;
+  /** When false, transformers.js skips local-path lookup entirely. Default
+   * true (transformers.js tries local FIRST then falls back to remote).
+   * Pass `false` when you do NOT have model files at `localModelPath` —
+   * otherwise the local lookup hits an HTTP 404 that SPA-style routers
+   * rewrite to index.html, producing 'Unexpected token <' JSON-parse errors. */
+  allowLocalModels?: boolean;
   /** Where to look for self-hosted model files. URL prefix. Default
    * `/models/` — files would live at `<localModelPath><modelId>/...`. */
   localModelPath?: string;
@@ -50,9 +56,16 @@ async function applyHostingConfig(): Promise<void> {
   if (pendingHostingConfig.allowRemoteModels !== undefined) {
     env.allowRemoteModels = pendingHostingConfig.allowRemoteModels;
   }
+  if (pendingHostingConfig.allowLocalModels !== undefined) {
+    env.allowLocalModels = pendingHostingConfig.allowLocalModels;
+  }
   if (pendingHostingConfig.localModelPath !== undefined) {
     env.localModelPath = pendingHostingConfig.localModelPath;
-    env.allowLocalModels = true;
+    // Setting a local path implies we want local lookups enabled — UNLESS
+    // the caller explicitly opted out via allowLocalModels: false above.
+    if (pendingHostingConfig.allowLocalModels === undefined) {
+      env.allowLocalModels = true;
+    }
   }
   if (pendingHostingConfig.wasmPaths !== undefined) {
     // onnxruntime-web reads `env.backends.onnx.wasm.wasmPaths`
