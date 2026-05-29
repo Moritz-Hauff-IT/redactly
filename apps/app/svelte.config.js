@@ -12,9 +12,16 @@ const config = {
       mode: 'hash',
       directives: {
         'default-src': ['self'],
-        // 'wasm-unsafe-eval' for ONNX/WebLLM WASM execution.
-        // jsdelivr is used by @huggingface/transformers to dynamic-import the ONNX-Runtime-Web WASM backend modules.
-        'script-src': ['self', 'wasm-unsafe-eval', 'https://cdn.jsdelivr.net'],
+        // 'wasm-unsafe-eval' for ONNX/WebLLM/Tesseract WASM execution.
+        // jsdelivr serves transformers.js + tesseract.js WASM + traineddata
+        // (German + English language models for OCR).
+        'script-src': [
+          'self',
+          'wasm-unsafe-eval',
+          'https://cdn.jsdelivr.net',
+          'https://unpkg.com',
+          'blob:',
+        ],
         'style-src': ['self', 'unsafe-inline'],
         'img-src': ['self', 'data:'],
         'connect-src': [
@@ -27,8 +34,11 @@ const config = {
           'https://raw.githubusercontent.com',
           'https://s3.amazonaws.com',
           'https://*.s3.amazonaws.com',
-          // ONNX-Runtime-Web WASM binaries + transformers.js modules
+          // ONNX-Runtime-Web WASM binaries + transformers.js modules +
+          // Tesseract.js core (jsdelivr) and traineddata downloads (raw.githubusercontent).
           'https://cdn.jsdelivr.net',
+          'https://unpkg.com',
+          'https://tessdata.projectnaptha.com',
         ],
         'worker-src': ['self', 'blob:'],
         'object-src': ['none'],

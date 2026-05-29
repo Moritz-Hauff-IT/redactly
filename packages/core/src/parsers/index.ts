@@ -11,6 +11,7 @@ export { parsePdfBlob, PdfWorkerNotConfiguredError } from './pdf.js';
 export { parseDocxBlob } from './docx.js';
 export { parseXlsxBlob } from './xlsx.js';
 export { parsePptxBlob } from './pptx.js';
+export { parseImageBlob, runOcr, type OcrResult, type OcrWord } from './image.js';
 export { writeAsFormat, writeAsRedactedFormat, type WriteResult } from './writers.js';
 export { extractZip, packZip, type ZipManifest, type ZipEntry, type ZipPackEntry } from './zip.js';
 export type { SupportedFormat } from './formats.js';
@@ -23,6 +24,7 @@ import { parsePdfBlob } from './pdf.js';
 import { parseDocxBlob } from './docx.js';
 import { parseXlsxBlob } from './xlsx.js';
 import { parsePptxBlob } from './pptx.js';
+import { parseImageBlob } from './image.js';
 import { FORMAT_META, type SupportedFormat } from './formats.js';
 import type { ParseResult } from './txt.js';
 
@@ -64,6 +66,10 @@ const EXT_MAP: Record<string, SupportedFormat> = {
   docx: 'docx',
   xlsx: 'xlsx',
   pptx: 'pptx',
+  png: 'png',
+  jpg: 'jpg',
+  jpeg: 'jpg',
+  webp: 'webp',
 };
 
 const MIME_MAP: Record<string, SupportedFormat> = {
@@ -85,6 +91,9 @@ const MIME_MAP: Record<string, SupportedFormat> = {
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
 };
 
 /**
@@ -171,6 +180,10 @@ export async function parseFile(file: File | FileInput): Promise<ParseResult> {
       return parseXlsxBlob(data as Blob | ArrayBuffer | Uint8Array);
     case 'pptx':
       return parsePptxBlob(data as Blob | ArrayBuffer | Uint8Array);
+    case 'png':
+    case 'jpg':
+    case 'webp':
+      return parseImageBlob(data as Blob | ArrayBuffer | Uint8Array, format);
     default: {
       // All other formats are text-like (FORMAT_META[format].isText === true).
       // Same UTF-8 decoder, format discriminant preserves the original

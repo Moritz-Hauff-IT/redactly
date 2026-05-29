@@ -18,6 +18,7 @@
  * All processing happens client-side. No bytes ever leave the tab.
  */
 import { FORMAT_META, type SupportedFormat } from './formats.js';
+import { runOcr, type OcrWord } from './image.js';
 import type { Mapping } from '../masker.js';
 
 export interface WriteResult {
@@ -45,11 +46,14 @@ export async function writeAsFormat(
       return writeDocx(text, baseName);
     case 'xlsx':
     case 'pptx':
-      // No standalone (no-original-bytes) writer for xlsx/pptx — both require
-      // a complex zip+xml scaffold to produce a valid file. Fall back to a
-      // plain-text dump so the user still gets the masked content, just with
-      // a .txt extension. The redacted-format path (writeAsRedactedFormat)
-      // produces a real .xlsx / .pptx when original bytes ARE available.
+    case 'png':
+    case 'jpg':
+    case 'webp':
+      // No standalone writer for binary formats — they require either a
+      // complex zip+xml scaffold (xlsx/pptx) or the original raster
+      // (png/jpg/webp). Fall back to a plain-text dump so the user still
+      // gets the masked content. The redacted-format path produces a
+      // real binary when original bytes ARE available.
       return writeText(text, baseName, 'txt');
     default: {
       // All text-like formats (txt/md/csv/tsv/json/yaml/etc) share the same
@@ -95,6 +99,10 @@ export async function writeAsRedactedFormat(
       return writeOoxmlRedacted(originalBytes, mapping, baseName, 'xlsx');
     case 'pptx':
       return writeOoxmlRedacted(originalBytes, mapping, baseName, 'pptx');
+    case 'png':
+    case 'jpg':
+    case 'webp':
+      return writeImageRedacted(originalBytes, mapping, baseName, format);
     default:
       // All other formats (txt/md/eml/csv/tsv/json/yaml/etc.) are inherently
       // text — there's no layout beyond what's in the text itself, so the
@@ -680,6 +688,219 @@ async function writeOoxmlRedacted(
 
   const blob = await zip.generateAsync({ type: 'blob', mimeType: cfg.mime });
   return { blob, filename: `${baseName}-masked.${cfg.extension}`, mimeType: cfg.mime };
+}
+
+// ---------------------------------------------------------------------------
+// Image redaction (PNG / JPG / WebP)
+// ---------------------------------------------------------------------------
+
+/**
+ * Redact an image in-place: re-run OCR to locate word bounding boxes,
+ * find boxes whose text matches a mapping key, then paint whiteout
+ * rectangles + placeholder text onto a Canvas. Export back to the
+ * original raster format.
+ *
+ * Matching strategy: PII can span multiple OCR words ("Martin" + "Müller"
+ * → "Martin Müller"). We greedily merge contiguous boxes on the same line
+ * to test multi-word matches. A "line" here is words whose vertical
+ * midpoint is within ~half the box height of the previous word's midpoint.
+ *
+ * Approximation tolerated: replacement text uses a generic sans-serif at
+ * the box's pixel height; original font/colour is not reproduced. This is
+ * standard redaction — the goal is "PII hidden, content obvious", not
+ * pixel-perfect typography.
+ */
+async function writeImageRedacted(
+  originalBytes: Uint8Array,
+  mapping: Mapping,
+  baseName: string,
+  format: 'png' | 'jpg' | 'webp'
+): Promise<WriteResult> {
+  const meta = FORMAT_META[format];
+  const sortedKeys = sortedMappingKeys(mapping);
+
+  if (sortedKeys.length === 0) {
+    const blob = new Blob([new Uint8Array(originalBytes)], { type: meta.mime });
+    return { blob, filename: `${baseName}-masked.${meta.extension}`, mimeType: meta.mime };
+  }
+
+  // OCR result is cached per-bytes by runOcr() — this is fast on the second
+  // call (same image was already recognised at parse time).
+  const ocr = await runOcr(originalBytes);
+
+  // Decode the image so we can paint on it.
+  const srcBlob = new Blob([new Uint8Array(originalBytes)], { type: meta.mime });
+  const bitmap = await createImageBitmap(srcBlob);
+
+  // OffscreenCanvas runs in workers; HTMLCanvasElement is the main-thread
+  // fallback when OffscreenCanvas isn't available (older Safari).
+  const canvas =
+    typeof OffscreenCanvas !== 'undefined'
+      ? new OffscreenCanvas(bitmap.width, bitmap.height)
+      : (() => {
+          const c = document.createElement('canvas');
+          c.width = bitmap.width;
+          c.height = bitmap.height;
+          return c;
+        })();
+
+  const ctx = (canvas as OffscreenCanvas).getContext('2d') as
+    | OffscreenCanvasRenderingContext2D
+    | CanvasRenderingContext2D
+    | null;
+  if (!ctx) {
+    throw new Error('2D canvas context unavailable — cannot redact image');
+  }
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close?.();
+
+  // Group words into lines by Y-midpoint proximity, sorted left-to-right
+  // within each line. Tesseract returns words in roughly reading order but
+  // we re-sort to be safe.
+  const lines = groupWordsIntoLines(ocr.words);
+
+  for (const line of lines) {
+    if (line.length === 0) continue;
+    // Build a line string with each char tagged to its source word index.
+    const { text, origin } = buildOcrLineText(line);
+
+    // Find all non-overlapping mapping-key occurrences in line string,
+    // longest-first via sortedKeys.
+    const hits: { start: number; end: number; placeholder: string }[] = [];
+    for (const key of sortedKeys) {
+      if (!key) continue;
+      let from = 0;
+      while (from <= text.length - key.length) {
+        const idx = text.indexOf(key, from);
+        if (idx < 0) break;
+        const end = idx + key.length;
+        const overlaps = hits.some((h) => !(end <= h.start || idx >= h.end));
+        if (!overlaps) hits.push({ start: idx, end, placeholder: mapping.reverse.get(key)! });
+        from = idx + 1;
+      }
+    }
+    if (hits.length === 0) continue;
+
+    hits.sort((a, b) => a.start - b.start);
+
+    for (const hit of hits) {
+      const touched = new Set<number>();
+      for (let i = hit.start; i < hit.end; i++) {
+        const o = origin[i];
+        if (o !== null && o !== undefined) touched.add(o);
+      }
+      if (touched.size === 0) continue;
+
+      // Bounding box covering all touched word boxes
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      for (const i of touched) {
+        const w = line[i]!;
+        if (w.bbox.x0 < minX) minX = w.bbox.x0;
+        if (w.bbox.x1 > maxX) maxX = w.bbox.x1;
+        if (w.bbox.y0 < minY) minY = w.bbox.y0;
+        if (w.bbox.y1 > maxY) maxY = w.bbox.y1;
+      }
+      if (!isFinite(minX)) continue;
+
+      const padX = 2;
+      const padY = 2;
+      const rectX = Math.max(0, minX - padX);
+      const rectY = Math.max(0, minY - padY);
+      const rectW = maxX - minX + padX * 2;
+      const rectH = maxY - minY + padY * 2;
+
+      ctx.fillStyle = 'white';
+      ctx.fillRect(rectX, rectY, rectW, rectH);
+
+      // Draw placeholder text in the same box. Pick a font size that fits
+      // both vertically and horizontally.
+      let fontPx = Math.max(10, Math.floor(rectH * 0.85));
+      ctx.fillStyle = 'black';
+      ctx.textBaseline = 'middle';
+      ctx.font = `${fontPx}px sans-serif`;
+      let measured = ctx.measureText(hit.placeholder).width;
+      if (measured > rectW && measured > 0) {
+        fontPx = Math.max(8, Math.floor(fontPx * (rectW / measured)));
+        ctx.font = `${fontPx}px sans-serif`;
+        measured = ctx.measureText(hit.placeholder).width;
+      }
+      const textX = rectX + 2;
+      const textY = rectY + rectH / 2;
+      ctx.fillText(hit.placeholder, textX, textY);
+    }
+  }
+
+  // Export back to the original format. canvas.convertToBlob (OffscreenCanvas)
+  // or canvas.toBlob (HTMLCanvasElement).
+  const exportMime = meta.mime;
+  let outBlob: Blob;
+  if ('convertToBlob' in canvas) {
+    outBlob = await (canvas as OffscreenCanvas).convertToBlob({ type: exportMime });
+  } else {
+    outBlob = await new Promise<Blob>((resolve, reject) => {
+      (canvas as HTMLCanvasElement).toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('canvas.toBlob returned null'))),
+        exportMime
+      );
+    });
+  }
+
+  return {
+    blob: outBlob,
+    filename: `${baseName}-masked.${meta.extension}`,
+    mimeType: exportMime,
+  };
+}
+
+/**
+ * Group OCR words into lines by Y-midpoint proximity (within half a box
+ * height of the previous word's midpoint). Within each line, sort by X.
+ */
+function groupWordsIntoLines(words: OcrWord[]): OcrWord[][] {
+  const lines: OcrWord[][] = [];
+  for (const w of words) {
+    const wMidY = (w.bbox.y0 + w.bbox.y1) / 2;
+    const wHeight = w.bbox.y1 - w.bbox.y0;
+    let placed = false;
+    for (const line of lines) {
+      const first = line[0]!;
+      const lMidY = (first.bbox.y0 + first.bbox.y1) / 2;
+      const tol = Math.max(4, (first.bbox.y1 - first.bbox.y0 + wHeight) * 0.3);
+      if (Math.abs(wMidY - lMidY) <= tol) {
+        line.push(w);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) lines.push([w]);
+  }
+  for (const l of lines) l.sort((a, b) => a.bbox.x0 - b.bbox.x0);
+  return lines;
+}
+
+/**
+ * Concatenate a line of OCR words into one string, tracking which source
+ * word each character came from. Synthetic spaces between words map to
+ * origin=null. Mirrors the PDF redactor's buildLineText pattern.
+ */
+function buildOcrLineText(line: OcrWord[]): { text: string; origin: (number | null)[] } {
+  let text = '';
+  const origin: (number | null)[] = [];
+  for (let i = 0; i < line.length; i++) {
+    if (i > 0) {
+      text += ' ';
+      origin.push(null);
+    }
+    const w = line[i]!;
+    for (let c = 0; c < w.text.length; c++) {
+      text += w.text[c];
+      origin.push(i);
+    }
+  }
+  return { text, origin };
 }
 
 function decodeXmlEntities(s: string): string {

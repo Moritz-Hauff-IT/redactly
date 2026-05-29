@@ -53,6 +53,12 @@ export const FORMAT_META = {
     mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     isText: false,
   },
+
+  // Images — text extracted via OCR (Tesseract.js). Redaction overlays the
+  // original raster: detected PII regions get whited out + relabeled in place.
+  png: { extension: 'png', mime: 'image/png', isText: false },
+  jpg: { extension: 'jpg', mime: 'image/jpeg', isText: false },
+  webp: { extension: 'webp', mime: 'image/webp', isText: false },
 } as const satisfies Record<string, FormatMeta>;
 
 export type SupportedFormat = keyof typeof FORMAT_META;

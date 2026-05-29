@@ -45,7 +45,13 @@
       const canRedact =
         rawBytes &&
         mapping &&
-        (fmt === 'pdf' || fmt === 'docx' || fmt === 'xlsx' || fmt === 'pptx');
+        (fmt === 'pdf' ||
+          fmt === 'docx' ||
+          fmt === 'xlsx' ||
+          fmt === 'pptx' ||
+          fmt === 'png' ||
+          fmt === 'jpg' ||
+          fmt === 'webp');
 
       const { blob, filename } = canRedact
         ? await writeAsRedactedFormat(rawBytes, maskedText, mapping, fmt, baseName)
