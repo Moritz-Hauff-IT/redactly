@@ -1,6 +1,8 @@
 <script lang="ts">
   import '../../app.css';
   import '../../lib/setup/pdf.js';
+  import '../../lib/setup/tesseract.js';
+  import '../../lib/setup/ner.js';
   import Toast from '$lib/components/Toast.svelte';
   import SettingsDrawer from '$lib/components/SettingsDrawer.svelte';
   import LanguageToggle from '$lib/components/LanguageToggle.svelte';

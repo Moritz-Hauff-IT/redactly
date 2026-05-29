@@ -8,8 +8,61 @@
  * - Browser/Node compatible: the import of @huggingface/transformers is safe in
  *   both environments; onnxruntime-node is an optional Node backend that the
  *   package handles internally. We default to 'wasm' for max browser compat.
+ * - Model hosting: by default transformers.js fetches model weights from
+ *   huggingface.co. Call `configureNerModelHosting()` once at app startup
+ *   to redirect to a same-origin path (see /apps/app/src/lib/setup/ner.ts)
+ *   or to lock down remote loading entirely.
  */
 import type { Detector, Entity, EntityType, EntityCategory } from '../types.js';
+
+// ---------------------------------------------------------------------------
+// Model-hosting configuration (applied at first model load)
+// ---------------------------------------------------------------------------
+
+export interface NerHostingConfig {
+  /** When false, transformers.js won't fetch from huggingface.co; only local
+   * paths are allowed. Default true (remote fetch allowed). */
+  allowRemoteModels?: boolean;
+  /** Where to look for self-hosted model files. URL prefix. Default
+   * `/models/` — files would live at `<localModelPath><modelId>/...`. */
+  localModelPath?: string;
+  /** Custom WASM bundle path for onnxruntime-web. URL prefix. Useful when
+   * self-hosting to avoid the jsdelivr CDN fetch for the runtime itself. */
+  wasmPaths?: string;
+}
+
+let pendingHostingConfig: NerHostingConfig | null = null;
+let hostingConfigApplied = false;
+
+/**
+ * Point transformers.js + onnxruntime-web at self-hosted asset URLs.
+ * Call once at app startup before any NerDetector instance is created.
+ * Settings are applied lazily inside ensurePipeline().
+ */
+export function configureNerModelHosting(config: NerHostingConfig): void {
+  pendingHostingConfig = config;
+  hostingConfigApplied = false;
+}
+
+async function applyHostingConfig(): Promise<void> {
+  if (hostingConfigApplied || !pendingHostingConfig) return;
+  const { env } = await import('@huggingface/transformers');
+  if (pendingHostingConfig.allowRemoteModels !== undefined) {
+    env.allowRemoteModels = pendingHostingConfig.allowRemoteModels;
+  }
+  if (pendingHostingConfig.localModelPath !== undefined) {
+    env.localModelPath = pendingHostingConfig.localModelPath;
+    env.allowLocalModels = true;
+  }
+  if (pendingHostingConfig.wasmPaths !== undefined) {
+    // onnxruntime-web reads `env.backends.onnx.wasm.wasmPaths`
+    const backendsCfg = env.backends as { onnx?: { wasm?: { wasmPaths?: string } } };
+    backendsCfg.onnx = backendsCfg.onnx ?? {};
+    backendsCfg.onnx.wasm = backendsCfg.onnx.wasm ?? {};
+    backendsCfg.onnx.wasm.wasmPaths = pendingHostingConfig.wasmPaths;
+  }
+  hostingConfigApplied = true;
+}
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -108,6 +161,11 @@ async function defaultPipelineFactory(
   opts: Record<string, unknown>,
   progressCallback?: (event: NerProgressEvent) => void
 ): Promise<HFPipeline> {
+  // Apply self-hosting configuration before the pipeline reads it. If the app
+  // never called `configureNerModelHosting`, this is a no-op and we keep the
+  // default behaviour of fetching from huggingface.co.
+  await applyHostingConfig();
+
   // Dynamic import keeps this side-effect-free at module load time
   const { pipeline } = await import('@huggingface/transformers');
 

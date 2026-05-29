@@ -55,6 +55,11 @@ export default [
       '**/coverage/**',
       'playwright-report/**',
       'test-results/**',
+      // Vendored static assets — Tesseract WASM/JS glue, onnxruntime-web glue.
+      // These are copied verbatim from npm packages; do not lint them.
+      'apps/app/static/tesseract/**',
+      'apps/app/static/ort/**',
+      'apps/app/static/models/**',
     ],
   },
 ];

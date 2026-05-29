@@ -11,7 +11,13 @@ export { parsePdfBlob, PdfWorkerNotConfiguredError } from './pdf.js';
 export { parseDocxBlob } from './docx.js';
 export { parseXlsxBlob } from './xlsx.js';
 export { parsePptxBlob } from './pptx.js';
-export { parseImageBlob, runOcr, type OcrResult, type OcrWord } from './image.js';
+export {
+  parseImageBlob,
+  runOcr,
+  configureTesseractPaths,
+  type OcrResult,
+  type OcrWord,
+} from './image.js';
 export { writeAsFormat, writeAsRedactedFormat, type WriteResult } from './writers.js';
 export { extractZip, packZip, type ZipManifest, type ZipEntry, type ZipPackEntry } from './zip.js';
 export type { SupportedFormat } from './formats.js';

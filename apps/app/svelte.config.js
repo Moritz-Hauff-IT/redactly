@@ -13,15 +13,10 @@ const config = {
       directives: {
         'default-src': ['self'],
         // 'wasm-unsafe-eval' for ONNX/WebLLM/Tesseract WASM execution.
-        // jsdelivr serves transformers.js + tesseract.js WASM + traineddata
-        // (German + English language models for OCR).
-        'script-src': [
-          'self',
-          'wasm-unsafe-eval',
-          'https://cdn.jsdelivr.net',
-          'https://unpkg.com',
-          'blob:',
-        ],
+        // Tesseract and onnxruntime-web (transformers.js backend) are now
+        // both self-hosted under static/ — same-origin only. CDNs stay in
+        // connect-src for the NER model weights and WebLLM downloads only.
+        'script-src': ['self', 'wasm-unsafe-eval', 'blob:'],
         'style-src': ['self', 'unsafe-inline'],
         'img-src': ['self', 'data:'],
         'connect-src': [
@@ -34,11 +29,11 @@ const config = {
           'https://raw.githubusercontent.com',
           'https://s3.amazonaws.com',
           'https://*.s3.amazonaws.com',
-          // ONNX-Runtime-Web WASM binaries + transformers.js modules +
-          // Tesseract.js core (jsdelivr) and traineddata downloads (raw.githubusercontent).
+          // Tesseract assets + onnxruntime-web WASM are self-hosted under
+          // 'self' above. NER model weights still fetched from HuggingFace
+          // by default; WebLLM models too. CDN paths kept so existing
+          // self-hosters who haven't pre-downloaded model weights still work.
           'https://cdn.jsdelivr.net',
-          'https://unpkg.com',
-          'https://tessdata.projectnaptha.com',
         ],
         'worker-src': ['self', 'blob:'],
         'object-src': ['none'],

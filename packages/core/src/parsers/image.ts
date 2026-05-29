@@ -5,9 +5,13 @@
  * bounding boxes and paints whiteout + placeholders onto a canvas.
  *
  * Languages: German + English (covers the DACH/EN use case for Redactly).
- * Tesseract worker downloads ~10MB of model data on first use from the
- * jsdelivr CDN (same trust model as the NER model). All recognition happens
- * locally in a Web Worker; only the model files cross the network.
+ *
+ * Asset hosting: the consuming application is responsible for serving the
+ * Tesseract WASM core + worker script + language traineddata files. Pass
+ * URL paths via `configureTesseractPaths()` before the first `runOcr()`
+ * call. If unconfigured, Tesseract falls back to the default jsdelivr CDN
+ * for the core and tessdata.projectnaptha.com for the language data — the
+ * Redactly app sets local paths so nothing leaves the origin.
  *
  * Per-image OCR cost: ~2-8 seconds for a typical screenshot on a recent CPU.
  * The result is cached on a per-byte basis (see ocrCache) so the redaction
@@ -16,6 +20,26 @@
 
 import type { ParseResult } from './txt.js';
 import type { SupportedFormat } from './formats.js';
+
+interface TesseractPaths {
+  /** URL prefix where tesseract-core-simd.wasm.js etc. live. */
+  corePath?: string;
+  /** URL prefix where `eng.traineddata.gz` etc. live. */
+  langPath?: string;
+  /** Full URL to the Tesseract worker script. */
+  workerPath?: string;
+}
+
+let tesseractPaths: TesseractPaths = {};
+
+/**
+ * Point Tesseract at self-hosted asset URLs. Call once at app startup
+ * (typically alongside the PDF.js worker setup). Without this, Tesseract
+ * loads its core + language data from public CDNs.
+ */
+export function configureTesseractPaths(paths: TesseractPaths): void {
+  tesseractPaths = paths;
+}
 
 export interface OcrWord {
   /** Recognised text content (one logical token, often a single word). */
@@ -76,7 +100,13 @@ export async function runOcr(input: Blob | ArrayBuffer | Uint8Array): Promise<Oc
   // tesseract.js exports both ESM and CJS; the default import works in Vite.
   const Tesseract = await import('tesseract.js');
 
-  const worker = await Tesseract.createWorker(['deu', 'eng']);
+  // Pass any configured self-hosted paths; Tesseract falls back to its
+  // built-in CDN defaults for any path left undefined.
+  const workerOptions = Object.fromEntries(
+    Object.entries(tesseractPaths).filter(([, v]) => typeof v === 'string')
+  ) as Record<string, string>;
+
+  const worker = await Tesseract.createWorker(['deu', 'eng'], 1, workerOptions);
   try {
     // Tesseract accepts Blob/string/HTMLImageElement etc. Wrap our bytes
     // in a Blob for browser-safe typing (no Node Buffer dependency).
