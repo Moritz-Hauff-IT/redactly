@@ -60,10 +60,11 @@ test('full round-trip: mask PII then restore from LLM response', async ({ page, 
   const unknownCount = page.getByTestId('restore-count-unknown');
 
   // Restored should show at least 2 entities. Locale-agnostic check: just
-  // assert the number is ≥ 2 (text format varies between "2 restauriert"
-  // in DE and "2 restored" in EN).
-  await expect(restoredCount).toContainText(/^[2-9]|\d{2,}/, { timeout: 5_000 });
+  // assert the leading number is ≥ 2 (text format varies between
+  // " 2 restauriert" / " 2 restored"; note the leading whitespace from
+  // the dot/separator span). The `\b` anchor catches both.
+  await expect(restoredCount).toContainText(/\b[2-9]\b|\b\d{2,}\b/, { timeout: 5_000 });
 
   // Unknown should show 0 — same locale-agnostic check.
-  await expect(unknownCount).toContainText(/^0\b/);
+  await expect(unknownCount).toContainText(/\b0\b/);
 });
