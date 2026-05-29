@@ -35,7 +35,11 @@ test('full round-trip: mask PII then restore from LLM response', async ({ page, 
   const copyFeedback = page.getByTestId('copy-feedback');
   await expect(copyFeedback).toBeVisible({ timeout: 3_000 });
 
-  // 5. In the Restore pane textarea, paste a simulated LLM response
+  // 5. Switch to the Restore tab — the pane is gated behind a tab toggle
+  //    and isn't mounted until the user clicks "restore".
+  await page.getByRole('tab', { name: /restore/i }).click();
+
+  // 6. In the Restore pane textarea, paste a simulated LLM response
   const llmResponse =
     'Klar, ich schicke die Rechnung umgehend an [EMAIL_1] (Empfänger-IBAN: [IBAN_1])';
 
