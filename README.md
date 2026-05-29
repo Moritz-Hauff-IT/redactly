@@ -4,7 +4,7 @@
 
 [Live demo →](https://app.redactly.dev) · [Docs →](https://redactly.dev/docs) · [Privacy promise →](https://redactly.dev/privacy)
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![License: FSL-1.1-Apache-2.0](https://img.shields.io/badge/license-FSL--1.1--Apache--2.0-blue)](LICENSE)
 [![CI](https://github.com/moritz-hauff-it/redactly/actions/workflows/ci.yml/badge.svg)](https://github.com/moritz-hauff-it/redactly/actions/workflows/ci.yml)
 [![No telemetry](https://img.shields.io/badge/telemetry-none-green)](https://redactly.dev/privacy)
 
@@ -21,7 +21,7 @@ Pasting a support ticket, medical record, or internal email into an LLM exposes 
 - **OCR for images** — PNG / JPG / WebP via Tesseract.js, masked output drawn back onto the original raster
 - **Wide file support** — documents (`.pdf`, `.docx`, `.xlsx`, `.pptx`, `.eml`), text & code (`.txt`, `.md`, `.csv`, `.tsv`, `.json`, `.yaml`, `.toml`, `.ini`, `.env`, `.conf`, `.log`, `.sql`, `.html`, `.xml`), images (`.png`, `.jpg`, `.webp`), ZIP archives
 - **Bilingual UI** — German + English with localStorage-backed switcher
-- **Open source, MIT** — self-host or audit the code
+- **Source-available, FSL-1.1** — read the code, self-host for your own use; converts to Apache 2.0 after two years
 
 ## How it works
 
@@ -93,4 +93,19 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Security issues: [SECURITY.md](SECURITY.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[Functional Source License, Version 1.1, with Apache 2.0 Future
+License](LICENSE) (FSL-1.1-Apache-2.0). In plain English:
+
+- You can **read, audit, fork, and run Redactly for yourself** (personal
+  use, internal company use, education, research, non-commercial
+  research) — that is the whole point of publishing the source.
+- You **cannot offer Redactly (or a substantially similar product) as a
+  commercial service or product that competes with the original**, for
+  the first two years after each release.
+- After **two years**, every commit automatically converts to **Apache
+  License 2.0** — so this is OSS on a delay, not source-available
+  forever.
+
+If you want a commercial use grant before the two-year sunset (e.g. to
+offer a managed Redactly to your customers), contact `mail@moritz-hauff.ch`
+to discuss licensing.

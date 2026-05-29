@@ -1,6 +1,8 @@
 # Contributing to Redactly
 
-Thank you for your interest in contributing. Redactly is an MIT-licensed project and welcomes contributions of all kinds.
+Thank you for your interest in contributing. Redactly is released under
+the [Functional Source License, Version 1.1, Apache 2.0 Future
+License](LICENSE) and welcomes contributions of all kinds.
 
 ## Development setup
 
@@ -62,4 +64,12 @@ Keep the subject line under 72 characters. Add a body if the change needs explan
 
 ## License note
 
-By submitting a pull request you agree that your contribution is licensed under the MIT License, consistent with this project's license.
+By submitting a pull request you agree that your contribution is licensed
+under the project's license — [FSL-1.1-Apache-2.0](LICENSE) — under the
+same terms as the rest of the project. In particular, your contribution
+will fall under the same two-year Apache 2.0 Future Grant as the rest of
+the codebase.
+
+If your contribution requires a different licensing arrangement (for
+example, you maintain your own commercial product downstream), please
+open an issue first so we can coordinate.
