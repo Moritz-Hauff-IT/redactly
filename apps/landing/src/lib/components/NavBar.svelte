@@ -1,15 +1,17 @@
 <script lang="ts">
   import { APP_URL } from '$lib/env';
+  import { t } from '$lib/i18n/locale.svelte.js';
+  import LanguageToggle from './LanguageToggle.svelte';
 
   let menuOpen = $state(false);
 
-  const navLinks = [
-    { href: '/features', label: '01 / Features' },
-    { href: '/docs', label: '02 / Docs' },
-    { href: '/privacy', label: '03 / Privacy' },
-    { href: '/faq', label: '04 / FAQ' },
-    { href: '/blog', label: '05 / Log' },
-  ];
+  const navLinks = $derived([
+    { href: '/features', label: t('nav_features') },
+    { href: '/docs', label: t('nav_docs') },
+    { href: '/privacy', label: t('nav_privacy') },
+    { href: '/faq', label: t('nav_faq') },
+    { href: '/blog', label: t('nav_log') },
+  ]);
 </script>
 
 <!-- Top status strip — always visible, signals the operational nature -->
@@ -23,16 +25,17 @@
     <div class="hidden items-center gap-5 sm:flex">
       <span class="status-row text-[color:var(--color-ok)]">
         <span class="status-dot"></span>
-        client-only
+        {t('nav_status_client')}
       </span>
       <span class="status-row text-[color:var(--color-text-dim)]">
         <span class="h-1.5 w-1.5 bg-[color:var(--color-text-mute)]"></span>
-        no telemetry
+        {t('nav_status_no_telemetry')}
       </span>
       <span class="status-row text-[color:var(--color-text-dim)]">
         <span class="h-1.5 w-1.5 bg-[color:var(--color-text-mute)]"></span>
-        mit license
+        {t('nav_status_license')}
       </span>
+      <LanguageToggle />
     </div>
     <span class="text-[color:var(--color-text-mute)]">v0.1.0-alpha</span>
   </div>
@@ -73,7 +76,7 @@
         class="group inline-flex items-center gap-2 border border-[color:var(--color-signal)] bg-[color:var(--color-signal-soft)] px-4 py-2 font-[family-name:var(--font-mono)] text-[0.75rem] tracking-[0.08em] uppercase text-[color:var(--color-signal)] transition-all hover:bg-[color:var(--color-signal)] hover:text-[color:var(--color-shell)]"
       >
         <span aria-hidden="true">$</span>
-        run.app
+        {t('nav_cta_run')}
         <span class="transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
       </a>
     </div>
@@ -82,7 +85,7 @@
     <button
       class="flex flex-col gap-1.5 p-2 md:hidden"
       onclick={() => (menuOpen = !menuOpen)}
-      aria-label="Menü öffnen"
+      aria-label={t('nav_menu_open')}
       aria-expanded={menuOpen}
     >
       <span
@@ -125,9 +128,12 @@
             class="inline-flex items-center gap-2 border border-[color:var(--color-signal)] bg-[color:var(--color-signal-soft)] px-4 py-2 font-[family-name:var(--font-mono)] text-xs tracking-[0.08em] uppercase text-[color:var(--color-signal)]"
           >
             <span aria-hidden="true">$</span>
-            run.app
+            {t('nav_cta_run')}
             <span aria-hidden="true">→</span>
           </a>
+        </li>
+        <li class="pt-2">
+          <LanguageToggle />
         </li>
       </ul>
     </div>

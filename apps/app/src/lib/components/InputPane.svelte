@@ -8,6 +8,7 @@
   import { inputStore } from '../stores/inputStore.svelte.js';
   import { detectionStore } from '../stores/detectionStore.svelte.js';
   import { errorStore } from '../stores/errorStore.svelte.js';
+  import { t } from '$lib/i18n/locale.svelte.js';
   import HighlightedInput from './HighlightedInput.svelte';
 
   interface Props {
@@ -55,13 +56,17 @@
     } catch (err) {
       if (err instanceof UnsupportedFormatError) {
         errorStore.show(
-          `Format nicht unterstützt: ${file.name}. ` +
-            `Erlaubt: ${ACCEPTED_EXTENSIONS.replace(/,/g, ' ')}`
+          t('error_unsupported_format', {
+            filename: file.name,
+            extensions: ACCEPTED_EXTENSIONS.replace(/,/g, ' '),
+          })
         );
       } else if (err instanceof PdfWorkerNotConfiguredError) {
-        errorStore.show('PDF-Worker nicht konfiguriert. Seite neu laden und erneut versuchen.');
+        errorStore.show(t('error_pdf_worker'));
       } else {
-        errorStore.show(`Fehler beim Parsen: ${err instanceof Error ? err.message : 'Unbekannt'}`);
+        errorStore.show(
+          t('error_parse', { message: err instanceof Error ? err.message : 'unknown' })
+        );
       }
     }
   }
@@ -135,7 +140,7 @@ Buchhaltung, Müller GmbH
 <div class="pane">
   <div class="pane-head">
     <span class="pane-title">
-      {inputStore.filename ? inputStore.filename : 'eingabe'}
+      {inputStore.filename ? inputStore.filename : t('input_title')}
     </span>
     <div class="flex items-center gap-2">
       {#if inputStore.filename}
@@ -148,11 +153,15 @@ Buchhaltung, Müller GmbH
         <span
           class="font-[family-name:var(--font-mono)] text-[10.5px] text-[color:var(--color-ink-mute)]"
         >
-          {inputStore.text.length} chars
+          {t('input_chars', { n: inputStore.text.length })}
         </span>
       {/if}
-      <button class="btn-ghost" onclick={loadSample} title="Beispieltext laden">beispiel</button>
-      <button class="btn-ghost" disabled={!inputStore.text} onclick={clearInput}>leeren</button>
+      <button class="btn-ghost" onclick={loadSample} title="Beispieltext laden">
+        {t('btn_example')}
+      </button>
+      <button class="btn-ghost" disabled={!inputStore.text} onclick={clearInput}>
+        {t('btn_clear')}
+      </button>
     </div>
   </div>
 
@@ -171,7 +180,7 @@ Buchhaltung, Müller GmbH
         <span
           class="font-[family-name:var(--font-mono)] text-[12px] font-medium text-[color:var(--color-accent)]"
         >
-          → Datei hier ablegen zum Parsen
+          {t('file_drop_hint')}
         </span>
       </div>
     {/if}
@@ -209,11 +218,10 @@ Buchhaltung, Müller GmbH
           </p>
         </div>
         <p class="max-w-xs text-[12px] text-[color:var(--color-ink-soft)]">
-          Klick „Maskieren". Der Text wird im Hintergrund analysiert, die maskierte Version landet
-          rechts als gleicher Dateityp zum Download.
+          {t('file_mask_hint')}
         </p>
         <button class="btn-ghost mt-1" onclick={() => (textPreviewOpen = !textPreviewOpen)}>
-          {textPreviewOpen ? '↑ Vorschau ausblenden' : '↓ Text-Vorschau anzeigen'}
+          {textPreviewOpen ? t('file_preview_hide') : t('file_preview_show')}
         </button>
         {#if textPreviewOpen}
           <div
@@ -248,12 +256,12 @@ Buchhaltung, Müller GmbH
       onchange={handleFileChange}
       aria-label="Datei auswählen"
     />
-    <button class="btn-ghost" onclick={() => fileInputEl?.click()}>↑ datei</button>
+    <button class="btn-ghost" onclick={() => fileInputEl?.click()}>{t('btn_file_upload')}</button>
     <span
       class="font-[family-name:var(--font-mono)] text-[10.5px] text-[color:var(--color-ink-mute)]"
       title={ACCEPTED_EXTENSIONS.replace(/,/g, ' ')}
     >
-      Dokumente, Text, Code, Configs, Logs, ZIP
+      {t('files_hint')}
     </span>
 
     <button
@@ -281,9 +289,9 @@ Buchhaltung, Müller GmbH
             stroke-linecap="round"
           />
         </svg>
-        Analysiere …
+        {t('btn_mask_analyzing')}
       {:else}
-        <span>Maskieren</span>
+        <span>{t('btn_mask')}</span>
         <span class="kbd">⌘↵</span>
       {/if}
     </button>

@@ -2,6 +2,7 @@
   import { inputStore } from '../stores/inputStore.svelte.js';
   import { mappingStore } from '../stores/mappingStore.svelte.js';
   import { errorStore } from '../stores/errorStore.svelte.js';
+  import { t } from '$lib/i18n/locale.svelte.js';
 
   interface Props {
     maskedText: string;
@@ -64,8 +65,8 @@
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unbekannter Fehler';
-      errorStore.show(`Download fehlgeschlagen: ${msg}. Versuche es mit „Text kopieren".`);
+      const msg = err instanceof Error ? err.message : 'unknown';
+      errorStore.show(t('error_download', { message: msg }));
       // eslint-disable-next-line no-console
       console.error('[MaskedPane] download failed', err);
     }
@@ -74,10 +75,12 @@
 
 <div class="pane">
   <div class="pane-head">
-    <span class="pane-title">ausgabe</span>
+    <span class="pane-title">{t('output_title')}</span>
     <div class="flex items-center gap-2">
       {#if !isFileMode}
-        <button class="btn-ghost" disabled={!maskedText} onclick={downloadMasked}>download</button>
+        <button class="btn-ghost" disabled={!maskedText} onclick={downloadMasked}>
+          {t('btn_download')}
+        </button>
         <button
           data-testid="copy-masked"
           class="btn-ghost"
@@ -85,9 +88,11 @@
           onclick={copyToClipboard}
         >
           {#if copied}
-            <span data-testid="copy-feedback" class="text-[color:var(--color-ok)]">kopiert ✓</span>
+            <span data-testid="copy-feedback" class="text-[color:var(--color-ok)]"
+              >{t('btn_copied')}</span
+            >
           {:else}
-            kopieren
+            {t('btn_copy')}
           {/if}
         </button>
       {/if}
@@ -119,7 +124,7 @@
           <p
             class="font-[family-name:var(--font-serif)] text-[16px] font-medium text-[color:var(--color-ink)]"
           >
-            Maskierte Datei bereit
+            {t('file_ready_title')}
           </p>
           <p
             class="mt-1 font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
@@ -127,13 +132,13 @@
             {outputFilename}
           </p>
         </div>
-        <button class="btn-primary mt-2" onclick={downloadMasked}> ↓ Download </button>
+        <button class="btn-primary mt-2" onclick={downloadMasked}>↓ {t('btn_download')}</button>
         <div class="mt-2 flex items-center gap-2">
           <button class="btn-ghost" onclick={copyToClipboard}>
-            {copied ? 'Text kopiert ✓' : 'Text kopieren'}
+            {copied ? t('file_text_copied') : t('file_text_copy')}
           </button>
           <button class="btn-ghost" onclick={() => (textPreviewOpen = !textPreviewOpen)}>
-            {textPreviewOpen ? '↑ Vorschau' : '↓ Vorschau'}
+            {textPreviewOpen ? t('file_preview_hide') : t('file_preview_show')}
           </button>
         </div>
         {#if textPreviewOpen}
@@ -144,9 +149,7 @@
       </div>
     {:else}
       <div class="flex flex-1 items-center justify-center p-8 text-center">
-        <span class="text-[color:var(--color-ink-mute)] italic"
-          >Klick „Maskieren" — die maskierte Datei landet hier</span
-        >
+        <span class="text-[color:var(--color-ink-mute)] italic">{t('output_empty_file')}</span>
       </div>
     {/if}
   {:else}
@@ -157,9 +160,7 @@
       {#if maskedText}
         {maskedText}
       {:else}
-        <span class="text-[color:var(--color-ink-mute)] italic"
-          >redigierter Text erscheint hier — klick „Maskieren" um zu starten</span
-        >
+        <span class="text-[color:var(--color-ink-mute)] italic">{t('output_empty_text')}</span>
       {/if}
     </div>
   {/if}

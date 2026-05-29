@@ -3,6 +3,7 @@
   import '../lib/setup/pdf.js';
   import Toast from '$lib/components/Toast.svelte';
   import SettingsDrawer from '$lib/components/SettingsDrawer.svelte';
+  import LanguageToggle from '$lib/components/LanguageToggle.svelte';
   import { onMount } from 'svelte';
   import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
   import { engineStore } from '$lib/stores/engineStore.svelte.js';
@@ -106,6 +107,7 @@
         <span class="dot {backendStatus.dot}"></span>
         <span>{backendStatus.label}</span>
       </span>
+      <LanguageToggle />
       <button
         class="btn-icon"
         onclick={() => (drawerOpen = true)}
