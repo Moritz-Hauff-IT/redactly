@@ -107,5 +107,5 @@ License](LICENSE) (FSL-1.1-Apache-2.0). In plain English:
   forever.
 
 If you want a commercial use grant before the two-year sunset (e.g. to
-offer a managed Redactly to your customers), contact `mail@moritz-hauff.ch`
+offer a managed Redactly to your customers), contact `hello@redactly.dev`
 to discuss licensing.

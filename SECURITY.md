@@ -4,7 +4,7 @@
 
 If you discover a security issue in Redactly, please report it by email rather than a public GitHub issue:
 
-**Contact:** mail@moritz-hauff.ch
+**Contact:** security@redactly.dev
 
 You can expect:
 
