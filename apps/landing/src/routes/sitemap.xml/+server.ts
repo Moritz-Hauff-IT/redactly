@@ -14,6 +14,24 @@ const ROUTES: Array<{ path: string; priority: string; changefreq: string; lastmo
   { path: '/docs/api', priority: '0.6', changefreq: 'monthly' },
   { path: '/blog', priority: '0.7', changefreq: 'weekly' },
   {
+    path: '/blog/posts/2026-05-privacy-engineering',
+    priority: '0.7',
+    changefreq: 'yearly',
+    lastmod: '2026-05-29',
+  },
+  {
+    path: '/blog/posts/2026-05-pii-vs-secrets',
+    priority: '0.7',
+    changefreq: 'yearly',
+    lastmod: '2026-05-29',
+  },
+  {
+    path: '/blog/posts/2026-05-dsgvo-llm',
+    priority: '0.7',
+    changefreq: 'yearly',
+    lastmod: '2026-05-29',
+  },
+  {
     path: '/blog/posts/2026-05-launch',
     priority: '0.6',
     changefreq: 'yearly',

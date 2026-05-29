@@ -9,7 +9,32 @@
     author: string;
   }
 
+  // Sorted newest-first; new posts go at the top of this list.
   const posts: Post[] = [
+    {
+      slug: '2026-05-privacy-engineering',
+      title: 'Privacy-Engineering im LLM-Zeitalter',
+      date: '2026-05-29',
+      description:
+        'Cloud-LLMs haben die Angriffsfläche für Datenleckagen neu definiert. Ein Blick darauf, was sich konkret geändert hat — und welche Engineering-Prinzipien jetzt zählen.',
+      author: 'Moritz Hauff',
+    },
+    {
+      slug: '2026-05-pii-vs-secrets',
+      title: 'PII vs. Secrets: zwei Probleme, eine Maskierung',
+      date: '2026-05-29',
+      description:
+        'Personenbezogene Daten und Secrets sehen oberflächlich ähnlich aus, brauchen aber unterschiedliche Erkennungsstrategien. Eine technische Tour durch beides.',
+      author: 'Moritz Hauff',
+    },
+    {
+      slug: '2026-05-dsgvo-llm',
+      title: 'DSGVO und LLMs: Art. 6, 9 und 32 in der Praxis',
+      date: '2026-05-29',
+      description:
+        'Wenn Mitarbeiter:innen personenbezogene Daten in Cloud-LLMs eingeben, ist das eine Auftragsverarbeitung — oder Schlimmeres. Eine praktische Einordnung der DSGVO-Pflichten.',
+      author: 'Moritz Hauff',
+    },
     {
       slug: '2026-05-launch',
       title: 'Warum wir Redactly bauen',

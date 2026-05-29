@@ -1,0 +1,84 @@
+---
+title: "PII vs. Secrets: zwei Probleme, eine Maskierung"
+date: "2026-05-29"
+author: Moritz Hauff
+slug: 2026-05-pii-vs-secrets
+description: Personenbezogene Daten und Secrets sehen oberflächlich ähnlich aus, brauchen aber unterschiedliche Erkennungsstrategien. Eine technische Tour durch beides.
+---
+
+<SeoHead
+  title="PII vs. Secrets: zwei Probleme, eine Maskierung"
+  description="Personenbezogene Daten und Secrets sehen oberflächlich ähnlich aus, brauchen aber unterschiedliche Erkennungsstrategien. Eine technische Tour durch beides."
+  path="/blog/posts/2026-05-pii-vs-secrets"
+  ogType="article"
+  publishedTime="2026-05-29"
+/>
+
+<DocLayout title="PII vs. Secrets: zwei Probleme, eine Maskierung" backHref="/blog" backLabel="Blog">
+
+<div class="mb-6 flex items-center gap-3 text-sm text-slate-500 not-prose">
+  <time datetime="2026-05-29">29. Mai 2026</time>
+  <span>&middot;</span>
+  <span>Moritz Hauff</span>
+</div>
+
+# PII vs. Secrets: zwei Probleme, eine Maskierung
+
+In Diskussionen über „sensible Daten in LLMs" werden personenbezogene Daten (PII) und technische Secrets (API-Keys, Tokens, Passwörter) oft in einen Topf geworfen. Aus Nutzer:innen-Sicht macht das Sinn — beides sollte nicht ins LLM-Promptfeld. Aus Engineering-Sicht sind es zwei sehr unterschiedliche Probleme.
+
+## PII: das Erkennungsproblem ist semantisch
+
+Personenbezogene Daten haben oft kein deterministisches Format. „Martin Müller" sieht aus wie jeder andere Vorname + Nachname. „Bahnhofstraße 17" ist eine plausible Adresse, aber auch ein potenzieller Buchtitel. Selbst eine IBAN — die ein klares Format hat — kann in einem Lehrbuchbeispiel stehen und ist dann keine PII.
+
+Klassifikation ist hier kontextabhängig. Reine Pattern-Erkennung führt entweder zu zu vielen False Positives (jeder kapitalisierte Wortpaar wird zu PERSON) oder zu zu wenigen Treffern (NER-Modelle verpassen ungewöhnliche Schreibweisen). Das ist der Grund, warum hybride Ansätze in der Praxis siegen:
+
+- **Regex/Strukturen** mit Validierung (IBAN mod-97, Luhn für Kreditkarten, gültige TLDs für Email) decken hochstrukturierte PII ab
+- **NER-Modelle** (z.B. BERT-basiert, multilingual) finden Personen-, Orts- und Organisationsnamen kontextbewusst
+- **LLM-basierte Klassifikation** liefert Disambiguierung in mehrdeutigen Fällen und ergänzt das, was Regex und NER nicht erkennen
+
+Die Schwierigkeit liegt in der Komposition. Wenn beide Regex und NER „Berlin" markieren, gehört der Treffer einmal in die Ergebnisliste, nicht zweimal. Wenn LLM einen Treffer halluziniert (eine Person erfindet, die im Text nicht steht), muss das gefiltert werden. Production-grade PII-Detection ist 80% Komposition und Dedup, 20% einzelne Erkenner.
+
+## Secrets: das Erkennungsproblem ist strukturell — aber riskant
+
+Bei Secrets ist die Lage umgekehrt. API-Keys, JWTs, Bearer-Tokens haben weitgehend deterministische Strukturen:
+
+- `AKIA[0-9A-Z]{16}` → AWS Access Key
+- `ghp_[A-Za-z0-9]{36,}` → GitHub Personal Access Token
+- `sk-[A-Za-z0-9\-_]{20,}` → OpenAI API Key
+- `eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+` → JWT
+
+Für die meisten bekannten Token-Formate gibt es etablierte Regex-Bibliotheken (z.B. `trufflehog`, `detect-secrets`). Die strukturierte Erkennung ist gut.
+
+Das Risiko ist ein anderes: ein versehentlich an ein LLM gesendeter API-Key kann sofort missbraucht werden — anders als eine Person, deren Name in einem Prompt-Log auftaucht. Bei Secrets ist die Detection-Latenz kritisch. Wenn dein Anti-Secrets-Filter erst hinterher anschlägt, ist es zu spät.
+
+Hinzu kommt: hochentropie-Strings ohne bekanntes Prefix. Eine 32-stellige Hex-Zeichenkette kann ein Hash sein, ein Session-Token, ein Recovery-Code oder ein vergessener Test-Key. Hier brauchst du eine Heuristik (Shannon-Entropie, Kontext-Wörter wie „key", „token", „secret" in der Nähe), die nicht so präzise wie ein bekannter Prefix-Match ist, aber deutlich präziser als nichts.
+
+## Wo es sich überschneidet — und wo nicht
+
+Beide Detection-Typen profitieren von Kontextsensitivität. Aber der Schadensfall ist unterschiedlich:
+
+| Aspekt | PII | Secrets |
+|---|---|---|
+| **Schadensgrad bei Leak** | meist Reputations- und Compliance-Risiko (DSGVO) | meist direkter ökonomischer Schaden |
+| **Time-to-Damage** | langfristig (über Logs, Training, Memory) | sofort (sobald jemand den Key sieht) |
+| **Erkennung** | semantisch, hybrid (Regex + NER + LLM) | strukturell, Pattern-basiert + Entropie |
+| **Reversibilität** | wertvoll (du willst Antworten unmaskieren) | meist nicht nötig (der Schlüssel selbst gehört nie in den Prompt) |
+
+Das Reversibilitäts-Argument ist wichtig. Bei PII willst du, dass der Workflow funktioniert: maskiere „Martin Müller" zu `[PERSON_1]`, sende den Prompt, restauriere die Antwort. Bei Secrets willst du das oft NICHT — du willst, dass der Key durch einen Hinweis (`[REDACTED_SECRET]`) ersetzt wird, der dem LLM klarmacht: hier war etwas, das nicht gezeigt werden darf.
+
+## Was das für ein Privacy-Tool bedeutet
+
+Eine ehrliche PII-Lösung muss beide Probleme adressieren, aber mit unterschiedlichen Garantien:
+
+Für PII darf Detection-Recall nicht 100% sein — Kontext entscheidet, manchmal sind False Negatives akzeptabel. Der Nutzer sollte mit einer Review-UI Korrekturen vornehmen können.
+
+Für Secrets sollte Detection so konservativ wie möglich sein. Lieber einen Hash false-positiv als einen echten Key übersehen.
+
+Redactly trennt diese beiden Erkennungspfade intern (siehe `packages/core/src/detectors/patterns/secrets.ts`), zeigt sie aber im UI als eine einheitliche Liste. Du siehst auf einen Blick, was erkannt wurde, und kannst Treffer einzeln aktivieren oder deaktivieren — die Entscheidung bleibt bei dir.
+
+</DocLayout>
+
+<script>
+  import DocLayout from '$lib/components/DocLayout.svelte';
+  import SeoHead from '$lib/components/SeoHead.svelte';
+</script>
