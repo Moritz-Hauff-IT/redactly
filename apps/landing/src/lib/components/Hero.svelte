@@ -1,5 +1,6 @@
 <script lang="ts">
   import CtaButton from './CtaButton.svelte';
+  import { localizedHref } from '$lib/i18n/locale.svelte.js';
 </script>
 
 <section
@@ -49,7 +50,7 @@
         <div class="mt-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <CtaButton size="lg" />
           <a
-            href="/docs"
+            href={localizedHref('/docs')}
             class="group inline-flex items-center gap-2 border border-[color:var(--color-line-strong)] px-6 py-4 font-[family-name:var(--font-mono)] text-[0.8rem] tracking-[0.1em] uppercase text-[color:var(--color-text-dim)] transition-all hover:border-[color:var(--color-text)] hover:text-[color:var(--color-text)]"
           >
             cat readme.md

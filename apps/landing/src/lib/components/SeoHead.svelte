@@ -1,10 +1,14 @@
 <script lang="ts">
+  import { currentLocale } from '$lib/i18n/locale.svelte.js';
+
   interface Props {
     /** Page title; will be suffixed with " | Redactly" unless `bare` is true. */
     title: string;
     /** Meta description (≤ 160 chars recommended). */
     description: string;
-    /** Path of the current page, e.g. "/", "/privacy", "/blog/posts/launch". */
+    /** UNPREFIXED path of the current page (e.g. "/", "/privacy",
+     * "/blog/posts/launch"). The component automatically generates the
+     * `/` and `/en/` URL variants for canonical + hreflang tags. */
     path: string;
     /** OG type. Default "website". Use "article" for blog posts. */
     ogType?: 'website' | 'article';
@@ -28,7 +32,18 @@
 
   const SITE_URL = 'https://redactly.dev';
   const fullTitle = $derived(bare ? title : `${title} | Redactly`);
-  const canonical = $derived(`${SITE_URL}${path === '/' ? '' : path}`);
+
+  // Build absolute URLs for both locales. `path` is the unprefixed canonical
+  // path (e.g. "/blog"); the German URL stays bare, the English URL gets
+  // the `/en` prefix prepended.
+  const lang = $derived(currentLocale());
+  const dePath = $derived(path === '/' ? '' : path);
+  const enPath = $derived(path === '/' ? '/en' : `/en${path}`);
+  const deUrl = $derived(`${SITE_URL}${dePath}`);
+  const enUrl = $derived(`${SITE_URL}${enPath}`);
+  // The canonical of the page YOU'RE ON
+  const canonical = $derived(lang === 'en' ? enUrl : deUrl);
+  const ogLocale = $derived(lang === 'en' ? 'en_US' : 'de_DE');
 </script>
 
 <svelte:head>
@@ -42,7 +57,7 @@
   <meta property="og:url" content={canonical} />
   <meta property="og:type" content={ogType} />
   <meta property="og:site_name" content="Redactly" />
-  <meta property="og:locale" content="de_DE" />
+  <meta property="og:locale" content={ogLocale} />
   <meta property="og:image" content={ogImage} />
   <meta property="og:image:alt" content="Redactly – Browser-only PII masking" />
   {#if publishedTime}
@@ -55,7 +70,8 @@
   <meta name="twitter:description" content={description} />
   <meta name="twitter:image" content={ogImage} />
 
-  <!-- hreflang (DE only for now) -->
-  <link rel="alternate" hreflang="de" href={canonical} />
-  <link rel="alternate" hreflang="x-default" href={canonical} />
+  <!-- hreflang: declare both locale URLs + x-default → DE -->
+  <link rel="alternate" hreflang="de" href={deUrl} />
+  <link rel="alternate" hreflang="en" href={enUrl} />
+  <link rel="alternate" hreflang="x-default" href={deUrl} />
 </svelte:head>

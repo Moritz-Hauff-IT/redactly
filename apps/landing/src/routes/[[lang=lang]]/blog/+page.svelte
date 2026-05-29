@@ -1,5 +1,6 @@
 <script lang="ts">
   import SeoHead from '$lib/components/SeoHead.svelte';
+  import { localizedHref } from '$lib/i18n/locale.svelte.js';
 
   interface Post {
     slug: string;
@@ -72,7 +73,7 @@
     <div class="space-y-6">
       {#each posts as post}
         <a
-          href="/blog/posts/{post.slug}"
+          href={localizedHref(`/blog/posts/${post.slug}`)}
           class="group block rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-teal-300 hover:shadow-md"
         >
           <div class="mb-2 flex items-center gap-3 text-sm text-slate-500">

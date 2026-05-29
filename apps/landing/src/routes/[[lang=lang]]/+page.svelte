@@ -4,6 +4,7 @@
   import HowItWorks from '$lib/components/HowItWorks.svelte';
   import CtaButton from '$lib/components/CtaButton.svelte';
   import SeoHead from '$lib/components/SeoHead.svelte';
+  import { localizedHref } from '$lib/i18n/locale.svelte.js';
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -99,7 +100,7 @@
         <div class="mt-12 flex flex-col gap-5 sm:flex-row sm:items-center">
           <CtaButton size="lg" label="App jetzt starten" />
           <a
-            href="/privacy"
+            href={localizedHref('/privacy')}
             class="group inline-flex items-baseline gap-2 font-[family-name:var(--font-display)] text-lg italic text-[color:var(--color-paper)]/80 underline decoration-[color:var(--color-paper)]/30 decoration-1 underline-offset-[6px] transition-all hover:text-[color:var(--color-paper)] hover:decoration-[color:var(--color-rust)]"
           >
             das ganze Privacy-Manifest

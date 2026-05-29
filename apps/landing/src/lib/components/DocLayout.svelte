@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { localizedHref } from '$lib/i18n/locale.svelte.js';
+
   interface Props {
     title: string;
     backHref: string;
@@ -12,7 +14,7 @@
 <div class="bg-white py-16">
   <div class="mx-auto max-w-3xl px-4 sm:px-6">
     <nav class="mb-8 text-sm text-slate-500">
-      <a href={backHref} class="hover:text-teal-600">{backLabel}</a>
+      <a href={localizedHref(backHref)} class="hover:text-teal-600">{backLabel}</a>
       <span class="mx-2">/</span>
       <span class="text-slate-900">{title}</span>
     </nav>

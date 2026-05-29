@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { localeStore, t } from '$lib/i18n/locale.svelte.js';
+  import { page } from '$app/state';
+  import { currentLocale, switchLocaleHref, t } from '$lib/i18n/locale.svelte.js';
   import { LOCALES } from '$lib/i18n/messages.js';
 </script>
 
@@ -9,17 +10,18 @@
   aria-label={t('lang_switch_label')}
 >
   {#each LOCALES as code}
-    <button
-      type="button"
-      onclick={() => localeStore.set(code)}
+    {@const isActive = currentLocale() === code}
+    <a
+      href={switchLocaleHref(page.url.pathname, code)}
       class="px-2 py-1 transition-colors"
-      class:bg-current={localeStore.current === code}
-      class:text-[color:var(--color-shell)]={localeStore.current === code}
-      class:text-[color:var(--color-text-dim)]={localeStore.current !== code}
-      class:hover:text-[color:var(--color-signal)]={localeStore.current !== code}
-      aria-pressed={localeStore.current === code}
+      class:bg-[color:var(--color-text)]={isActive}
+      class:text-[color:var(--color-shell)]={isActive}
+      class:text-[color:var(--color-text-dim)]={!isActive}
+      class:hover:text-[color:var(--color-signal)]={!isActive}
+      aria-current={isActive ? 'page' : undefined}
+      hreflang={code}
     >
       {code}
-    </button>
+    </a>
   {/each}
 </div>

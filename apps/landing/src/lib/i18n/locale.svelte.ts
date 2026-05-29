@@ -1,71 +1,64 @@
 /**
- * Locale store + translation helper.
+ * URL-driven locale derivation + translation helper.
  *
- * Locale is persisted to localStorage (`redactly:locale`). The store is
- * reactive — components that call `t(key)` re-render automatically when
- * the user switches language.
+ * Locale comes from the route's `[[lang=lang]]` param:
+ *   /...       → de (default, German)
+ *   /en/...    → en (English)
  *
- * URL-prefix routing is intentionally NOT used for the initial release:
- * the prerender pipeline + matcher refactor is invasive, and the DACH/
- * German-speaking user is the primary audience. Language switching is
- * client-only; SEO sees the German baseline. If English SEO becomes a
- * goal later, migrate to `[[lang=lang]]` route segments — the messages
- * file stays as-is.
+ * The matcher in `src/params/lang.ts` only accepts `'en'`, so the URL
+ * space is exactly two locales. `t(key)` reads `page.params.lang`
+ * reactively, so any component re-renders automatically when the user
+ * navigates between locales.
+ *
+ * No localStorage / no first-visit detection: the URL is the single
+ * source of truth — same string is always the same translation regardless
+ * of who/when. This keeps SSR/prerender deterministic and avoids the
+ * flash-of-wrong-language problem that client-only locale state has.
  */
 
-import { browser } from '$app/environment';
-import { DEFAULT_LOCALE, messages, type Locale, type MessageKey } from './messages.js';
+import { page } from '$app/state';
+import { messages, type Locale, type MessageKey } from './messages.js';
 
-const STORAGE_KEY = 'redactly:locale';
-
-function loadInitial(): Locale {
-  if (!browser) return DEFAULT_LOCALE;
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'de' || stored === 'en') return stored;
-    // Best-effort browser-language detection on first visit
-    const nav = navigator.language?.slice(0, 2);
-    if (nav === 'en') return 'en';
-  } catch {
-    /* private mode, etc. — fall through to default */
-  }
-  return DEFAULT_LOCALE;
+/** The active locale, derived live from the current URL. */
+export function currentLocale(): Locale {
+  return page.params.lang === 'en' ? 'en' : 'de';
 }
-
-function createLocaleStore() {
-  let locale = $state<Locale>(loadInitial());
-
-  return {
-    get current() {
-      return locale;
-    },
-    set(next: Locale) {
-      locale = next;
-      if (!browser) return;
-      try {
-        localStorage.setItem(STORAGE_KEY, next);
-        // Update <html lang> for accessibility + browser language indicators
-        document.documentElement.lang = next;
-      } catch {
-        /* ignore — non-fatal */
-      }
-    },
-    toggle() {
-      this.set(locale === 'de' ? 'en' : 'de');
-    },
-  };
-}
-
-export const localeStore = createLocaleStore();
 
 /**
- * Look up a translated string. Falls back to German if the requested locale
- * has no translation for the key. Supports `{placeholder}` interpolation.
+ * Resolve a message to the current locale. Falls back to German if the
+ * English translation is missing for the key. Supports `{placeholder}`
+ * interpolation.
  */
 export function t(key: MessageKey, params?: Record<string, string | number>): string {
   const entry = messages[key];
   if (!entry) return key;
-  const value = entry[localeStore.current] ?? entry.de ?? key;
+  const value = entry[currentLocale()] ?? entry.de ?? key;
   if (!params) return value;
   return value.replace(/\{(\w+)\}/g, (_match, name) => String(params[name] ?? `{${name}}`));
+}
+
+/**
+ * Given an unprefixed path, return the locale-prefixed URL.
+ * Use this for every internal `<a href>` so language navigation stays
+ * within the same locale.
+ *   localizedHref('/blog')          → '/blog'         (de)
+ *   localizedHref('/blog', 'en')    → '/en/blog'
+ *   localizedHref('/', 'en')        → '/en'
+ */
+export function localizedHref(href: string, locale?: Locale): string {
+  const loc = locale ?? currentLocale();
+  if (loc === 'de') return href;
+  if (href === '/') return '/en';
+  return `/en${href.startsWith('/') ? href : '/' + href}`;
+}
+
+/**
+ * Given the CURRENT path, return what it should be in the OTHER locale.
+ * Used by the language toggle to flip languages while preserving the
+ * page the user is on.
+ */
+export function switchLocaleHref(currentPath: string, toLocale: Locale): string {
+  // Strip an existing /en prefix if present
+  const bare = currentPath.replace(/^\/en(?=\/|$)/, '') || '/';
+  return localizedHref(bare, toLocale);
 }

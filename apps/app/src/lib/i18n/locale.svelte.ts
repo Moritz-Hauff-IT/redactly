@@ -1,58 +1,31 @@
 /**
- * Locale store + translation helper (app variant).
- *
- * Locale is persisted to localStorage (`redactly:locale` — shared key with
- * the landing site so the choice carries across domains when self-hosted
- * under the same eTLD+1). The store is reactive — components calling
- * `t(key)` re-render automatically when the user switches language.
+ * URL-driven locale derivation + translation helper (app variant).
+ * See landing-app sibling for full design notes.
  */
 
-import { browser } from '$app/environment';
-import { DEFAULT_LOCALE, messages, type Locale, type MessageKey } from './messages.js';
+import { page } from '$app/state';
+import { messages, type Locale, type MessageKey } from './messages.js';
 
-const STORAGE_KEY = 'redactly:locale';
-
-function loadInitial(): Locale {
-  if (!browser) return DEFAULT_LOCALE;
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'de' || stored === 'en') return stored;
-    const nav = navigator.language?.slice(0, 2);
-    if (nav === 'en') return 'en';
-  } catch {
-    /* private mode */
-  }
-  return DEFAULT_LOCALE;
+export function currentLocale(): Locale {
+  return page.params.lang === 'en' ? 'en' : 'de';
 }
-
-function createLocaleStore() {
-  let locale = $state<Locale>(loadInitial());
-  return {
-    get current() {
-      return locale;
-    },
-    set(next: Locale) {
-      locale = next;
-      if (!browser) return;
-      try {
-        localStorage.setItem(STORAGE_KEY, next);
-        document.documentElement.lang = next;
-      } catch {
-        /* ignore */
-      }
-    },
-    toggle() {
-      this.set(locale === 'de' ? 'en' : 'de');
-    },
-  };
-}
-
-export const localeStore = createLocaleStore();
 
 export function t(key: MessageKey, params?: Record<string, string | number>): string {
   const entry = messages[key];
   if (!entry) return key;
-  const value = entry[localeStore.current] ?? entry.de ?? key;
+  const value = entry[currentLocale()] ?? entry.de ?? key;
   if (!params) return value;
   return value.replace(/\{(\w+)\}/g, (_match, name) => String(params[name] ?? `{${name}}`));
+}
+
+export function localizedHref(href: string, locale?: Locale): string {
+  const loc = locale ?? currentLocale();
+  if (loc === 'de') return href;
+  if (href === '/') return '/en';
+  return `/en${href.startsWith('/') ? href : '/' + href}`;
+}
+
+export function switchLocaleHref(currentPath: string, toLocale: Locale): string {
+  const bare = currentPath.replace(/^\/en(?=\/|$)/, '') || '/';
+  return localizedHref(bare, toLocale);
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { localizedHref } from '$lib/i18n/locale.svelte.js';
   const year = new Date().getFullYear();
 </script>
 
@@ -8,7 +9,7 @@
       <!-- Wordmark + tagline -->
       <div class="lg:col-span-5">
         <a
-          href="/"
+          href={localizedHref('/')}
           class="inline-flex items-center gap-2 font-[family-name:var(--font-mono)] text-[1.05rem] font-bold tracking-tight text-[color:var(--color-text)]"
         >
           <span class="text-[color:var(--color-signal)]">█</span>
@@ -41,9 +42,19 @@
           <ul
             class="mt-4 space-y-2.5 font-[family-name:var(--font-mono)] text-[0.8rem] text-[color:var(--color-text-dim)]"
           >
-            <li><a class="hover:text-[color:var(--color-signal)]" href="/features">features</a></li>
-            <li><a class="hover:text-[color:var(--color-signal)]" href="/privacy">privacy</a></li>
-            <li><a class="hover:text-[color:var(--color-signal)]" href="/faq">faq</a></li>
+            <li>
+              <a class="hover:text-[color:var(--color-signal)]" href={localizedHref('/features')}
+                >features</a
+              >
+            </li>
+            <li>
+              <a class="hover:text-[color:var(--color-signal)]" href={localizedHref('/privacy')}
+                >privacy</a
+              >
+            </li>
+            <li>
+              <a class="hover:text-[color:var(--color-signal)]" href={localizedHref('/faq')}>faq</a>
+            </li>
           </ul>
         </div>
         <div>
@@ -51,11 +62,19 @@
           <ul
             class="mt-4 space-y-2.5 font-[family-name:var(--font-mono)] text-[0.8rem] text-[color:var(--color-text-dim)]"
           >
-            <li><a class="hover:text-[color:var(--color-signal)]" href="/docs">docs</a></li>
-            <li><a class="hover:text-[color:var(--color-signal)]" href="/blog">log</a></li>
             <li>
-              <a class="hover:text-[color:var(--color-signal)]" href="/docs/self-hosting"
-                >self-host</a
+              <a class="hover:text-[color:var(--color-signal)]" href={localizedHref('/docs')}
+                >docs</a
+              >
+            </li>
+            <li>
+              <a class="hover:text-[color:var(--color-signal)]" href={localizedHref('/blog')}>log</a
+              >
+            </li>
+            <li>
+              <a
+                class="hover:text-[color:var(--color-signal)]"
+                href={localizedHref('/docs/self-hosting')}>self-host</a
               >
             </li>
           </ul>

@@ -1,16 +1,16 @@
 <script lang="ts">
   import { APP_URL } from '$lib/env';
-  import { t } from '$lib/i18n/locale.svelte.js';
+  import { localizedHref, t } from '$lib/i18n/locale.svelte.js';
   import LanguageToggle from './LanguageToggle.svelte';
 
   let menuOpen = $state(false);
 
   const navLinks = $derived([
-    { href: '/features', label: t('nav_features') },
-    { href: '/docs', label: t('nav_docs') },
-    { href: '/privacy', label: t('nav_privacy') },
-    { href: '/faq', label: t('nav_faq') },
-    { href: '/blog', label: t('nav_log') },
+    { href: localizedHref('/features'), label: t('nav_features') },
+    { href: localizedHref('/docs'), label: t('nav_docs') },
+    { href: localizedHref('/privacy'), label: t('nav_privacy') },
+    { href: localizedHref('/faq'), label: t('nav_faq') },
+    { href: localizedHref('/blog'), label: t('nav_log') },
   ]);
 </script>
 
@@ -47,7 +47,7 @@
   <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
     <!-- Wordmark with ASCII-bar redaction -->
     <a
-      href="/"
+      href={localizedHref('/')}
       class="group flex items-center gap-2 font-[family-name:var(--font-mono)] text-[1.05rem] font-bold tracking-tight text-[color:var(--color-text)]"
     >
       <span class="text-[color:var(--color-signal)]">█</span>

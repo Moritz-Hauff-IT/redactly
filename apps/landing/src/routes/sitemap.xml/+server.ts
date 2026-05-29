@@ -1,8 +1,10 @@
 import type { RequestHandler } from './$types';
 
 const SITE = 'https://redactly.dev';
+const LOCALES = ['', '/en'] as const; // '' = German default, '/en' = English
 
-// Static routes with their priority + change frequency.
+// Unprefixed routes. Each emits one entry per locale, with full xhtml:link
+// hreflang annotations for the search-engine multi-language signal.
 const ROUTES: Array<{ path: string; priority: string; changefreq: string; lastmod?: string }> = [
   { path: '/', priority: '1.0', changefreq: 'weekly' },
   { path: '/features', priority: '0.9', changefreq: 'monthly' },
@@ -39,21 +41,34 @@ const ROUTES: Array<{ path: string; priority: string; changefreq: string; lastmo
   },
 ];
 
+function localeUrl(prefix: string, path: string): string {
+  const tail = path === '/' ? '' : path;
+  return `${SITE}${prefix}${tail}`;
+}
+
 export const prerender = true;
 
 export const GET: RequestHandler = async () => {
-  const urls = ROUTES.map(({ path, priority, changefreq, lastmod }) => {
-    const loc = `${SITE}${path === '/' ? '' : path}`;
-    const lastmodTag = lastmod ? `    <lastmod>${lastmod}</lastmod>\n` : '';
-    return `  <url>
-    <loc>${loc}</loc>
+  const urls = ROUTES.flatMap(({ path, priority, changefreq, lastmod }) => {
+    const deUrl = localeUrl('', path);
+    const enUrl = localeUrl('/en', path);
+    return LOCALES.map((prefix) => {
+      const selfUrl = localeUrl(prefix, path);
+      const lastmodTag = lastmod ? `    <lastmod>${lastmod}</lastmod>\n` : '';
+      return `  <url>
+    <loc>${selfUrl}</loc>
 ${lastmodTag}    <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
+    <xhtml:link rel="alternate" hreflang="de" href="${deUrl}" />
+    <xhtml:link rel="alternate" hreflang="en" href="${enUrl}" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="${deUrl}" />
   </url>`;
+    });
   }).join('\n');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${urls}
 </urlset>
 `;
