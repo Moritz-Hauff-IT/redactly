@@ -42,7 +42,10 @@
       // Layout-preserving path: we have the original file bytes AND a mapping
       // of detected entities → placeholders. Overlay redactions onto the
       // original document instead of producing a plain-text dump.
-      const canRedact = rawBytes && mapping && (fmt === 'pdf' || fmt === 'docx');
+      const canRedact =
+        rawBytes &&
+        mapping &&
+        (fmt === 'pdf' || fmt === 'docx' || fmt === 'xlsx' || fmt === 'pptx');
 
       const { blob, filename } = canRedact
         ? await writeAsRedactedFormat(rawBytes, maskedText, mapping, fmt, baseName)

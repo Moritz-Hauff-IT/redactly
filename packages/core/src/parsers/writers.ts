@@ -43,6 +43,14 @@ export async function writeAsFormat(
       return writePdf(text, baseName);
     case 'docx':
       return writeDocx(text, baseName);
+    case 'xlsx':
+    case 'pptx':
+      // No standalone (no-original-bytes) writer for xlsx/pptx — both require
+      // a complex zip+xml scaffold to produce a valid file. Fall back to a
+      // plain-text dump so the user still gets the masked content, just with
+      // a .txt extension. The redacted-format path (writeAsRedactedFormat)
+      // produces a real .xlsx / .pptx when original bytes ARE available.
+      return writeText(text, baseName, 'txt');
     default: {
       // All text-like formats (txt/md/csv/tsv/json/yaml/etc) share the same
       // writer: the masked text wrapped in a Blob with the format's MIME
@@ -83,6 +91,10 @@ export async function writeAsRedactedFormat(
       return writePdfRedacted(originalBytes, mapping, baseName);
     case 'docx':
       return writeDocxRedacted(originalBytes, mapping, baseName);
+    case 'xlsx':
+      return writeOoxmlRedacted(originalBytes, mapping, baseName, 'xlsx');
+    case 'pptx':
+      return writeOoxmlRedacted(originalBytes, mapping, baseName, 'pptx');
     default:
       // All other formats (txt/md/eml/csv/tsv/json/yaml/etc.) are inherently
       // text — there's no layout beyond what's in the text itself, so the
@@ -599,6 +611,75 @@ async function writeDocxRedacted(
     filename: `${baseName}-masked.docx`,
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   };
+}
+
+/**
+ * Per-format OOXML redaction config: which zip paths to scan for text,
+ * which element holds the visible text, and what MIME type to emit.
+ * DRY-shared by xlsx + pptx; DOCX has its own writer above for historical
+ * reasons (header/footer/comment paths follow a different naming scheme).
+ */
+const OOXML_REDACT_CONFIG = {
+  xlsx: {
+    // sharedStrings.xml holds the interned strings used by most cells;
+    // worksheets/sheet*.xml holds inline-string cells. Both contain <t>...</t>.
+    pathPattern: /^xl\/(sharedStrings\.xml|worksheets\/sheet\d+\.xml)$/,
+    tagRegex: /(<t(?:\s[^>]*)?>)([\s\S]*?)(<\/t>)/g,
+    mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    extension: 'xlsx',
+  },
+  pptx: {
+    // Visible text on slides, layouts, masters, AND speaker notes (often
+    // forgotten — high PII-leak risk for client demos).
+    pathPattern: /^ppt\/(slides|slideLayouts|slideMasters|notesSlides)\/[a-zA-Z]+\d+\.xml$/,
+    tagRegex: /(<a:t(?:\s[^>]*)?>)([\s\S]*?)(<\/a:t>)/g,
+    mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    extension: 'pptx',
+  },
+} as const;
+
+/**
+ * Generic OOXML in-place redactor. Patches the visible-text element inside
+ * a configured set of XML parts. Preserves all formatting/styling because we
+ * only modify text content, never structure.
+ */
+async function writeOoxmlRedacted(
+  originalBytes: Uint8Array,
+  mapping: Mapping,
+  baseName: string,
+  format: 'xlsx' | 'pptx'
+): Promise<WriteResult> {
+  const cfg = OOXML_REDACT_CONFIG[format];
+  const sortedKeys = sortedMappingKeys(mapping);
+  if (sortedKeys.length === 0) {
+    const blob = new Blob([new Uint8Array(originalBytes)], { type: cfg.mime });
+    return { blob, filename: `${baseName}-masked.${cfg.extension}`, mimeType: cfg.mime };
+  }
+
+  const JSZip = (await import('jszip')).default;
+  const zip = await JSZip.loadAsync(originalBytes);
+
+  const candidatePaths = Object.keys(zip.files).filter((path) => cfg.pathPattern.test(path));
+
+  for (const path of candidatePaths) {
+    const file = zip.file(path);
+    if (!file) continue;
+    const xml = await file.async('string');
+    let touched = false;
+    const out = xml.replace(cfg.tagRegex, (_match, openTag, inner, closeTag) => {
+      const decoded = decodeXmlEntities(inner);
+      const modified = applyMappingToString(decoded, mapping, sortedKeys);
+      if (modified === null) return openTag + inner + closeTag;
+      touched = true;
+      return openTag + encodeXmlText(modified) + closeTag;
+    });
+    if (touched) {
+      zip.file(path, out);
+    }
+  }
+
+  const blob = await zip.generateAsync({ type: 'blob', mimeType: cfg.mime });
+  return { blob, filename: `${baseName}-masked.${cfg.extension}`, mimeType: cfg.mime };
 }
 
 function decodeXmlEntities(s: string): string {

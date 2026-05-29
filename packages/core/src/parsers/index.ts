@@ -9,6 +9,8 @@ export { parseMdBlob } from './md.js';
 export { parseEmlBlob } from './eml.js';
 export { parsePdfBlob, PdfWorkerNotConfiguredError } from './pdf.js';
 export { parseDocxBlob } from './docx.js';
+export { parseXlsxBlob } from './xlsx.js';
+export { parsePptxBlob } from './pptx.js';
 export { writeAsFormat, writeAsRedactedFormat, type WriteResult } from './writers.js';
 export { extractZip, packZip, type ZipManifest, type ZipEntry, type ZipPackEntry } from './zip.js';
 export type { SupportedFormat } from './formats.js';
@@ -19,6 +21,8 @@ import { parseMdBlob } from './md.js';
 import { parseEmlBlob } from './eml.js';
 import { parsePdfBlob } from './pdf.js';
 import { parseDocxBlob } from './docx.js';
+import { parseXlsxBlob } from './xlsx.js';
+import { parsePptxBlob } from './pptx.js';
 import { FORMAT_META, type SupportedFormat } from './formats.js';
 import type { ParseResult } from './txt.js';
 
@@ -58,6 +62,8 @@ const EXT_MAP: Record<string, SupportedFormat> = {
   eml: 'eml',
   pdf: 'pdf',
   docx: 'docx',
+  xlsx: 'xlsx',
+  pptx: 'pptx',
 };
 
 const MIME_MAP: Record<string, SupportedFormat> = {
@@ -77,6 +83,8 @@ const MIME_MAP: Record<string, SupportedFormat> = {
   'message/rfc822': 'eml',
   'application/pdf': 'pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
 };
 
 /**
@@ -159,6 +167,10 @@ export async function parseFile(file: File | FileInput): Promise<ParseResult> {
       return parsePdfBlob(data as Blob | ArrayBuffer | Uint8Array);
     case 'docx':
       return parseDocxBlob(data as Blob | ArrayBuffer | Uint8Array);
+    case 'xlsx':
+      return parseXlsxBlob(data as Blob | ArrayBuffer | Uint8Array);
+    case 'pptx':
+      return parsePptxBlob(data as Blob | ArrayBuffer | Uint8Array);
     default: {
       // All other formats are text-like (FORMAT_META[format].isText === true).
       // Same UTF-8 decoder, format discriminant preserves the original

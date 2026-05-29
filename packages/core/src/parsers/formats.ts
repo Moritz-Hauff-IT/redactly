@@ -43,6 +43,16 @@ export const FORMAT_META = {
     mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     isText: false,
   },
+  xlsx: {
+    extension: 'xlsx',
+    mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    isText: false,
+  },
+  pptx: {
+    extension: 'pptx',
+    mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    isText: false,
+  },
 } as const satisfies Record<string, FormatMeta>;
 
 export type SupportedFormat = keyof typeof FORMAT_META;
