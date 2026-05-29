@@ -28,11 +28,18 @@ export async function loadNer(reAnalyze?: ReAnalyzeFn): Promise<void> {
   engineStore.setStatus('loading');
   engineStore.setProgress(0, 'Loading NER model…');
 
+  // Tracks whether the load has terminated (success or error). Once true
+  // we silence late-arriving progress callbacks so they can't overwrite
+  // an error message with a stale "NER model ready" string after the
+  // download completes but pipeline init throws downstream.
+  let terminated = false;
+
   try {
     // Dynamic import keeps @huggingface/transformers out of the main bundle.
     const { NerDetector } = await import('@de-pii/core/ner');
 
     const onProgress = (event: NerProgressEvent): void => {
+      if (terminated) return;
       if (event.status === 'download' || event.status === 'progress') {
         engineStore.setProgress(event.progress / 100, `Downloading ${event.file}…`);
       } else if (event.status === 'ready') {
@@ -55,14 +62,18 @@ export async function loadNer(reAnalyze?: ReAnalyzeFn): Promise<void> {
     settingsStore.setNerEnabled(true);
     engineStore.setStatus('ready');
     engineStore.setProgress(1, 'NER ready');
+    terminated = true;
 
     if (reAnalyze) {
       await reAnalyze();
     }
   } catch (err) {
+    terminated = true;
     const msg = err instanceof Error ? err.message : String(err);
+    // eslint-disable-next-line no-console
+    console.error('[nerLoader] load failed', err);
     engineStore.setStatus('error');
-    engineStore.setProgress(0, `NER failed: ${msg}`);
+    engineStore.setProgress(0, msg || 'unknown error — see console');
     settingsStore.setNerEnabled(false);
   }
 }
