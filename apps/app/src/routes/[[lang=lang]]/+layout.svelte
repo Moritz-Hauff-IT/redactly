@@ -1,8 +1,17 @@
 <script lang="ts">
   import '../../app.css';
-  import '../../lib/setup/pdf.js';
-  import '../../lib/setup/tesseract.js';
-  import '../../lib/setup/ner.js';
+  import { setupPdf } from '../../lib/setup/pdf.js';
+  import { setupTesseract } from '../../lib/setup/tesseract.js';
+  import { setupNer } from '../../lib/setup/ner.js';
+
+  // Run all three setup hooks at module-init. We can't rely on
+  // side-effect-only imports (`import './pdf.js'`) because Vite tree-shakes
+  // those for app modules — the assignments never reached the deployed
+  // bundle, which left transformers.js falling through to its default
+  // local-first /models/ path (HTML SPA fallback → JSON parse error).
+  setupPdf();
+  setupTesseract();
+  setupNer();
   import Toast from '$lib/components/Toast.svelte';
   import SettingsDrawer from '$lib/components/SettingsDrawer.svelte';
   import LanguageToggle from '$lib/components/LanguageToggle.svelte';
