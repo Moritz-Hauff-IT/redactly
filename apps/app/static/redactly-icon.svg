@@ -1,0 +1,6 @@
+<svg width="512" height="512" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Redactly">
+  <rect x="0.5" y="0.5" width="99" height="99" rx="22.5" fill="#0F172A" stroke="#1E293B" stroke-width="1"></rect>
+  <rect x="20" y="30.95" width="43.2" height="8.1" rx="2" fill="#334155"></rect>
+  <rect x="20" y="45.95" width="56.4" height="8.1" rx="2" fill="#F2960C"></rect>
+  <rect x="20" y="60.95" width="30" height="8.1" rx="2" fill="#334155"></rect>
+</svg>

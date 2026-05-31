@@ -108,7 +108,23 @@
   <header
     class="flex items-baseline justify-between border-b border-[color:var(--color-rule)] px-9 pt-5 pb-4"
   >
-    <a href="/" class="flex items-baseline gap-3.5">
+    <a href="/" class="flex items-center gap-3" aria-label="Redactly">
+      <!-- Brand mark — the three redaction bars (matches favicon + landing).
+           Inlined SVG so it's one fewer request and inherits color cleanly. -->
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 100 100"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        class="flex-shrink-0"
+      >
+        <rect x="0" y="0" width="100" height="100" rx="20" fill="#0F172A" />
+        <rect x="22" y="25.5" width="42" height="11" rx="2.5" fill="#3A475C" />
+        <rect x="22" y="44.5" width="57.6" height="11" rx="2.5" fill="#F2960C" />
+        <rect x="22" y="63.5" width="27.6" height="11" rx="2.5" fill="#3A475C" />
+      </svg>
       <span
         class="font-[family-name:var(--font-serif)] text-[22px] leading-none font-medium tracking-[-0.01em] text-[color:var(--color-ink)]"
       >
