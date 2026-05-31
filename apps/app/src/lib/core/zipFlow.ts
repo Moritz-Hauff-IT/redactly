@@ -28,7 +28,7 @@ import {
   type ChatEngine,
 } from '@de-pii/core/orchestrator';
 import { analyze } from './pipeline.js';
-import { mask } from '@de-pii/core/masker';
+import { mask, type Mapping } from '@de-pii/core/masker';
 
 // Suppress unused warnings — these symbols are re-exposed for callers that
 // import zipFlow alongside its sub-helpers.
@@ -39,6 +39,14 @@ export interface ZipMaskResult {
   filename: string;
   /** Per-file outcome — useful for surfacing in UI. */
   perFile: PerFileResult[];
+  /**
+   * Cross-file mapping: every original→placeholder pair seen across the
+   * whole batch. Same original value in different files maps to the same
+   * placeholder, so restore from a single LLM response covering multiple
+   * documents works correctly. Caller stores this in mappingStore so the
+   * Restore tab is ready immediately after the download.
+   */
+  mapping: Mapping;
 }
 
 export type PerFileResult = {
@@ -121,6 +129,10 @@ export async function applyPlan(
   const planByPath = new Map(plan.entries.map((e) => [e.path, e]));
   const outputEntries: ZipPackEntry[] = [];
   const perFile: ZipMaskResult['perFile'] = [];
+  // Accumulates across every masked file in the batch — passed back into
+  // mask(..., { existing }) per call so identical originals across files
+  // reuse the same placeholder index.
+  let runningMapping: Mapping | undefined = undefined;
 
   const toProcess = manifest.entries.filter((e) => !e.isDir);
   let done = 0;
@@ -189,7 +201,8 @@ export async function applyPlan(
       tick('detect');
       const entities = await analyze(parsed.text);
       tick('mask');
-      const masked = mask(parsed.text, entities);
+      const masked = mask(parsed.text, entities, { existing: runningMapping });
+      runningMapping = masked.mapping;
       tick('write');
       const baseName = entry.path.replace(/\.[^.]+$/, '');
       const fmt = entry.format as SupportedFormat;
@@ -218,5 +231,9 @@ export async function applyPlan(
 
   if (signal?.aborted) throw new ZipAbortError();
   const { blob, filename } = await packZip(outputEntries, outputName);
-  return { blob, filename, perFile };
+  // Empty mapping if no files were actually masked (all skip/kept) — that's
+  // a valid state, the masker exports createMapping() but we don't need it
+  // here because mappingStore handles null itself; caller decides what to do.
+  const { createMapping } = await import('@de-pii/core/masker');
+  return { blob, filename, perFile, mapping: runningMapping ?? createMapping() };
 }

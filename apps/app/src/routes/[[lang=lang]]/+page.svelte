@@ -10,6 +10,7 @@
   import { inputStore } from '$lib/stores/inputStore.svelte.js';
   import { detectionStore } from '$lib/stores/detectionStore.svelte.js';
   import { errorStore } from '$lib/stores/errorStore.svelte.js';
+  import { mappingStore } from '$lib/stores/mappingStore.svelte.js';
   import type { ZipManifest } from '@de-pii/core/parsers';
   import type { FilePlan } from '@de-pii/core/orchestrator';
   import type { ProgressState, PerFileResult } from '$lib/core/zipFlow.js';
@@ -118,11 +119,18 @@
       a.click();
       URL.revokeObjectURL(url);
 
+      // Commit the cross-file mapping to the global store — same as the
+      // single-text flow does via maskingService.maskText. This unlocks the
+      // Restore tab: user can paste an LLM response that references entities
+      // across the whole batch and get every placeholder swapped back.
+      mappingStore.set(result.mapping);
+
       const masked = result.perFile.filter((f) => f.action === 'masked').length;
       const skipped = result.perFile.filter((f) => f.action === 'skipped').length;
       const failed = result.perFile.filter((f) => f.action === 'failed').length;
+      const placeholders = result.mapping.forward.size;
       errorStore.show(
-        `ZIP fertig: ${masked} maskiert, ${skipped} übersprungen${failed > 0 ? `, ${failed} fehlgeschlagen` : ''}`
+        `ZIP fertig: ${masked} maskiert, ${skipped} übersprungen${failed > 0 ? `, ${failed} fehlgeschlagen` : ''} · ${placeholders} Platzhalter im Restore`
       );
       // Hold the final 100% state visibly for a beat before unmounting
       // the modal — otherwise tiny-batch runs blink the progress panel
