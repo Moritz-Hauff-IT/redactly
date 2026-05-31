@@ -38,12 +38,31 @@ export interface ZipMaskResult {
   blob: Blob;
   filename: string;
   /** Per-file outcome — useful for surfacing in UI. */
-  perFile: Array<{
-    path: string;
-    action: 'masked' | 'skipped' | 'failed' | 'kept';
-    entityCount?: number;
-    error?: string;
-  }>;
+  perFile: PerFileResult[];
+}
+
+export type PerFileResult = {
+  path: string;
+  action: 'masked' | 'skipped' | 'failed' | 'kept';
+  entityCount?: number;
+  error?: string;
+};
+
+export type ProgressStep = 'parse' | 'detect' | 'mask' | 'write';
+
+export interface ProgressState {
+  done: number;
+  total: number;
+  currentPath: string;
+  /** What sub-stage the current file is in. null between files. */
+  step: ProgressStep | null;
+}
+
+export class ZipAbortError extends Error {
+  constructor() {
+    super('ZIP processing aborted');
+    this.name = 'ZipAbortError';
+  }
 }
 
 function toManifestEntries(manifest: ZipManifest): ManifestEntryForLlm[] {
@@ -70,16 +89,35 @@ export async function buildPlan(
   return generateFilePlan(engine, llmManifest, { debug: true });
 }
 
+export interface ApplyPlanOptions {
+  /** Fires whenever the current file moves to the next sub-stage. */
+  onProgress?: (state: ProgressState) => void;
+  /** Fires once per file with its final outcome — drives the per-file log UI. */
+  onFileComplete?: (result: PerFileResult) => void;
+  /**
+   * Checked between files. We can't interrupt mid-NER or mid-parse (they're
+   * single async calls), so cancellation has at most one-file latency.
+   * Throws ZipAbortError; callers should catch and treat as user-cancel.
+   */
+  signal?: AbortSignal;
+}
+
 /**
  * Apply a plan: mask each 'mask' entry, skip others (kept in archive as-is
  * unless action === 'skip' which DROPS the file from the output).
+ *
+ * On cancel: throws ZipAbortError without packing partial output. We deliberately
+ * don't return a partial ZIP — the user clicked cancel, presumably because the
+ * result was wrong (e.g. forgot to toggle a file), and a half-baked archive is
+ * confusing. Re-running is the right path.
  */
 export async function applyPlan(
   manifest: ZipManifest,
   plan: FilePlan,
   outputName: string,
-  onProgress?: (done: number, total: number, currentPath: string) => void
+  options: ApplyPlanOptions = {}
 ): Promise<ZipMaskResult> {
+  const { onProgress, onFileComplete, signal } = options;
   const planByPath = new Map(plan.entries.map((e) => [e.path, e]));
   const outputEntries: ZipPackEntry[] = [];
   const perFile: ZipMaskResult['perFile'] = [];
@@ -87,76 +125,82 @@ export async function applyPlan(
   const toProcess = manifest.entries.filter((e) => !e.isDir);
   let done = 0;
   for (const entry of toProcess) {
+    if (signal?.aborted) throw new ZipAbortError();
     done++;
-    onProgress?.(done, toProcess.length, entry.path);
+    const tick = (step: ProgressStep | null) =>
+      onProgress?.({ done, total: toProcess.length, currentPath: entry.path, step });
+    tick(null);
 
     const planEntry = planByPath.get(entry.path);
     const action = planEntry?.action ?? 'review';
 
     if (action === 'skip') {
-      // Dropped from output entirely
-      perFile.push({ path: entry.path, action: 'skipped' });
+      const r: PerFileResult = { path: entry.path, action: 'skipped' };
+      perFile.push(r);
+      onFileComplete?.(r);
       continue;
     }
 
-    if (action === 'review') {
-      // Keep original in output but don't mask — user said unclear
+    if (action === 'review' || action !== 'mask') {
       outputEntries.push({ path: entry.path, bytes: entry.bytes });
-      perFile.push({ path: entry.path, action: 'kept' });
-      continue;
-    }
-
-    if (action !== 'mask') {
-      outputEntries.push({ path: entry.path, bytes: entry.bytes });
-      perFile.push({ path: entry.path, action: 'kept' });
+      const r: PerFileResult = { path: entry.path, action: 'kept' };
+      perFile.push(r);
+      onFileComplete?.(r);
       continue;
     }
 
     // action === 'mask'
     if (entry.format === null) {
-      // Can't parse — keep original
       outputEntries.push({ path: entry.path, bytes: entry.bytes });
-      perFile.push({
+      const r: PerFileResult = {
         path: entry.path,
         action: 'kept',
         error: 'No parser for this format',
-      });
+      };
+      perFile.push(r);
+      onFileComplete?.(r);
       continue;
     }
 
     try {
+      tick('parse');
       const blob = new Blob([new Uint8Array(entry.bytes)]);
       const parsed = await parseFile({
         name: entry.path,
         type: entry.mimeType,
         data: blob,
       });
+      tick('detect');
       const entities = await analyze(parsed.text);
+      tick('mask');
       const masked = mask(parsed.text, entities);
-
+      tick('write');
       const baseName = entry.path.replace(/\.[^.]+$/, '');
       const fmt = entry.format as SupportedFormat;
       const written = await writeAsFormat(masked.maskedText, fmt, baseName);
       const writtenBytes = new Uint8Array(await written.blob.arrayBuffer());
 
-      // Keep the masked file at the SAME path so directory structure is preserved.
       outputEntries.push({ path: entry.path, bytes: writtenBytes });
-      perFile.push({
+      const r: PerFileResult = {
         path: entry.path,
         action: 'masked',
         entityCount: entities.length,
-      });
+      };
+      perFile.push(r);
+      onFileComplete?.(r);
     } catch (err) {
-      // Mask failed — keep original so the user doesn't lose data
       outputEntries.push({ path: entry.path, bytes: entry.bytes });
-      perFile.push({
+      const r: PerFileResult = {
         path: entry.path,
         action: 'failed',
         error: err instanceof Error ? err.message : String(err),
-      });
+      };
+      perFile.push(r);
+      onFileComplete?.(r);
     }
   }
 
+  if (signal?.aborted) throw new ZipAbortError();
   const { blob, filename } = await packZip(outputEntries, outputName);
   return { blob, filename, perFile };
 }

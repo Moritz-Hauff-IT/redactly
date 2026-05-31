@@ -12,6 +12,7 @@
   import { errorStore } from '$lib/stores/errorStore.svelte.js';
   import type { ZipManifest } from '@de-pii/core/parsers';
   import type { FilePlan } from '@de-pii/core/orchestrator';
+  import type { ProgressState, PerFileResult } from '$lib/core/zipFlow.js';
 
   type Tab = 'redact' | 'restore';
 
@@ -25,7 +26,10 @@
   let zipPlan = $state<FilePlan | null>(null);
   let zipPlanLoading = $state(false);
   let zipApplying = $state(false);
-  let zipProgress = $state({ done: 0, total: 0, currentPath: '' });
+  let zipProgress = $state<ProgressState | null>(null);
+  let zipLog = $state<PerFileResult[]>([]);
+  let zipAborting = $state(false);
+  let zipAbortController: AbortController | null = null;
 
   async function handleZipUpload(file: File) {
     try {
@@ -75,16 +79,36 @@
     zipManifest = null;
     zipPlan = null;
     zipApplying = false;
+    zipProgress = null;
+    zipLog = [];
+    zipAborting = false;
+    zipAbortController = null;
+  }
+
+  function abortZipApply() {
+    if (!zipAbortController || zipAborting) return;
+    zipAborting = true;
+    zipAbortController.abort();
   }
 
   async function applyZipPlan(plan: FilePlan) {
     if (!zipManifest) return;
     zipApplying = true;
+    zipLog = [];
+    zipProgress = null;
+    zipAborting = false;
+    zipAbortController = new AbortController();
     try {
-      const { applyPlan } = await import('$lib/core/zipFlow.js');
+      const { applyPlan, ZipAbortError } = await import('$lib/core/zipFlow.js');
       const outputName = zipManifest.filename.replace(/\.zip$/i, '') + '-masked.zip';
-      const result = await applyPlan(zipManifest, plan, outputName, (done, total, currentPath) => {
-        zipProgress = { done, total, currentPath };
+      const result = await applyPlan(zipManifest, plan, outputName, {
+        signal: zipAbortController.signal,
+        onProgress: (state) => {
+          zipProgress = state;
+        },
+        onFileComplete: (file) => {
+          zipLog = [...zipLog, file];
+        },
       });
       // Trigger download
       const url = URL.createObjectURL(result.blob);
@@ -101,11 +125,18 @@
         `ZIP fertig: ${masked} maskiert, ${skipped} übersprungen${failed > 0 ? `, ${failed} fehlgeschlagen` : ''}`
       );
       closeZipModal();
+      // Avoid unused import warning — ZipAbortError is referenced in catch.
+      void ZipAbortError;
     } catch (err) {
-      errorStore.show(
-        `ZIP-Verarbeitung fehlgeschlagen: ${err instanceof Error ? err.message : 'Unbekannt'}`
-      );
-      zipApplying = false;
+      const isAbort = err instanceof Error && err.name === 'ZipAbortError';
+      if (isAbort) {
+        errorStore.show('ZIP-Verarbeitung abgebrochen');
+      } else {
+        errorStore.show(
+          `ZIP-Verarbeitung fehlgeschlagen: ${err instanceof Error ? err.message : 'Unbekannt'}`
+        );
+      }
+      closeZipModal();
     }
   }
 
@@ -211,19 +242,15 @@
   <ZipReview
     manifest={zipManifest}
     plan={zipPlan}
-    loading={zipPlanLoading || zipApplying}
+    loading={zipPlanLoading}
+    applying={zipApplying}
+    progress={zipProgress}
+    log={zipLog}
+    aborting={zipAborting}
     onClose={closeZipModal}
     onApply={applyZipPlan}
+    onAbort={abortZipApply}
   />
-  {#if zipApplying}
-    <div
-      class="fixed inset-x-0 bottom-6 z-[60] mx-auto w-fit rounded-md border border-[color:var(--color-rule-strong)] bg-[color:var(--color-bg)] px-4 py-3 shadow-lg"
-    >
-      <p class="font-[family-name:var(--font-mono)] text-[12px] text-[color:var(--color-ink)]">
-        Maskiere {zipProgress.done}/{zipProgress.total}: {zipProgress.currentPath}
-      </p>
-    </div>
-  {/if}
 {/if}
 
 <style>
