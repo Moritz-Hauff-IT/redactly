@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { ZipManifest } from '@de-pii/core/parsers';
   import type { FilePlan, FileAction } from '@de-pii/core/orchestrator';
   import type { ProgressState, ProgressStep, PerFileResult } from '$lib/core/zipFlow.js';
@@ -115,22 +116,31 @@
   let lastSampleAt = $state<number | null>(null);
   const ETA_WINDOW = 8;
 
+  // Trigger this effect ONLY when log.length changes (per-file completion)
+  // or applying flips. Wrap all state reads/writes in untrack so they don't
+  // create self-referential dependencies — the previous version read
+  // etaSamples to slice it, then wrote back to etaSamples, which Svelte
+  // sees as a write triggering its own read and aborts with
+  // effect_update_depth_exceeded. That crash killed the whole modal's
+  // reactivity, freezing progress at 0/0 even though applyPlan was
+  // happily processing files in the background.
   $effect(() => {
-    // Reset samples when a new run starts.
-    if (!applying) {
-      etaSamples = [];
-      lastSampleAt = null;
-      return;
-    }
-    // Sample on each completed file (log.length advances by 1).
-    const _len = log.length;
-    void _len;
-    const now = performance.now();
-    if (lastSampleAt !== null) {
-      const dt = now - lastSampleAt;
-      etaSamples = [...etaSamples.slice(-(ETA_WINDOW - 1)), dt];
-    }
-    lastSampleAt = now;
+    const len = log.length;
+    const isApplying = applying;
+    void len;
+    untrack(() => {
+      if (!isApplying) {
+        etaSamples = [];
+        lastSampleAt = null;
+        return;
+      }
+      const now = performance.now();
+      if (lastSampleAt !== null) {
+        const dt = now - lastSampleAt;
+        etaSamples = [...etaSamples.slice(-(ETA_WINDOW - 1)), dt];
+      }
+      lastSampleAt = now;
+    });
   });
 
   const etaSeconds = $derived.by(() => {

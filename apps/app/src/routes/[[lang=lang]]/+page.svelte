@@ -102,24 +102,14 @@
     try {
       const { applyPlan, ZipAbortError } = await import('$lib/core/zipFlow.js');
       const outputName = zipManifest.filename.replace(/\.zip$/i, '') + '-masked.zip';
-      console.log('[zip-debug] applyPlan starting', {
-        entries: zipManifest.entries.length,
-        toMask: plan.entries.filter((e) => e.action === 'mask').length,
-      });
       const result = await applyPlan(zipManifest, plan, outputName, {
         signal: zipAbortController.signal,
         onProgress: (state) => {
-          console.log('[zip-debug] onProgress', state);
           zipProgress = state;
         },
         onFileComplete: (file) => {
-          console.log('[zip-debug] onFileComplete', file.path, file.action);
           zipLog = [...zipLog, file];
         },
-      });
-      console.log('[zip-debug] applyPlan returned', {
-        perFile: result.perFile.length,
-        mappingSize: result.mapping.forward.size,
       });
       // Trigger download
       const url = URL.createObjectURL(result.blob);
