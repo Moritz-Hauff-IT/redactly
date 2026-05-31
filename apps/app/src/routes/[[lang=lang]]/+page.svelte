@@ -124,6 +124,10 @@
       errorStore.show(
         `ZIP fertig: ${masked} maskiert, ${skipped} übersprungen${failed > 0 ? `, ${failed} fehlgeschlagen` : ''}`
       );
+      // Hold the final 100% state visibly for a beat before unmounting
+      // the modal — otherwise tiny-batch runs blink the progress panel
+      // away faster than the user can register it.
+      await new Promise((r) => setTimeout(r, 500));
       closeZipModal();
       // Avoid unused import warning — ZipAbortError is referenced in catch.
       void ZipAbortError;

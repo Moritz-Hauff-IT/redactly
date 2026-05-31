@@ -124,12 +124,28 @@ export async function applyPlan(
 
   const toProcess = manifest.entries.filter((e) => !e.isDir);
   let done = 0;
+  // Tracks the last time we yielded to the browser for a paint. Without
+  // this, batches of tiny files (e.g. 100x 500-byte .eml) complete inside
+  // a single task; Svelte coalesces all state updates into one render, the
+  // user sees 0 → 100% with nothing in between, AND the Cancel button can't
+  // receive clicks because the event loop never reaches input handling.
+  // Starting at 0 forces a yield on iteration 1 so the user sees the modal
+  // transition into apply-mode immediately. After that we throttle to
+  // ~20fps which is enough for smooth progress without significantly
+  // slowing real workloads.
+  let lastYieldAt = 0;
+  const YIELD_INTERVAL_MS = 50;
+
   for (const entry of toProcess) {
     if (signal?.aborted) throw new ZipAbortError();
     done++;
     const tick = (step: ProgressStep | null) =>
       onProgress?.({ done, total: toProcess.length, currentPath: entry.path, step });
     tick(null);
+    if (performance.now() - lastYieldAt >= YIELD_INTERVAL_MS) {
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      lastYieldAt = performance.now();
+    }
 
     const planEntry = planByPath.get(entry.path);
     const action = planEntry?.action ?? 'review';
