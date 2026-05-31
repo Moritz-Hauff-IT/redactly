@@ -256,7 +256,8 @@
               {progress?.done ?? 0}
             </span>
             <span class="text-[12px] text-[color:var(--color-ink-mute)]">
-              {loc(s.of)} {progress?.total ?? 0}
+              {loc(s.of)}
+              {progress?.total ?? 0}
             </span>
             <span
               class="ml-1 font-[family-name:var(--font-mono)] text-[12px] text-[color:var(--color-accent)]"
@@ -309,9 +310,7 @@
             </div>
             <ul class="flex-1 overflow-y-auto space-y-0.5 pr-1">
               {#each log.slice().reverse() as result (result.path + result.action)}
-                <li
-                  class="flex items-center gap-2 font-[family-name:var(--font-mono)] text-[11px]"
-                >
+                <li class="flex items-center gap-2 font-[family-name:var(--font-mono)] text-[11px]">
                   <span class="log-badge" data-action={result.action}>
                     {actionLabel(result.action)}
                   </span>
@@ -438,8 +437,12 @@
     animation: slide 1.4s ease-in-out infinite;
   }
   @keyframes slide {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(333%); }
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(333%);
+    }
   }
 
   .log-badge {
@@ -453,19 +456,19 @@
     min-width: 58px;
     text-align: center;
   }
-  .log-badge[data-action="masked"] {
+  .log-badge[data-action='masked'] {
     background: color-mix(in oklab, var(--color-accent) 18%, transparent);
     color: var(--color-accent);
   }
-  .log-badge[data-action="skipped"] {
+  .log-badge[data-action='skipped'] {
     background: var(--color-rule);
     color: var(--color-ink-mute);
   }
-  .log-badge[data-action="kept"] {
+  .log-badge[data-action='kept'] {
     background: var(--color-rule);
     color: var(--color-ink-soft);
   }
-  .log-badge[data-action="failed"] {
+  .log-badge[data-action='failed'] {
     background: color-mix(in oklab, #dc2626 22%, transparent);
     color: #fca5a5;
   }
