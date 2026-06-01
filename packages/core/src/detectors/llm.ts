@@ -65,6 +65,13 @@ export interface WebLlmOptions {
   minConfidence?: number;
   /** Called during model initialization with progress information. */
   onProgress?: (event: WebLlmProgressEvent) => void;
+  /**
+   * Called per chunk during detect() so the UI can show
+   * "LLM Chunk 3/5" progress. Fires with (current, total) on each chunk
+   * START. Caller is responsible for clearing the UI after detect()
+   * resolves — the detector doesn't fire a synthetic "done" event.
+   */
+  onChunkProgress?: (current: number, total: number) => void;
   /** Verbose console logging during detect — surfaces raw response, parse
    * results, and per-rule drops. Off by default. */
   debug?: boolean;
@@ -323,6 +330,7 @@ export class WebLlmDetector implements Detector {
   private readonly modelId: string;
   private readonly minConfidence: number;
   private readonly onProgress: ((event: WebLlmProgressEvent) => void) | undefined;
+  private readonly onChunkProgress: ((current: number, total: number) => void) | undefined;
   private readonly debug: boolean;
   private readonly engineFactory: EngineFactory;
 
@@ -333,6 +341,7 @@ export class WebLlmDetector implements Detector {
     this.modelId = options.modelId;
     this.minConfidence = options.minConfidence ?? DEFAULT_MIN_CONFIDENCE;
     this.onProgress = options.onProgress;
+    this.onChunkProgress = options.onChunkProgress;
     this.debug = options.debug ?? false;
     this.engineFactory = options._engineFactory ?? defaultEngineFactory;
   }
@@ -406,6 +415,9 @@ export class WebLlmDetector implements Detector {
     // For short texts, run a single call. For longer texts, split into
     // overlapping chunks — small LLMs degrade past ~2 KB context.
     if (text.length <= WebLlmDetector.CHUNK_SIZE) {
+      // Single chunk path — still fire so the UI can render an
+      // 'LLM is thinking' state even when nothing is split.
+      this.onChunkProgress?.(1, 1);
       return this.detectChunk(eng, text, text);
     }
 
@@ -431,9 +443,13 @@ export class WebLlmDetector implements Detector {
 
     const allEntities: Entity[] = [];
     let i = 0;
+    // Emit an initial 0/total so the UI flips to 'LLM analysing' immediately
+    // instead of waiting for the first chunk to finish.
+    this.onChunkProgress?.(0, chunks.length);
     for (const chunk of chunks) {
       i++;
       console.log(`[WebLlmDetector] chunk ${i}/${chunks.length} (${chunk.length} chars)`);
+      this.onChunkProgress?.(i, chunks.length);
       // Pass full source for indexOf — entities anchor to original text positions
       // regardless of which chunk they were found in.
       const chunkEntities = await this.detectChunk(eng, chunk, text);

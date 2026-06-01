@@ -324,7 +324,14 @@ Buchhaltung, Müller GmbH
             stroke-linecap="round"
           />
         </svg>
-        {t('btn_mask_analyzing')}
+        {#if engineStore.webllmDetect.total > 0}
+          {t('btn_mask_llm_chunk', {
+            current: engineStore.webllmDetect.current,
+            total: engineStore.webllmDetect.total,
+          })}
+        {:else}
+          {t('btn_mask_analyzing')}
+        {/if}
       {:else}
         <span>{t('btn_mask')}</span>
         <span class="kbd">⌘↵</span>

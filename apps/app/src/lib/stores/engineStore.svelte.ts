@@ -6,13 +6,28 @@ export interface EngineState {
   message: string;
 }
 
+/**
+ * Per-call progress for the WebLLM detector. Populated while a detect()
+ * pass is running so the UI can show e.g. "LLM Chunk 3/5". `total = 0`
+ * means no detect-time progress is currently being reported.
+ */
+export interface DetectProgress {
+  current: number;
+  total: number;
+}
+
 function createEngineState(): EngineState {
   return { status: 'idle', progress: 0, message: '' };
+}
+
+function createDetectProgress(): DetectProgress {
+  return { current: 0, total: 0 };
 }
 
 function createEngineStore() {
   let nerState = $state<EngineState>(createEngineState());
   let webllmState = $state<EngineState>(createEngineState());
+  let webllmDetectState = $state<DetectProgress>(createDetectProgress());
 
   return {
     // ── NER sub-store ──────────────────────────────────────────────────────
@@ -41,6 +56,18 @@ function createEngineStore() {
     setWebllmProgress(n: number, msg?: string) {
       webllmState.progress = n;
       if (msg !== undefined) webllmState.message = msg;
+    },
+    // ── WebLLM detect-time progress (chunked text analysis) ─────────────────
+    get webllmDetect(): DetectProgress {
+      return webllmDetectState;
+    },
+    setWebllmDetect(current: number, total: number) {
+      webllmDetectState.current = current;
+      webllmDetectState.total = total;
+    },
+    resetWebllmDetect() {
+      webllmDetectState.current = 0;
+      webllmDetectState.total = 0;
     },
 
     // ── Legacy flat API (kept for backwards-compat with NER loader) ─────────

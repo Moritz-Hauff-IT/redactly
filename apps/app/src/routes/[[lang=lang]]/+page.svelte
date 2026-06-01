@@ -177,6 +177,9 @@
       console.error('Analysis failed:', err);
     } finally {
       isAnalyzing = false;
+      // Always clear LLM detect-progress so the InputPane button label
+      // doesn't get stuck on 'Chunk N/M' after analyze() resolves or errors.
+      engineStore.resetWebllmDetect();
     }
   }
 

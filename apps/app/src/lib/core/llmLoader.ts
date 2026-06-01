@@ -61,8 +61,21 @@ export async function loadWebLlm(modelId: string, reAnalyze?: ReAnalyzeFn): Prom
     // debug: true → console.log on every detect() call (early + summary) so
     // users can diagnose silent LLM failures during alpha.
 
+    // Per-chunk detect progress so the UI can show 'LLM chunk N/M' while
+    // a single-file mask is running. Writes to engineStore.webllmDetect,
+    // which InputPane reads reactively. The mask handler clears it once
+    // analyze() resolves so the UI doesn't get a stuck progress bar.
+    const onChunkProgress = (current: number, total: number): void => {
+      engineStore.setWebllmDetect(current, total);
+    };
+
     console.log('[loadWebLlm] constructing WebLlmDetector', { modelId });
-    const webllmDetector = new WebLlmDetector({ modelId, onProgress, debug: true });
+    const webllmDetector = new WebLlmDetector({
+      modelId,
+      onProgress,
+      onChunkProgress,
+      debug: true,
+    });
     detector = webllmDetector as unknown as WebLlmDetectorLike;
 
     console.log('[loadWebLlm] calling detector.ready() — this triggers CreateMLCEngine');

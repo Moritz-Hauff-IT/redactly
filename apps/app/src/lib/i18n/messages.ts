@@ -18,6 +18,10 @@ export const messages = {
   btn_download: { de: 'download', en: 'download' },
   btn_mask: { de: 'Maskieren', en: 'Mask' },
   btn_mask_analyzing: { de: 'Analysiere …', en: 'Analysing…' },
+  btn_mask_llm_chunk: {
+    de: 'LLM-Analyse {current}/{total} …',
+    en: 'LLM analysis {current}/{total}…',
+  },
   btn_mask_loading: { de: 'lädt {detector} …', en: 'loading {detector}…' },
   btn_mask_waiting_for: {
     de: 'Warte bis {detector} fertig geladen ist',
