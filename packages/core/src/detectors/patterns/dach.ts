@@ -189,8 +189,22 @@ export const dachRules: RegexRule[] = [
     type: 'PERSON',
     category: 'person',
     pattern:
-      /(?<=(?:^|\n|\r)\s*(?:Von|An|Cc|Bcc|From|To|Sender|Reply-To|Sent\sTo):[ \t]+)[A-ZÄÖÜ][a-zäöüß\-]+(?:[ \t][A-ZÄÖÜ][a-zäöüß\-]+){0,3}/gm,
+      /(?<=(?:^|\n|\r)\s*(?:Von|An|Cc|Bcc|Empf(?:ä|ae)nger|Absender|From|To|Sender|Reply-To|Sent\s?To):[ \t]+)[A-ZÄÖÜ][a-zäöüß\-]+(?:[ \t][A-ZÄÖÜ][a-zäöüß\-]+){0,3}/gm,
     confidence: 0.85,
+  },
+  // "Name <email>" anywhere — high-signal pattern that catches the SECOND,
+  // third, etc. recipient on a "To: A <a@…>, B <b@…>, C <c@…>" line where
+  // the lookbehind above only fires once. Also catches any inline reference
+  // like "weitergeleitet von Max Müller <max@x.de>" outside a header line.
+  // The lookahead requires a literal `<email-shaped-token>` immediately
+  // after, so this only fires for the structured form — won't fire on
+  // free-text mentions like "Max Müller hat geschrieben".
+  {
+    type: 'PERSON',
+    category: 'person',
+    pattern:
+      /[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-.]+(?:[ \t][A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-.]+){0,3}(?=[ \t]+<[\p{L}\p{N}.+\-_]+@[\p{L}\p{N}.\-]+>)/gu,
+    confidence: 0.92,
   },
   // Salutation + capitalized name(s): "Hallo Martin Müller", "Sehr geehrte Frau Schmidt"
   {

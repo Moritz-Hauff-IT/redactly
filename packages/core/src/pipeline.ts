@@ -180,13 +180,26 @@ export class Pipeline {
    * sorted entities.
    */
   async analyze(text: string): Promise<PipelineResult> {
-    // Run all detectors concurrently
-    const rawResults = await Promise.all(
-      this.detectors.map((d) => Promise.resolve(d.detect(text)))
+    // Two-phase execution: fast deterministic detectors first (regex,
+    // NER, anything not flagged 'llm'), then slow LLM detectors with the
+    // first-phase results passed as hints. Lets the LLM focus on filling
+    // gaps NER / regex may have missed instead of re-finding the same
+    // entities. When no LLM detector is present this behaves the same as
+    // a single Promise.all over everything.
+    const fastDetectors = this.detectors.filter((d) => d.name !== 'webllm');
+    const llmDetectors = this.detectors.filter((d) => d.name === 'webllm');
+
+    const fastResults = await Promise.all(
+      fastDetectors.map((d) => Promise.resolve(d.detect(text)))
+    );
+    const fastFlat: Entity[] = fastResults.flat();
+
+    const llmResults = await Promise.all(
+      llmDetectors.map((d) => Promise.resolve(d.detect(text, { priorEntities: fastFlat })))
     );
 
     // Flatten
-    const all: Entity[] = rawResults.flat();
+    const all: Entity[] = [...fastFlat, ...llmResults.flat()];
 
     // Filter by category and type
     const filtered = all.filter((e) => {

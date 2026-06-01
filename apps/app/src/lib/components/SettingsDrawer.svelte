@@ -4,6 +4,7 @@
   import { applyCategoryFilter } from '$lib/core/pipeline.js';
   import { loadNer, unloadNer } from '$lib/core/nerLoader.js';
   import { loadWebLlm, unloadWebLlm } from '$lib/core/llmLoader.js';
+  import { clearModelCaches } from '$lib/core/modelCacheCleanup.js';
   import { SUPPORTED_WEBLLM_MODELS } from '@redactly/core';
   import type { EntityCategory } from '@redactly/core/types';
   import { loc } from '$lib/i18n/locale.svelte.js';
@@ -134,6 +135,18 @@
       de: 'NER fängt etwa 50 % der freien Namen. Für nahezu 100 % Recall WebLLM unten aktivieren (Llama 3.2 3B empfohlen).',
       en: 'NER catches around 50 % of free-text names. Enable WebLLM below (Llama 3.2 3B recommended) for ~100 % recall.',
     },
+    cleanupLabel: { de: 'Modell-Cache', en: 'Model cache' },
+    cleanupBody: {
+      de: 'Löscht alle zwischengespeicherten NER- und WebLLM-Modelle aus dem Browser. Deine Einstellungen bleiben erhalten. Nützlich wenn der Browser-Speicher voll ist oder du ein Modell neu laden willst.',
+      en: 'Clears all cached NER and WebLLM model weights from the browser. Your settings are kept. Useful when storage is full or you want to re-download a model.',
+    },
+    cleanupButton: { de: 'Modelle aus Cache löschen', en: 'Clear cached models' },
+    cleanupRunning: { de: 'Räume auf …', en: 'Cleaning up…' },
+    cleanupDone: {
+      de: '{dbs} Datenbank(en), {cache} Cache-Einträge gelöscht{bytes}',
+      en: '{dbs} database(s), {cache} cache entries removed{bytes}',
+    },
+    cleanupBytes: { de: ' · {mb} MB freigegeben', en: ' · {mb} MB freed' },
     infoLabel: { de: 'Info', en: 'Info' },
     infoBody: {
       de: 'Redactly läuft 100 % in deinem Browser. Es gibt keinen Server, der deinen Text empfängt. Modelle werden einmalig vom HuggingFace-CDN geladen und im Browser gecacht.',
@@ -169,6 +182,35 @@
       await unloadWebLlm();
     } else {
       await loadWebLlm(settingsStore.webllmModelId);
+    }
+  }
+
+  let cleanupRunning = $state(false);
+  let cleanupResult = $state<string | null>(null);
+
+  async function runModelCacheCleanup(): Promise<void> {
+    // Unload active engines first so their IndexedDB handles are released —
+    // otherwise deleteDatabase() blocks waiting for the open connection.
+    if (engineStore.ner.status === 'ready') await unloadNer();
+    if (engineStore.webllm.status === 'ready') await unloadWebLlm();
+
+    cleanupRunning = true;
+    cleanupResult = null;
+    try {
+      const result = await clearModelCaches();
+      const mb =
+        result.bytesRecovered !== null && result.bytesRecovered > 0
+          ? Math.round(result.bytesRecovered / 1024 / 1024)
+          : null;
+      const bytesPart = mb !== null ? loc(s.cleanupBytes).replace('{mb}', String(mb)) : '';
+      cleanupResult = loc(s.cleanupDone)
+        .replace('{dbs}', String(result.databases.length))
+        .replace('{cache}', String(result.cacheEntries))
+        .replace('{bytes}', bytesPart);
+    } catch (err) {
+      cleanupResult = err instanceof Error ? err.message : String(err);
+    } finally {
+      cleanupRunning = false;
     }
   }
 
@@ -491,6 +533,29 @@
               </button>
             </div>
           {/if}
+        {/if}
+      </section>
+
+      <hr class="my-7 border-[color:var(--color-rule)]" />
+
+      <!-- Model-cache cleanup — targeted alternative to browser-wide
+           'Clear site data'. Keeps user settings (localStorage) but
+           drops cached NER + WebLLM model weights from IndexedDB /
+           Cache API. Surfaces what was freed so the user sees it work. -->
+      <section>
+        <span class="label">{loc(s.cleanupLabel)}</span>
+        <p class="mt-1 text-[12.5px] leading-snug text-[color:var(--color-ink-soft)]">
+          {loc(s.cleanupBody)}
+        </p>
+        <button class="btn-ghost mt-3" disabled={cleanupRunning} onclick={runModelCacheCleanup}>
+          {cleanupRunning ? loc(s.cleanupRunning) : loc(s.cleanupButton)}
+        </button>
+        {#if cleanupResult}
+          <p
+            class="mt-2 font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
+          >
+            {cleanupResult}
+          </p>
         {/if}
       </section>
 

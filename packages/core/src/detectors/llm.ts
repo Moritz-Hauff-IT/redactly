@@ -72,6 +72,12 @@ export interface WebLlmOptions {
    * resolves — the detector doesn't fire a synthetic "done" event.
    */
   onChunkProgress?: (current: number, total: number) => void;
+  /**
+   * Run the LLM N times per chunk and take the union of detected entities.
+   * Trades latency for recall — small models are stochastic, a second pass
+   * often catches what the first missed. Default 1 (single pass).
+   */
+  selfConsistencyPasses?: number;
   /** Verbose console logging during detect — surfaces raw response, parse
    * results, and per-rule drops. Off by default. */
   debug?: boolean;
@@ -181,7 +187,29 @@ async function defaultEngineFactory(
 // Prompt construction
 // ---------------------------------------------------------------------------
 
-function buildPrompt(text: string): string {
+function buildPrompt(text: string, priorEntities?: readonly Entity[]): string {
+  // If faster detectors already found some entities, mention them so the
+  // LLM focuses on what's MISSING rather than re-finding the same names.
+  // Trimmed to a max of 20 to keep the prompt short; we dedup by text so
+  // we don't list the same name three times because regex matched it
+  // three places in the document.
+  let hintSection = '';
+  if (priorEntities && priorEntities.length > 0) {
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const e of priorEntities) {
+      const key = `${e.type}:${e.text}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(`${e.text} (${e.type})`);
+      if (unique.length >= 20) break;
+    }
+    hintSection = `\nBereits gefunden (von schnelleren Detektoren) — diese müssen nicht erneut gemeldet werden, suche stattdessen NACH WEITEREN Treffern die hier fehlen, besonders in Signaturen, freien Mentions und nach Grußformeln:\n${unique.map((s) => `- ${s}`).join('\n')}\n`;
+  }
+  return _buildPromptBody(text, hintSection);
+}
+
+function _buildPromptBody(text: string, hintSection: string): string {
   // Schema-only prompt. A previous few-shot version backfired catastrophically:
   // small models hallucinated entities directly out of the example (e.g.
   // "Berliner Str. 5, 10115 Berlin" appearing as a detected entity even
@@ -196,13 +224,17 @@ Aufgabe: Finde ALLE Personennamen, Email-Adressen, Telefonnummern, Organisatione
 
 Regeln:
 1. Jeder "text"-Wert MUSS Zeichen für Zeichen aus dem Input zwischen den <text>-Tags stammen. Nichts erfinden.
-2. Personennamen markieren — sowohl vollständige Namen (Vor- und Nachname als EIN Span) ALS AUCH einzelne Vor- oder Nachnamen wenn sie alleinstehen. Besonders beachten: nach Grußformeln wie "Viele Grüße", "Liebe Grüße", "Mit freundlichen Grüßen", "Beste Grüße", "Best regards", "Cheers", "Kind regards" folgt fast immer ein Personenname (oft nur der Vorname) — diesen IMMER als PERSON markieren. Beispiel: "Viele Grüße\\nLorenz" → Lorenz = PERSON.
+2. Personennamen markieren — sowohl vollständige Namen (Vor- und Nachname als EIN Span) ALS AUCH einzelne Vor- oder Nachnamen wenn sie alleinstehen. Besonders beachten: nach Grußformeln wie "Viele Grüße", "Liebe Grüße", "Mit freundlichen Grüßen", "Beste Grüße", "Best regards", "Cheers", "Kind regards" folgt fast immer ein Personenname (oft nur der Vorname) — diesen IMMER als PERSON markieren.
 3. In E-Mail-Headern (From, To, Cc, An, Von) sind die Namen vor den "<email@…>" Adressen IMMER PERSON-Treffer.
 4. type ist einer von: PERSON, ORG, LOCATION, EMAIL, PHONE, IBAN, SECRET.
 5. Geldbeträge, Quartale, Datumsangaben und Versionsnummern sind KEINE PII — nicht markieren.
 
-Schema: {"entities":[{"text":"<wörtlicher Substring>","type":"<TYP>"}, {"text":"...","type":"..."}, ...]}
+Beispiel (deutsch):
+Input zwischen <text>-Tags: "Von: Beate Quelle <beate.quelle@beispielfirma.de>\\nAn: Volker Zimmer <v.zimmer@anderefirma.ch>; Karola Yew <karola@beispielfirma.de>\\n\\nHallo Volker,\\n\\nanbei der Vertrag. Bei Rückfragen Karola in Cc.\\n\\nViele Grüße\\nBeate\\n\\nBeate Quelle · Vertrieb"
+Erwartetes JSON: {"entities":[{"text":"Beate Quelle","type":"PERSON"},{"text":"beate.quelle@beispielfirma.de","type":"EMAIL"},{"text":"Volker Zimmer","type":"PERSON"},{"text":"v.zimmer@anderefirma.ch","type":"EMAIL"},{"text":"Karola Yew","type":"PERSON"},{"text":"karola@beispielfirma.de","type":"EMAIL"},{"text":"Volker","type":"PERSON"},{"text":"Karola","type":"PERSON"},{"text":"Beate","type":"PERSON"}]}
 
+Schema: {"entities":[{"text":"<wörtlicher Substring>","type":"<TYP>"}, {"text":"...","type":"..."}, ...]}
+${hintSection}
 <text>
 ${text}
 </text>
@@ -356,6 +388,77 @@ function parseJsonResponse(raw: string): RawLlmEntity[] {
 }
 
 // ---------------------------------------------------------------------------
+// Email-aware chunking
+// ---------------------------------------------------------------------------
+
+/**
+ * Recognised quoted-message and signature boundary markers. These get
+ * priority over generic paragraph/sentence splits because cutting a chunk
+ * in the middle of a quoted email or a signature would strand a name
+ * away from the surrounding context the LLM relies on.
+ */
+const EMAIL_HARD_BOUNDARIES: RegExp[] = [
+  /\n-{2,}\s*Original(?:[- ])(?:Message|Nachricht)\s*-{2,}\n/i,
+  /\n-{2,}\s*Forwarded(?:[- ])(?:Message|Email)\s*-{2,}\n/i,
+  /\n(?:Weitergeleitet|Weitergeleitete\s+Nachricht):\s*\n/i,
+  /\n(?:From|Von):\s+[^\n]{0,200}\n(?:Sent|Gesendet):\s+[^\n]+\n/, // Outlook quote header
+];
+
+/** Soft boundaries we prefer when no hard boundary fits. */
+function findSoftBoundary(window: string, halfPoint: number): number {
+  // Prefer paragraph break, then sentence end, then any line break
+  const candidates = [
+    window.lastIndexOf('\n\n'),
+    window.lastIndexOf('. '),
+    window.lastIndexOf('\n'),
+  ];
+  for (const c of candidates) {
+    if (c > halfPoint) return c;
+  }
+  return -1;
+}
+
+export function chunkText(text: string, maxSize: number, overlap: number): string[] {
+  if (text.length <= maxSize) return [text];
+
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < text.length) {
+    const remaining = text.length - start;
+    if (remaining <= maxSize) {
+      chunks.push(text.slice(start));
+      break;
+    }
+    const windowEnd = start + maxSize;
+    const window = text.slice(start, windowEnd);
+
+    // 1. Try a hard email boundary inside the window — split there.
+    let cut = -1;
+    for (const re of EMAIL_HARD_BOUNDARIES) {
+      // Scan all matches inside the window, take the last one that's
+      // past the halfway mark (so we don't make a tiny chunk + huge one)
+      let lastIdx = -1;
+      let m: RegExpExecArray | null;
+      const localRe = new RegExp(re.source, re.flags);
+      while ((m = localRe.exec(window)) !== null) {
+        if (m.index > maxSize / 2) lastIdx = m.index;
+        if (localRe.lastIndex === m.index) localRe.lastIndex++; // avoid infinite loop on zero-width
+      }
+      if (lastIdx > cut) cut = lastIdx;
+    }
+
+    // 2. Fall back to a soft boundary
+    if (cut < 0) cut = findSoftBoundary(window, maxSize / 2);
+
+    // 3. Last resort: hard cut at maxSize
+    const end = cut > 0 ? start + cut + 1 : windowEnd;
+    chunks.push(text.slice(start, end));
+    start = Math.max(end - overlap, end - Math.floor(maxSize * 0.4));
+  }
+  return chunks;
+}
+
+// ---------------------------------------------------------------------------
 // WebLlmDetector
 // ---------------------------------------------------------------------------
 
@@ -368,6 +471,7 @@ export class WebLlmDetector implements Detector {
   private readonly minConfidence: number;
   private readonly onProgress: ((event: WebLlmProgressEvent) => void) | undefined;
   private readonly onChunkProgress: ((current: number, total: number) => void) | undefined;
+  private readonly selfConsistencyPasses: number;
   private readonly debug: boolean;
   private readonly engineFactory: EngineFactory;
 
@@ -379,6 +483,7 @@ export class WebLlmDetector implements Detector {
     this.minConfidence = options.minConfidence ?? DEFAULT_MIN_CONFIDENCE;
     this.onProgress = options.onProgress;
     this.onChunkProgress = options.onChunkProgress;
+    this.selfConsistencyPasses = Math.max(1, options.selfConsistencyPasses ?? 1);
     this.debug = options.debug ?? false;
     this.engineFactory = options._engineFactory ?? defaultEngineFactory;
   }
@@ -435,11 +540,12 @@ export class WebLlmDetector implements Detector {
   /** Overlap between chunks so entities at boundaries are caught in at least one. */
   private static readonly CHUNK_OVERLAP = 200;
 
-  async detect(text: string): Promise<Entity[]> {
+  async detect(text: string, hints?: import('../types.js').DetectorHints): Promise<Entity[]> {
     console.log('[WebLlmDetector] ENTRY', {
       debug: this.debug,
       engineReady: this.engine !== null,
       textLength: text.length,
+      priorEntities: hints?.priorEntities?.length ?? 0,
     });
 
     await this.ready();
@@ -455,28 +561,13 @@ export class WebLlmDetector implements Detector {
       // Single chunk path — still fire so the UI can render an
       // 'LLM is thinking' state even when nothing is split.
       this.onChunkProgress?.(1, 1);
-      return this.detectChunk(eng, text, text);
+      return this.detectChunk(eng, text, text, hints?.priorEntities);
     }
 
     console.log(
       `[WebLlmDetector] long text (${text.length} chars) — chunking into windows of ${WebLlmDetector.CHUNK_SIZE} chars (overlap ${WebLlmDetector.CHUNK_OVERLAP})`
     );
-    const chunks: string[] = [];
-    let start = 0;
-    while (start < text.length) {
-      // Try to end at a natural boundary (paragraph or sentence)
-      let end = Math.min(start + WebLlmDetector.CHUNK_SIZE, text.length);
-      if (end < text.length) {
-        const tail = text.slice(start, end);
-        const lastBoundary = Math.max(tail.lastIndexOf('\n\n'), tail.lastIndexOf('. '));
-        if (lastBoundary > WebLlmDetector.CHUNK_SIZE / 2) {
-          end = start + lastBoundary + 1;
-        }
-      }
-      chunks.push(text.slice(start, end));
-      if (end >= text.length) break;
-      start = end - WebLlmDetector.CHUNK_OVERLAP;
-    }
+    const chunks = chunkText(text, WebLlmDetector.CHUNK_SIZE, WebLlmDetector.CHUNK_OVERLAP);
 
     const allEntities: Entity[] = [];
     let i = 0;
@@ -489,7 +580,7 @@ export class WebLlmDetector implements Detector {
       this.onChunkProgress?.(i, chunks.length);
       // Pass full source for indexOf — entities anchor to original text positions
       // regardless of which chunk they were found in.
-      const chunkEntities = await this.detectChunk(eng, chunk, text);
+      const chunkEntities = await this.detectChunk(eng, chunk, text, hints?.priorEntities);
       allEntities.push(...chunkEntities);
     }
 
@@ -511,46 +602,76 @@ export class WebLlmDetector implements Detector {
    * source. Entities whose `text` does not appear in `fullText` are dropped
    * as hallucinations.
    */
-  private async detectChunk(eng: MLCEngine, chunk: string, fullText: string): Promise<Entity[]> {
-    const prompt = buildPrompt(chunk);
+  private async detectChunk(
+    eng: MLCEngine,
+    chunk: string,
+    fullText: string,
+    priorEntities?: readonly Entity[]
+  ): Promise<Entity[]> {
+    const prompt = buildPrompt(chunk, priorEntities);
 
     // Note: previously this called the WebLLM JSON-schema mode via
     // `response_format: { type: 'json_object' }`, but that triggers
     // `BindingError: Cannot pass non-string to std::string` in MLC's
     // GrammarCompiler for some model builds. Prompt-driven JSON is
     // reliable across all supported models and we parse defensively below.
-    let rawContent: string;
-    try {
-      console.log('[WebLlmDetector] calling eng.chat.completions.create()');
-      const t0 = performance.now();
-      // 180-second timeout — Llama-1B on consumer WebGPU produces ~30-60
-      // tokens/sec; allow headroom for slow devices and first-call shader
-      // compilation. max_tokens caps the runaway-JSON risk.
-      const createPromise = eng.chat.completions.create({
-        messages: [
-          {
-            role: 'system',
-            content:
-              'Du bist ein präziser PII-Detektor. Antworte ausschließlich mit gültigem JSON gemäß dem vorgegebenen Format, ohne Code-Fences und ohne Erklärtext.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: 800,
-        temperature: 0.1,
-      });
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('WebLLM create() timed out after 180s')), 180_000)
-      );
-      const response = await Promise.race([createPromise, timeoutPromise]);
-      const elapsed = Math.round(performance.now() - t0);
-      console.log(`[WebLlmDetector] create() resolved in ${elapsed}ms`);
-      rawContent = response.choices[0]?.message?.content ?? '';
-    } catch (err) {
-      console.error('[WebLlmDetector] create() failed', err);
-      return [];
+    // Self-consistency: run the LLM N times and union the results. Default 1.
+    // For N > 1 we vary temperature slightly so the model can land on
+    // different completions; deterministic re-runs would be wasted work.
+    const allRaw: RawLlmEntity[] = [];
+    let lastContent = '';
+    for (let pass = 0; pass < this.selfConsistencyPasses; pass++) {
+      let rawContent: string;
+      try {
+        const passLabel =
+          this.selfConsistencyPasses > 1 ? ` (pass ${pass + 1}/${this.selfConsistencyPasses})` : '';
+        console.log(`[WebLlmDetector] calling eng.chat.completions.create()${passLabel}`);
+        const t0 = performance.now();
+        // 180-second timeout — Llama-1B on consumer WebGPU produces ~30-60
+        // tokens/sec; allow headroom for slow devices and first-call shader
+        // compilation. max_tokens caps the runaway-JSON risk.
+        const createPromise = eng.chat.completions.create({
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Du bist ein präziser PII-Detektor. Antworte ausschließlich mit gültigem JSON gemäß dem vorgegebenen Format, ohne Code-Fences und ohne Erklärtext.',
+            },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: 800,
+          // Stagger temperature across passes: 0.1, 0.3, 0.5, ... so each
+          // pass explores a slightly different distribution. First pass
+          // stays at the deterministic baseline.
+          temperature: 0.1 + pass * 0.2,
+        });
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('WebLLM create() timed out after 180s')), 180_000)
+        );
+        const response = await Promise.race([createPromise, timeoutPromise]);
+        const elapsed = Math.round(performance.now() - t0);
+        console.log(`[WebLlmDetector] create() resolved in ${elapsed}ms`);
+        rawContent = response.choices[0]?.message?.content ?? '';
+        lastContent = rawContent;
+      } catch (err) {
+        console.error('[WebLlmDetector] create() failed', err);
+        continue; // Allow other passes to proceed even if one fails
+      }
+      allRaw.push(...parseJsonResponse(rawContent));
     }
 
-    const rawEntities = parseJsonResponse(rawContent);
+    // Union across passes — dedupe by (text, type) so the same entity from
+    // two passes counts once. parseJsonResponse already deduped within a
+    // single pass.
+    const seenAcross = new Set<string>();
+    const rawEntities = allRaw.filter((e) => {
+      const key = `${e.text}__${e.type}`;
+      if (seenAcross.has(key)) return false;
+      seenAcross.add(key);
+      return true;
+    });
+
+    const rawContent = lastContent; // for debug logging below
     const entities: Entity[] = [];
     const droppedByLabel: RawLlmEntity[] = [];
     const droppedByConfidence: RawLlmEntity[] = [];

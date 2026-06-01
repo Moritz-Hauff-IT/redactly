@@ -67,7 +67,18 @@ export interface Entity {
   source: 'regex' | 'ner' | 'llm' | 'manual';
 }
 
+export interface DetectorHints {
+  /**
+   * Entities found by faster detectors in the same analyse pass. The
+   * LLM detector uses this to bias toward filling gaps that NER / regex
+   * may have missed — single names after greetings, signature blocks,
+   * inline mentions — rather than re-finding what's already known.
+   * Detectors that don't benefit from prior context can ignore this.
+   */
+  priorEntities?: readonly Entity[];
+}
+
 export interface Detector {
   readonly name: string;
-  detect(text: string): Entity[] | Promise<Entity[]>;
+  detect(text: string, hints?: DetectorHints): Entity[] | Promise<Entity[]>;
 }
