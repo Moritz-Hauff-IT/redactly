@@ -34,14 +34,6 @@ function safeLocalStorageSet(key: string, value: string): void {
   }
 }
 
-function safeLocalStorageRemove(key: string): void {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    // private browsing mode may throw — silently ignore
-  }
-}
-
 function loadEnabledCategories(): Set<EntityCategory> {
   const raw = safeLocalStorageGet(LS_CATEGORIES_KEY);
   if (raw === null) {
