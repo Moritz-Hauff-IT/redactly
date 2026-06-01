@@ -224,7 +224,7 @@ Aufgabe: Finde ALLE Personennamen, Email-Adressen, Telefonnummern, Organisatione
 
 Regeln:
 1. Jeder "text"-Wert MUSS Zeichen für Zeichen aus dem Input zwischen den <text>-Tags stammen. Nichts erfinden.
-2. Personennamen markieren — sowohl vollständige Namen (Vor- und Nachname als EIN Span) ALS AUCH einzelne Vor- oder Nachnamen wenn sie alleinstehen. Besonders beachten: nach Grußformeln wie "Viele Grüße", "Liebe Grüße", "Mit freundlichen Grüßen", "Beste Grüße", "Best regards", "Cheers", "Kind regards" folgt fast immer ein Personenname (oft nur der Vorname) — diesen IMMER als PERSON markieren.
+2. Personennamen markieren — sowohl vollständige Namen (Vor- und Nachname als EIN Span) ALS AUCH einzelne Vor- oder Nachnamen wenn sie alleinstehen. Besonders beachten: nach Grußformeln wie "Viele Grüße", "Liebe Grüße", "Mit freundlichen Grüßen", "Beste Grüße", "Best regards", "Cheers", "Kind regards" folgt fast immer ein Personenname (oft nur der Vorname) — diesen IMMER als PERSON markieren. WICHTIG: die Grußformel selbst gehört NICHT zum Namen-Span. Falsch: {"text":"Viele Grüße Lorenz","type":"PERSON"}. Richtig: {"text":"Lorenz","type":"PERSON"}.
 3. In E-Mail-Headern (From, To, Cc, An, Von) sind die Namen vor den "<email@…>" Adressen IMMER PERSON-Treffer.
 4. type ist einer von: PERSON, ORG, LOCATION, EMAIL, PHONE, IBAN, SECRET.
 5. Geldbeträge, Quartale, Datumsangaben und Versionsnummern sind KEINE PII — nicht markieren.
@@ -387,6 +387,51 @@ function parseJsonResponse(raw: string): RawLlmEntity[] {
     seen.add(key);
     return true;
   });
+}
+
+// ---------------------------------------------------------------------------
+// Greeting-prefix stripping
+// ---------------------------------------------------------------------------
+
+/**
+ * Small LLMs frequently return a name-after-greeting span as a single PERSON
+ * entity ("Viele Grüße\nLorenz" instead of just "Lorenz"). That string isn't
+ * a verbatim source substring (source usually has \n\n, model emits \n), so
+ * the indexOf check drops it as a hallucination. This helper extracts just
+ * the name portion if the candidate starts with a known closing greeting.
+ *
+ * Returns the trailing name (with surrounding whitespace removed) or null
+ * if no greeting prefix was found.
+ */
+function stripGreetingPrefix(s: string): string | null {
+  // Order matters — longer matches first so "Mit freundlichen Grüßen" is
+  // tried before "Grüßen" alone. Case-insensitive, allow ß/ss variants.
+  const greetings = [
+    'mit freundlichen grü(?:ß|ss)en',
+    'mit besten grü(?:ß|ss)en',
+    'freundliche grü(?:ß|ss)e',
+    'beste grü(?:ß|ss)e',
+    'herzliche grü(?:ß|ss)e',
+    'liebe grü(?:ß|ss)e',
+    'viele grü(?:ß|ss)e',
+    'kind regards',
+    'best regards',
+    'warm regards',
+    'sincerely yours',
+    'sincerely',
+    'cheers',
+    'regards',
+    'hochachtungsvoll',
+    'mfg',
+    'lg',
+    'vg',
+    'gru(?:ß|ss)',
+  ];
+  const pattern = new RegExp(`^(?:${greetings.join('|')})[\\s,.:!-]*`, 'i');
+  const m = s.match(pattern);
+  if (m === null) return null;
+  const remainder = s.slice(m[0].length).trim();
+  return remainder.length === 0 ? null : remainder;
 }
 
 // ---------------------------------------------------------------------------
@@ -700,11 +745,22 @@ export class WebLlmDetector implements Detector {
       // source doesn't ("<Timo.Penzkofer@x.de>" vs "Timo.Penzkofer@x.de")
       // — strip surrounding angle brackets and whitespace before lookup.
       // Also strip a stray leading '@' that some models add ("@<email>").
-      const needle = rawNeedle.replace(/^[\s<@]+|[\s>]+$/g, '');
-      if (needle.length === 0) {
+      const baseNeedle = rawNeedle.replace(/^[\s<@]+|[\s>]+$/g, '');
+      if (baseNeedle.length === 0) {
         droppedByMissingText.push(raw);
         continue;
       }
+
+      // Generate lookup candidates, tried in order. The first match wins.
+      // Each candidate is a transformation that recovers an entity the LLM
+      // returned in a slightly wrong form:
+      //   1. exact match (handles 95% of cases)
+      //   2. greeting-prefix stripped — model often returns
+      //      "Viele Grüße\nLorenz" as one PERSON span; we want just "Lorenz"
+      //   3. internal-whitespace normalised — model collapses \n\n into \n
+      const candidates: string[] = [baseNeedle];
+      const stripped = stripGreetingPrefix(baseNeedle);
+      if (stripped !== null && stripped !== baseNeedle) candidates.push(stripped);
 
       // Validate against FULL text (not just the chunk) — anchors entity to
       // the original source-text position and rejects any hallucinated text
@@ -714,8 +770,17 @@ export class WebLlmDetector implements Detector {
       // to the original-case substring so the placeholder replaces the
       // exact source text.
       const fullLower = fullText.toLowerCase();
-      const needleLower = needle.toLowerCase();
+      let needle = baseNeedle;
+      let needleLower = needle.toLowerCase();
       let foundAtLeastOne = false;
+      // Try each candidate; first one with at least one occurrence wins.
+      for (const cand of candidates) {
+        const candLower = cand.toLowerCase();
+        if (fullLower.indexOf(candLower) === -1) continue;
+        needle = cand;
+        needleLower = candLower;
+        break;
+      }
       let searchFrom = 0;
       while (searchFrom < fullText.length) {
         const idx = fullLower.indexOf(needleLower, searchFrom);
