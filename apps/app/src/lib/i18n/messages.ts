@@ -18,6 +18,11 @@ export const messages = {
   btn_download: { de: 'download', en: 'download' },
   btn_mask: { de: 'Maskieren', en: 'Mask' },
   btn_mask_analyzing: { de: 'Analysiere …', en: 'Analysing…' },
+  btn_mask_loading: { de: 'lädt {detector} …', en: 'loading {detector}…' },
+  btn_mask_waiting_for: {
+    de: 'Warte bis {detector} fertig geladen ist',
+    en: 'Waiting for {detector} to finish loading',
+  },
   btn_file_upload: { de: '↑ datei', en: '↑ file' },
   files_hint: {
     de: 'Dokumente, Text, Code, Configs, Logs, ZIP',

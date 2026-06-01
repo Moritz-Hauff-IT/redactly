@@ -11,6 +11,8 @@
   import { detectionStore } from '$lib/stores/detectionStore.svelte.js';
   import { errorStore } from '$lib/stores/errorStore.svelte.js';
   import { mappingStore } from '$lib/stores/mappingStore.svelte.js';
+  import { engineStore } from '$lib/stores/engineStore.svelte.js';
+  import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
   import type { ZipManifest } from '@redactly/core/parsers';
   import type { FilePlan } from '@redactly/core/orchestrator';
   import type { ProgressState, PerFileResult } from '$lib/core/zipFlow.js';
@@ -160,6 +162,11 @@
       hasMasked = false;
       return;
     }
+    // Guard against keyboard-shortcut bypass: the button is disabled while a
+    // detector loads, but Cmd+Enter goes through window onkeydown and would
+    // otherwise call this directly. Bail silently if a detector isn't ready.
+    if (settingsStore.nerEnabled && engineStore.ner.status === 'loading') return;
+    if (settingsStore.webllmEnabled && engineStore.webllm.status === 'loading') return;
 
     isAnalyzing = true;
     try {

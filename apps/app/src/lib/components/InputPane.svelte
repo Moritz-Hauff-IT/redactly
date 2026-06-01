@@ -8,6 +8,8 @@
   import { inputStore } from '../stores/inputStore.svelte.js';
   import { detectionStore } from '../stores/detectionStore.svelte.js';
   import { errorStore } from '../stores/errorStore.svelte.js';
+  import { engineStore } from '../stores/engineStore.svelte.js';
+  import { settingsStore } from '../stores/settingsStore.svelte.js';
   import { t } from '$lib/i18n/locale.svelte.js';
   import HighlightedInput from './HighlightedInput.svelte';
 
@@ -19,6 +21,19 @@
   }
 
   const { onchange, onmask, isAnalyzing = false, onZip }: Props = $props();
+
+  // Block masking while any enabled detector is still downloading / initialising
+  // — masking with a half-loaded NER engine would silently fall back to regex
+  // and produce false negatives. Disabled detectors are ignored (regex-only is
+  // a valid mode). 'error' state also doesn't block — user can still proceed
+  // with whatever else loaded successfully.
+  const detectorLoading = $derived.by(() => {
+    const nerLoading = settingsStore.nerEnabled && engineStore.ner.status === 'loading';
+    const llmLoading = settingsStore.webllmEnabled && engineStore.webllm.status === 'loading';
+    if (nerLoading) return 'NER';
+    if (llmLoading) return 'WebLLM';
+    return null;
+  });
 
   let fileInputEl = $state<HTMLInputElement | null>(null);
   let isDragOver = $state(false);
@@ -268,11 +283,31 @@ Buchhaltung, Müller GmbH
       type="button"
       data-testid="mask-button"
       class="btn-primary ml-auto"
-      disabled={!inputStore.text.trim() || isAnalyzing}
+      disabled={!inputStore.text.trim() || isAnalyzing || detectorLoading !== null}
       onclick={() => onmask?.()}
-      title="Erkennt PII und maskiert (⌘↵)"
+      title={detectorLoading
+        ? t('btn_mask_waiting_for', { detector: detectorLoading })
+        : 'Erkennt PII und maskiert (⌘↵)'}
     >
-      {#if isAnalyzing}
+      {#if detectorLoading}
+        <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle
+            cx="8"
+            cy="8"
+            r="6"
+            stroke="currentColor"
+            stroke-opacity="0.35"
+            stroke-width="2"
+          />
+          <path
+            d="M14 8a6 6 0 00-6-6"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+        {t('btn_mask_loading', { detector: detectorLoading })}
+      {:else if isAnalyzing}
         <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <circle
             cx="8"
