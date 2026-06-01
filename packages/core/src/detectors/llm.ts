@@ -197,8 +197,9 @@ Regeln:
 2. Personennamen markieren — sowohl vollständige Namen (Vor- und Nachname zusammen als EIN Span) ALS AUCH einzelne Vor- oder Nachnamen wenn sie alleinstehen. Besonders beachten: nach Grußformeln wie "Viele Grüße", "Liebe Grüße", "Mit freundlichen Grüßen", "Beste Grüße", "Best regards", "Cheers", "Kind regards" folgt fast immer ein Personenname (oft nur der Vorname) — diesen IMMER als PERSON markieren. Beispiel: in "Viele Grüße\\nLorenz" ist "Lorenz" eine PERSON.
 3. type ist einer von: PERSON, ORG, LOCATION, EMAIL, PHONE, IBAN, SECRET.
 4. Geldbeträge, Quartale, Datumsangaben und Versionsnummern sind KEINE PII — nicht markieren.
+5. ALLE gefundenen Entitäten kommen in EIN EINZIGES "entities"-Array. Keine separaten Objekte pro Typ. Nicht mehrere "entities"-Felder im selben JSON. Wenn nichts gefunden: {"entities":[]}.
 
-Schema: {"entities":[{"text":"<wörtlicher Substring>","type":"<TYP>"}]}
+Schema: {"entities":[{"text":"<wörtlicher Substring>","type":"<TYP>"}, ...]}
 
 <text>
 ${text}
@@ -286,26 +287,60 @@ function collectEntities(node: unknown, out: RawLlmEntity[]): void {
   }
 }
 
+/**
+ * Direct regex scan for entity-shaped JSON objects, independent of the
+ * outer wrapper. Catches malformed responses that JSON.parse silently
+ * truncates — most notably the small-model pattern of emitting multiple
+ * `"entities"` keys in one object, where JSON.parse keeps only the last
+ * and drops the rest. We sweep the raw response for any
+ * `{"text": "...", "type": "..."}` shape directly, regardless of nesting
+ * or duplicate keys, so no entity is lost just because the surrounding
+ * structure was malformed.
+ */
+function fallbackScanEntities(raw: string): RawLlmEntity[] {
+  const results: RawLlmEntity[] = [];
+  // text-first form
+  for (const m of raw.matchAll(
+    /\{\s*"text"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*"type"\s*:\s*"([A-Z_]+)"\s*\}/g
+  )) {
+    const text = (m[1] ?? '').replace(/\\"/g, '"').replace(/\\\\/g, '\\').replace(/\\n/g, '\n');
+    results.push({ text, type: (m[2] ?? '').toUpperCase(), confidence: 0.8 });
+  }
+  // type-first form (some models swap the key order)
+  for (const m of raw.matchAll(
+    /\{\s*"type"\s*:\s*"([A-Z_]+)"\s*,\s*"text"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}/g
+  )) {
+    const text = (m[2] ?? '').replace(/\\"/g, '"').replace(/\\\\/g, '\\').replace(/\\n/g, '\n');
+    results.push({ text, type: (m[1] ?? '').toUpperCase(), confidence: 0.8 });
+  }
+  return results;
+}
+
 function parseJsonResponse(raw: string): RawLlmEntity[] {
   // Strip markdown code fences if present
   const cleaned = raw.replace(/```(?:json)?\s*/g, '').replace(/```\s*$/g, '');
 
+  const collected: RawLlmEntity[] = [];
+
   // Find the outermost JSON object. Models sometimes emit prose before/after.
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return [];
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(jsonMatch[0]);
-  } catch {
-    return [];
+  if (jsonMatch) {
+    try {
+      const parsed: unknown = JSON.parse(jsonMatch[0]);
+      // Recursive collection accepts {entities: [...]}, {result: {pii: [...]}},
+      // bare arrays, or single objects. Each found entity has been coerced from
+      // common field-name variants (text/value/entity/word, type/category/label, etc).
+      collectEntities(parsed, collected);
+    } catch {
+      // Fall through to regex fallback below.
+    }
   }
 
-  // Recursive collection accepts {entities: [...]}, {result: {pii: [...]}},
-  // bare arrays, or single objects. Each found entity has been coerced from
-  // common field-name variants (text/value/entity/word, type/category/label, etc).
-  const collected: RawLlmEntity[] = [];
-  collectEntities(parsed, collected);
+  // Always sweep with regex too — catches entities that JSON.parse silently
+  // dropped due to duplicate keys (small models emit {"entities":[…]} then a
+  // second {"entities":[…]} that overrides the first). Dedupe handles any
+  // overlap with JSON.parse-collected entities.
+  collected.push(...fallbackScanEntities(cleaned));
 
   // Dedupe by (text, type) to handle nested-duplication patterns where a
   // model puts the same entity in both outer and inner arrays.
