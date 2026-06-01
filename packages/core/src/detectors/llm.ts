@@ -192,14 +192,16 @@ function buildPrompt(text: string): string {
   // <text> tags) helps small models distinguish instructions from input data.
   return `Du bist ein PII-Extraktor. Antworte AUSSCHLIESSLICH mit gültigem JSON ohne Markdown, ohne Erklärungen.
 
-Regeln:
-1. Jeder "text"-Wert MUSS Zeichen für Zeichen aus dem Input zwischen den <text>-Tags stammen. Nichts erfinden. Wenn du unsicher bist, lieber WEGLASSEN.
-2. Personennamen markieren — sowohl vollständige Namen (Vor- und Nachname zusammen als EIN Span) ALS AUCH einzelne Vor- oder Nachnamen wenn sie alleinstehen. Besonders beachten: nach Grußformeln wie "Viele Grüße", "Liebe Grüße", "Mit freundlichen Grüßen", "Beste Grüße", "Best regards", "Cheers", "Kind regards" folgt fast immer ein Personenname (oft nur der Vorname) — diesen IMMER als PERSON markieren. Beispiel: in "Viele Grüße\\nLorenz" ist "Lorenz" eine PERSON.
-3. type ist einer von: PERSON, ORG, LOCATION, EMAIL, PHONE, IBAN, SECRET.
-4. Geldbeträge, Quartale, Datumsangaben und Versionsnummern sind KEINE PII — nicht markieren.
-5. ALLE gefundenen Entitäten kommen in EIN EINZIGES "entities"-Array. Keine separaten Objekte pro Typ. Nicht mehrere "entities"-Felder im selben JSON. Wenn nichts gefunden: {"entities":[]}.
+Aufgabe: Finde ALLE Personennamen, Email-Adressen, Telefonnummern, Organisationen, Orte, IBANs und Secrets im Text. Sei großzügig — lieber etwas mehr markieren als zu wenig.
 
-Schema: {"entities":[{"text":"<wörtlicher Substring>","type":"<TYP>"}, ...]}
+Regeln:
+1. Jeder "text"-Wert MUSS Zeichen für Zeichen aus dem Input zwischen den <text>-Tags stammen. Nichts erfinden.
+2. Personennamen markieren — sowohl vollständige Namen (Vor- und Nachname als EIN Span) ALS AUCH einzelne Vor- oder Nachnamen wenn sie alleinstehen. Besonders beachten: nach Grußformeln wie "Viele Grüße", "Liebe Grüße", "Mit freundlichen Grüßen", "Beste Grüße", "Best regards", "Cheers", "Kind regards" folgt fast immer ein Personenname (oft nur der Vorname) — diesen IMMER als PERSON markieren. Beispiel: "Viele Grüße\\nLorenz" → Lorenz = PERSON.
+3. In E-Mail-Headern (From, To, Cc, An, Von) sind die Namen vor den "<email@…>" Adressen IMMER PERSON-Treffer.
+4. type ist einer von: PERSON, ORG, LOCATION, EMAIL, PHONE, IBAN, SECRET.
+5. Geldbeträge, Quartale, Datumsangaben und Versionsnummern sind KEINE PII — nicht markieren.
+
+Schema: {"entities":[{"text":"<wörtlicher Substring>","type":"<TYP>"}, {"text":"...","type":"..."}, ...]}
 
 <text>
 ${text}

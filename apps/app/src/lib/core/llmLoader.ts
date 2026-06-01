@@ -34,6 +34,33 @@ export async function loadWebLlm(modelId: string, reAnalyze?: ReAnalyzeFn): Prom
   engineStore.setWebllmProgress(0, 'Initializing WebLLM engine…');
   console.log('[loadWebLlm] status set to loading, about to dynamic-import @redactly/core/llm');
 
+  // Request persistent storage BEFORE the download starts. Without this,
+  // Brave (and Chrome on small disks) cap the origin at ~1 GB shared
+  // across IndexedDB+Cache → Llama 3.2 3B (~1.7 GB) hits 'Quota exceeded'
+  // mid-download. With persistent storage granted, the quota jumps to
+  // ~50 % of free disk. Browsers grant it silently for engaged origins,
+  // otherwise show a one-time prompt. Failure is non-fatal — we still
+  // try the download and surface the real error if it fails later.
+  if (typeof navigator !== 'undefined' && navigator.storage?.persist) {
+    try {
+      const already = await navigator.storage.persisted();
+      if (!already) {
+        const granted = await navigator.storage.persist();
+        console.log('[loadWebLlm] navigator.storage.persist() →', granted ? 'granted' : 'denied');
+      } else {
+        console.log('[loadWebLlm] storage already persistent');
+      }
+      if (navigator.storage.estimate) {
+        const { usage, quota } = await navigator.storage.estimate();
+        const usageMb = Math.round((usage ?? 0) / 1024 / 1024);
+        const quotaMb = Math.round((quota ?? 0) / 1024 / 1024);
+        console.log(`[loadWebLlm] storage usage: ${usageMb} MB / quota: ${quotaMb} MB`);
+      }
+    } catch (err) {
+      console.warn('[loadWebLlm] storage.persist() failed', err);
+    }
+  }
+
   try {
     // Dynamic import keeps @mlc-ai/web-llm out of the main bundle.
     const { WebLlmDetector } = await import('@redactly/core/llm');
@@ -99,7 +126,29 @@ export async function loadWebLlm(modelId: string, reAnalyze?: ReAnalyzeFn): Prom
 
     console.error('[loadWebLlm] FAILED', err);
     engineStore.setWebllmStatus('error');
-    engineStore.setWebllmProgress(0, `WebLLM Fehler: ${msg}`);
+
+    // Quota-exceeded is a specific recoverable case: tell the user how to
+    // recover instead of just dumping the raw browser error string.
+    const isQuotaErr = /quota|QuotaExceeded|exceeded the quota/i.test(msg);
+    if (isQuotaErr) {
+      let quotaInfo = '';
+      try {
+        if (navigator.storage?.estimate) {
+          const { usage, quota } = await navigator.storage.estimate();
+          const usageMb = Math.round((usage ?? 0) / 1024 / 1024);
+          const quotaMb = Math.round((quota ?? 0) / 1024 / 1024);
+          quotaInfo = ` (${usageMb}/${quotaMb} MB belegt)`;
+        }
+      } catch {
+        /* estimate is best-effort */
+      }
+      engineStore.setWebllmProgress(
+        0,
+        `Browser-Speicher voll${quotaInfo}. Lösung: DevTools → Application → Storage → "Clear site data" und ein kleineres Modell wählen (Llama 3.2 1B), oder Chrome/Firefox statt Brave nutzen.`
+      );
+    } else {
+      engineStore.setWebllmProgress(0, `WebLLM Fehler: ${msg}`);
+    }
     settingsStore.setWebllmEnabled(false);
     detector = null;
   }
