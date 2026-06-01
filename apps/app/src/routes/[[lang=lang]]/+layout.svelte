@@ -173,36 +173,6 @@
     {@render children()}
   </main>
 
-  <footer
-    class="border-t border-[color:var(--color-rule)] px-9 py-5 font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
-  >
-    <div class="mx-auto flex w-full max-w-[1320px] flex-wrap items-center justify-between gap-3">
-      <span>© {new Date().getFullYear()} Moritz Hauff IT · Tägerwilen, Schweiz</span>
-      <nav class="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <a class="footer-link" href="/legal/impressum">{t('footer_imprint')}</a>
-        <a class="footer-link" href="/legal/datenschutz">{t('footer_privacy')}</a>
-        <a class="footer-link" href="/legal/terms">{t('footer_terms')}</a>
-        <a
-          class="footer-link"
-          href="https://github.com/moritz-hauff-it/redactly"
-          target="_blank"
-          rel="noopener noreferrer">github</a
-        >
-      </nav>
-    </div>
-  </footer>
-
   <SettingsDrawer bind:open={drawerOpen} />
   <Toast />
 </div>
-
-<style>
-  .footer-link {
-    color: var(--color-ink-mute);
-    text-decoration: none;
-    transition: color 0.12s;
-  }
-  .footer-link:hover {
-    color: var(--color-accent);
-  }
-</style>

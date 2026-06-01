@@ -6,8 +6,22 @@ const config = {
   preprocess: vitePreprocess(),
   kit: {
     adapter: adapter({
-      fallback: 'index.html',
+      // GitHub Pages doesn't support nginx-style try_files: unknown paths
+      // serve 404.html with an HTTP 404. We accept the 404 status and let
+      // SvelteKit's client router hydrate + navigate to the correct route
+      // — the user never sees the wrong content, only a brief flash.
+      fallback: '404.html',
     }),
+    // version.name embeds the git SHA in the build manifest. SvelteKit
+    // polls it; a mismatch (i.e. the server has a newer deploy than the
+    // client's loaded bundle) triggers a full reload before the next nav.
+    // Required on Pages because we can't send Cache-Control: no-cache on
+    // index.html the way nginx does — without this, users would keep their
+    // stale shell pointing at chunks that no longer exist.
+    version: {
+      name: process.env.GITHUB_SHA || process.env.PUBLIC_VERSION || Date.now().toString(),
+      pollInterval: 60_000,
+    },
     csp: {
       mode: 'hash',
       directives: {

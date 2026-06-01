@@ -1,0 +1,71 @@
+# Build the SvelteKit app and deploy to GitHub Pages.
+#
+# This workflow is for the `github-pages` branch — a self-host preset
+# without legal pages or footer. To use:
+#   1. In repo Settings → Pages → Source: "GitHub Actions"
+#   2. Put your hostname in apps/app/static/CNAME
+#   3. Push to this branch (or merge into your default)
+#
+# On GitHub Enterprise Server (GHES) replace `runs-on: ubuntu-latest`
+# with your self-hosted runner label, e.g. `runs-on: [self-hosted, linux]`.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [github-pages]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one Pages deploy at a time. Queue new pushes, cancel running.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build app
+        # GITHUB_SHA flows into svelte.config.js as kit.version.name so the
+        # client can detect stale-bundle reloads after a deploy. Passed via
+        # env: (not interpolated in run:) to avoid script-injection patterns.
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: pnpm -F @redactly/app build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/app/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
