@@ -139,7 +139,10 @@
       de: 'Redactly läuft 100 % in deinem Browser. Es gibt keinen Server, der deinen Text empfängt. Modelle werden einmalig vom HuggingFace-CDN geladen und im Browser gecacht.',
       en: 'Redactly runs 100% in your browser. There is no server that receives your text. Models are downloaded once from the HuggingFace CDN and cached in the browser.',
     },
-    infoVersion: { de: 'v0.1.0-alpha · MIT-Lizenz', en: 'v0.1.0-alpha · MIT licence' },
+    infoVersion: {
+      de: 'v0.1.0-alpha · FSL-1.1-Apache-2.0',
+      en: 'v0.1.0-alpha · FSL-1.1-Apache-2.0',
+    },
   } as const;
 
   function isEnabled(cat: EntityCategory): boolean {
