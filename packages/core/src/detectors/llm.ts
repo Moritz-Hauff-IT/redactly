@@ -229,9 +229,11 @@ Regeln:
 4. type ist einer von: PERSON, ORG, LOCATION, EMAIL, PHONE, IBAN, SECRET.
 5. Geldbeträge, Quartale, Datumsangaben und Versionsnummern sind KEINE PII — nicht markieren.
 
-Beispiel (deutsch):
-Input zwischen <text>-Tags: "Von: Beate Quelle <beate.quelle@beispielfirma.de>\\nAn: Volker Zimmer <v.zimmer@anderefirma.ch>; Karola Yew <karola@beispielfirma.de>\\n\\nHallo Volker,\\n\\nanbei der Vertrag. Bei Rückfragen Karola in Cc.\\n\\nViele Grüße\\nBeate\\n\\nBeate Quelle · Vertrieb"
-Erwartetes JSON: {"entities":[{"text":"Beate Quelle","type":"PERSON"},{"text":"beate.quelle@beispielfirma.de","type":"EMAIL"},{"text":"Volker Zimmer","type":"PERSON"},{"text":"v.zimmer@anderefirma.ch","type":"EMAIL"},{"text":"Karola Yew","type":"PERSON"},{"text":"karola@beispielfirma.de","type":"EMAIL"},{"text":"Volker","type":"PERSON"},{"text":"Karola","type":"PERSON"},{"text":"Beate","type":"PERSON"}]}
+Wichtig zur "text"-Form:
+- Email NIEMALS in spitze Klammern setzen: "name@firma.de" (gut), NICHT "<name@firma.de>" (falsch).
+- Email-Adresse EXAKT wie im Input übernehmen (gleiche Groß-/Kleinschreibung).
+- Personennamen ohne führendes "@" oder "<": "Vorname Nachname", NICHT "@Vorname Nachname" oder "<Vorname Nachname>".
+- Wenn im Input "Name <email>" steht, sind das ZWEI Treffer: einer für den Namen, einer für die Email — beide ohne die Klammern.
 
 Schema: {"entities":[{"text":"<wörtlicher Substring>","type":"<TYP>"}, {"text":"...","type":"..."}, ...]}
 ${hintSection}
@@ -688,28 +690,48 @@ export class WebLlmDetector implements Detector {
       }
 
       // Find all occurrences of the text in the input
-      const needle = raw.text;
-      if (!needle || needle.length === 0) {
+      const rawNeedle = raw.text;
+      if (!rawNeedle || rawNeedle.length === 0) {
+        droppedByMissingText.push(raw);
+        continue;
+      }
+
+      // Small models wrap emails / names in angle brackets even when the
+      // source doesn't ("<Timo.Penzkofer@x.de>" vs "Timo.Penzkofer@x.de")
+      // — strip surrounding angle brackets and whitespace before lookup.
+      // Also strip a stray leading '@' that some models add ("@<email>").
+      const needle = rawNeedle.replace(/^[\s<@]+|[\s>]+$/g, '');
+      if (needle.length === 0) {
         droppedByMissingText.push(raw);
         continue;
       }
 
       // Validate against FULL text (not just the chunk) — anchors entity to
       // the original source-text position and rejects any hallucinated text
-      // that doesn't appear verbatim in the original.
+      // that doesn't appear verbatim in the original. Case-insensitive
+      // search rescues emails the model lowercased (real source might be
+      // "Timo.Penzkofer@…" but model emits "timo.penzkofer@…"). We anchor
+      // to the original-case substring so the placeholder replaces the
+      // exact source text.
+      const fullLower = fullText.toLowerCase();
+      const needleLower = needle.toLowerCase();
       let foundAtLeastOne = false;
       let searchFrom = 0;
       while (searchFrom < fullText.length) {
-        const idx = fullText.indexOf(needle, searchFrom);
+        const idx = fullLower.indexOf(needleLower, searchFrom);
         if (idx === -1) break;
         foundAtLeastOne = true;
+
+        // Use original-case slice from fullText so highlighting/replacement
+        // matches the actual source bytes, not the LLM-normalised version.
+        const actualText = fullText.slice(idx, idx + needle.length);
 
         entities.push({
           start: idx,
           end: idx + needle.length,
           type: mapping.type,
           category: mapping.category,
-          text: needle,
+          text: actualText,
           confidence: raw.confidence,
           source: 'llm',
         });
@@ -720,7 +742,7 @@ export class WebLlmDetector implements Detector {
         // HALLUCINATION caught — model invented text that doesn't appear in
         // the source. Always log this so users see the safety net working.
         console.warn(
-          `[WebLlmDetector] HALLUCINATION dropped: "${needle}" (type=${raw.type}) — not present in source text`
+          `[WebLlmDetector] HALLUCINATION dropped: "${rawNeedle}" (type=${raw.type}) — not present in source text`
         );
         droppedByMissingText.push(raw);
       }
