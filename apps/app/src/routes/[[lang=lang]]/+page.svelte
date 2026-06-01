@@ -33,6 +33,12 @@
   let zipLog = $state<PerFileResult[]>([]);
   let zipAborting = $state(false);
   let zipAbortController: AbortController | null = null;
+  // Two-phase flow: analysis result is held here for review, then a
+  // separate Download step writes the actual ZIP. disabledEntityKeys
+  // is the user's exclusion set keyed by `${type}:${text}`.
+  let zipAnalysis = $state<import('$lib/core/zipFlow.js').ZipAnalysis | null>(null);
+  let zipDisabledEntities = $state<Set<string>>(new Set());
+  let zipDownloading = $state(false);
 
   async function handleZipUpload(file: File) {
     try {
@@ -86,6 +92,9 @@
     zipLog = [];
     zipAborting = false;
     zipAbortController = null;
+    zipAnalysis = null;
+    zipDisabledEntities = new Set();
+    zipDownloading = false;
   }
 
   function abortZipApply() {
@@ -102,9 +111,10 @@
     zipAborting = false;
     zipAbortController = new AbortController();
     try {
-      const { applyPlan, ZipAbortError } = await import('$lib/core/zipFlow.js');
-      const outputName = zipManifest.filename.replace(/\.zip$/i, '') + '-masked.zip';
-      const result = await applyPlan(zipManifest, plan, outputName, {
+      const { analyzeFiles, ZipAbortError } = await import('$lib/core/zipFlow.js');
+      // PHASE 1: parse + detect across all files. NO ZIP write yet, no
+      // download. The result lands in zipAnalysis for the review UI.
+      const analysis = await analyzeFiles(zipManifest, plan, {
         signal: zipAbortController.signal,
         onProgress: (state) => {
           zipProgress = state;
@@ -113,38 +123,9 @@
           zipLog = [...zipLog, file];
         },
       });
-      // Trigger download
-      const url = URL.createObjectURL(result.blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = result.filename;
-      a.click();
-      URL.revokeObjectURL(url);
-
-      // Commit the cross-file mapping to the global store — same as the
-      // single-text flow does via maskingService.maskText. This unlocks the
-      // Restore tab: user can paste an LLM response that references entities
-      // across the whole batch and get every placeholder swapped back.
-      mappingStore.set(result.mapping);
-      // Populate the detection-review table too. Entity positions are
-      // stubbed (no single source text to anchor against in a ZIP run),
-      // but the LIST + counts + per-entity toggles surface what was
-      // masked. Without this the table sits empty after a ZIP and the
-      // user can't see what entities the batch found.
-      detectionStore.setEntities(result.entities);
-
-      const masked = result.perFile.filter((f) => f.action === 'masked').length;
-      const skipped = result.perFile.filter((f) => f.action === 'skipped').length;
-      const failed = result.perFile.filter((f) => f.action === 'failed').length;
-      const placeholders = result.mapping.forward.size;
-      errorStore.show(
-        `ZIP fertig: ${masked} maskiert, ${skipped} übersprungen${failed > 0 ? `, ${failed} fehlgeschlagen` : ''} · ${placeholders} Platzhalter im Restore`
-      );
-      // Hold the final 100% state visibly for a beat before unmounting
-      // the modal — otherwise tiny-batch runs blink the progress panel
-      // away faster than the user can register it.
-      await new Promise((r) => setTimeout(r, 500));
-      closeZipModal();
+      zipAnalysis = analysis;
+      zipDisabledEntities = new Set();
+      zipApplying = false;
       // Avoid unused import warning — ZipAbortError is referenced in catch.
       void ZipAbortError;
     } catch (err) {
@@ -158,6 +139,50 @@
       }
       closeZipModal();
     }
+  }
+
+  /** Phase 2: user-triggered. Pack the ZIP applying the entity filter. */
+  async function downloadZipFromReview() {
+    if (!zipManifest || !zipAnalysis) return;
+    zipDownloading = true;
+    try {
+      const { packZipFromAnalysis } = await import('$lib/core/zipFlow.js');
+      const outputName = zipManifest.filename.replace(/\.zip$/i, '') + '-masked.zip';
+      const result = await packZipFromAnalysis(zipAnalysis, outputName, zipDisabledEntities);
+
+      // Trigger download
+      const url = URL.createObjectURL(result.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      mappingStore.set(result.mapping);
+      detectionStore.setEntities(result.entities);
+
+      const masked = result.perFile.filter((f) => f.action === 'masked').length;
+      const skipped = result.perFile.filter((f) => f.action === 'skipped').length;
+      const failed = result.perFile.filter((f) => f.action === 'failed').length;
+      const placeholders = result.mapping.forward.size;
+      errorStore.show(
+        `ZIP fertig: ${masked} maskiert, ${skipped} übersprungen${failed > 0 ? `, ${failed} fehlgeschlagen` : ''} · ${placeholders} Platzhalter im Restore`
+      );
+      await new Promise((r) => setTimeout(r, 300));
+      closeZipModal();
+    } catch (err) {
+      errorStore.show(
+        `Download fehlgeschlagen: ${err instanceof Error ? err.message : 'Unbekannt'}`
+      );
+      zipDownloading = false;
+    }
+  }
+
+  function toggleZipEntity(key: string) {
+    const next = new Set(zipDisabledEntities);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    zipDisabledEntities = next;
   }
 
   async function handleMaskClick() {
@@ -275,9 +300,14 @@
     progress={zipProgress}
     log={zipLog}
     aborting={zipAborting}
+    analysis={zipAnalysis}
+    disabledEntities={zipDisabledEntities}
+    downloading={zipDownloading}
     onClose={closeZipModal}
     onApply={applyZipPlan}
     onAbort={abortZipApply}
+    onToggleEntity={toggleZipEntity}
+    onDownload={downloadZipFromReview}
   />
 {/if}
 

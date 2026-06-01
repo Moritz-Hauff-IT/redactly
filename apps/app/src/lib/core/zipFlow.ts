@@ -24,6 +24,7 @@ import {
   generateFilePlan,
   heuristicPlan,
   type FilePlan,
+  type FileAction,
   type ManifestEntryForLlm,
   type ChatEngine,
 } from '@redactly/core/orchestrator';
@@ -121,41 +122,67 @@ export interface ApplyPlanOptions {
 }
 
 /**
- * Apply a plan: mask each 'mask' entry, skip others (kept in archive as-is
- * unless action === 'skip' which DROPS the file from the output).
- *
- * On cancel: throws ZipAbortError without packing partial output. We deliberately
- * don't return a partial ZIP — the user clicked cancel, presumably because the
- * result was wrong (e.g. forgot to toggle a file), and a half-baked archive is
- * confusing. Re-running is the right path.
+ * Per-file analysis result. Has all info needed to re-mask the file
+ * with a filtered entity set in the pack phase, without re-running
+ * parsing or detection (both expensive).
  */
-export async function applyPlan(
+export interface FileAnalysis {
+  path: string;
+  mimeType: string;
+  format: SupportedFormat | null;
+  /** What the user originally said to do with this file in the plan. */
+  action: FileAction;
+  /**
+   * Raw input bytes — preserved so 'review' (keep-as-is) files can be
+   * re-packed without re-parsing, and so 'mask' files whose parse failed
+   * fall back to the original bytes cleanly.
+   */
+  originalBytes: Uint8Array;
+  /**
+   * Only present for files where action='mask' AND parse succeeded.
+   * The detected entities (regex + NER + LLM merge already done).
+   */
+  parsedText?: string;
+  entities?: Entity[];
+  /** Set when parse failed or no parser available — used for UI hinting. */
+  error?: string;
+}
+
+export interface ZipAnalysis {
+  files: FileAnalysis[];
+  /**
+   * Cross-file mapping with EVERY detected entity included. The pack
+   * phase will re-run mask() with a possibly-filtered subset; this
+   * unfiltered map is for the review UI to show what's available.
+   */
+  fullMapping: Mapping;
+}
+
+/**
+ * Phase 1: Parse + detect entities for every file in the plan. Does NOT
+ * write a ZIP — returns a structured analysis the caller can show to the
+ * user for review. Caller invokes packZipFromAnalysis() afterwards (with
+ * optional per-entity filters) to actually produce the downloadable ZIP.
+ *
+ * Splitting this two-phase makes per-entity toggling possible: the
+ * expensive work (parse, NER, LLM) runs once; the user can then exclude
+ * individual entities and we re-mask quickly with no second NER/LLM cost.
+ */
+export async function analyzeFiles(
   manifest: ZipManifest,
   plan: FilePlan,
-  outputName: string,
   options: ApplyPlanOptions = {}
-): Promise<ZipMaskResult> {
+): Promise<ZipAnalysis> {
   const { onProgress, onFileComplete, signal } = options;
   const planByPath = new Map(plan.entries.map((e) => [e.path, e]));
-  const outputEntries: ZipPackEntry[] = [];
-  const perFile: ZipMaskResult['perFile'] = [];
-  // Accumulates across every masked file in the batch — passed back into
-  // mask(..., { existing }) per call so identical originals across files
-  // reuse the same placeholder index.
+  const files: FileAnalysis[] = [];
+  // Accumulates across every masked file in the batch — used by mask(...,
+  // { existing }) so identical originals across files reuse the same
+  // placeholder index. Single source of truth across the analysis.
   let runningMapping: Mapping | undefined = undefined;
 
   const toProcess = manifest.entries.filter((e) => !e.isDir);
   let done = 0;
-  // Yield to the browser after EVERY file so:
-  //   - Svelte paints the per-file state transition
-  //   - the Cancel button can actually receive clicks
-  //   - tiny-file batches (12x 500-byte .eml) don't run inside one task
-  // We tried a time-based throttle (yield only when >50ms since last yield)
-  // but Brave's privacy shields coarsen performance.now() resolution, so
-  // the threshold was never crossed for fast batches. A per-file yield
-  // costs ~16ms/file (one animation frame); for 100 files that's ~1.6s
-  // total — acceptable, especially since real workloads have heavier per-
-  // file work (NER, PDF parse) that dwarfs the yield cost.
 
   for (const entry of toProcess) {
     if (signal?.aborted) throw new ZipAbortError();
@@ -163,42 +190,60 @@ export async function applyPlan(
     const tick = (step: ProgressStep | null) =>
       onProgress?.({ done, total: toProcess.length, currentPath: entry.path, step });
     tick(null);
+    // Yield to the browser after every file so the UI paints + Cancel
+    // button stays clickable. Brave's coarsened performance.now() made
+    // the time-throttled version unreliable for small batches.
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
 
     const planEntry = planByPath.get(entry.path);
-    const action = planEntry?.action ?? 'review';
+    const action: FileAction = planEntry?.action ?? 'review';
+    const originalBytes = new Uint8Array(entry.bytes);
 
     if (action === 'skip') {
-      const r: PerFileResult = { path: entry.path, action: 'skipped' };
-      perFile.push(r);
-      onFileComplete?.(r);
+      files.push({
+        path: entry.path,
+        mimeType: entry.mimeType,
+        format: entry.format,
+        action,
+        originalBytes,
+      });
+      onFileComplete?.({ path: entry.path, action: 'skipped' });
       continue;
     }
 
-    if (action === 'review' || action !== 'mask') {
-      outputEntries.push({ path: entry.path, bytes: entry.bytes });
-      const r: PerFileResult = { path: entry.path, action: 'kept' };
-      perFile.push(r);
-      onFileComplete?.(r);
+    if (action !== 'mask') {
+      files.push({
+        path: entry.path,
+        mimeType: entry.mimeType,
+        format: entry.format,
+        action,
+        originalBytes,
+      });
+      onFileComplete?.({ path: entry.path, action: 'kept' });
       continue;
     }
 
-    // action === 'mask'
+    // action === 'mask' but no parser for this format → keep original
     if (entry.format === null) {
-      outputEntries.push({ path: entry.path, bytes: entry.bytes });
-      const r: PerFileResult = {
+      files.push({
+        path: entry.path,
+        mimeType: entry.mimeType,
+        format: null,
+        action,
+        originalBytes,
+        error: 'No parser for this format',
+      });
+      onFileComplete?.({
         path: entry.path,
         action: 'kept',
         error: 'No parser for this format',
-      };
-      perFile.push(r);
-      onFileComplete?.(r);
+      });
       continue;
     }
 
     try {
       tick('parse');
-      const blob = new Blob([new Uint8Array(entry.bytes)]);
+      const blob = new Blob([originalBytes]);
       const parsed = await parseFile({
         name: entry.path,
         type: entry.mimeType,
@@ -207,43 +252,146 @@ export async function applyPlan(
       tick('detect');
       const entities = await analyze(parsed.text);
       tick('mask');
+      // Run mask now to ACCUMULATE the cross-file mapping. We discard the
+      // masked output for this phase — pack phase re-runs mask with the
+      // user's filter to produce the actual bytes. The existing-mapping
+      // chain still ensures placeholder indices stay consistent.
       const masked = mask(parsed.text, entities, { existing: runningMapping });
       runningMapping = masked.mapping;
-      tick('write');
-      const baseName = entry.path.replace(/\.[^.]+$/, '');
-      const fmt = entry.format as SupportedFormat;
-      const written = await writeAsFormat(masked.maskedText, fmt, baseName);
-      const writtenBytes = new Uint8Array(await written.blob.arrayBuffer());
 
-      outputEntries.push({ path: entry.path, bytes: writtenBytes });
-      const r: PerFileResult = {
+      files.push({
+        path: entry.path,
+        mimeType: entry.mimeType,
+        format: entry.format,
+        action,
+        originalBytes,
+        parsedText: parsed.text,
+        entities,
+      });
+      onFileComplete?.({
         path: entry.path,
         action: 'masked',
         entityCount: entities.length,
-      };
-      perFile.push(r);
-      onFileComplete?.(r);
+      });
     } catch (err) {
-      outputEntries.push({ path: entry.path, bytes: entry.bytes });
-      const r: PerFileResult = {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      files.push({
+        path: entry.path,
+        mimeType: entry.mimeType,
+        format: entry.format,
+        action,
+        originalBytes,
+        error: errMsg,
+      });
+      onFileComplete?.({
         path: entry.path,
         action: 'failed',
-        error: err instanceof Error ? err.message : String(err),
-      };
-      perFile.push(r);
-      onFileComplete?.(r);
+        error: errMsg,
+      });
     }
   }
 
   if (signal?.aborted) throw new ZipAbortError();
-  const { blob, filename } = await packZip(outputEntries, outputName);
-  // Empty mapping if no files were actually masked (all skip/kept) — that's
-  // a valid state, the masker exports createMapping() but we don't need it
-  // here because mappingStore handles null itself; caller decides what to do.
   const { createMapping } = await import('@redactly/core/masker');
-  const finalMapping = runningMapping ?? createMapping();
-  const entities = mappingToSyntheticEntities(finalMapping);
-  return { blob, filename, perFile, mapping: finalMapping, entities };
+  return { files, fullMapping: runningMapping ?? createMapping() };
+}
+
+/**
+ * Phase 2: Take an analysis from analyzeFiles + a set of entity keys the
+ * user wants to EXCLUDE, re-run mask() per file with the filter, pack
+ * everything into a ZIP. Cheap — no parse/NER/LLM work.
+ *
+ * disabledEntityKeys are `${type}:${text}` strings; matching any entity's
+ * (type, text) tuple means it stays in plain text in the output. Empty
+ * set = mask everything.
+ */
+export async function packZipFromAnalysis(
+  analysis: ZipAnalysis,
+  outputName: string,
+  disabledEntityKeys: ReadonlySet<string> = new Set()
+): Promise<ZipMaskResult> {
+  const { createMapping } = await import('@redactly/core/masker');
+  const outputEntries: ZipPackEntry[] = [];
+  const perFile: ZipMaskResult['perFile'] = [];
+  // Rebuild mapping from scratch so it only contains entities the user
+  // ACTUALLY masked — the Restore tab + DetectionReview reflect what's
+  // really in the output, not what the analyser found.
+  let runningMapping: Mapping = createMapping();
+
+  for (const file of analysis.files) {
+    if (file.action === 'skip') {
+      perFile.push({ path: file.path, action: 'skipped' });
+      continue;
+    }
+
+    if (file.action !== 'mask') {
+      outputEntries.push({ path: file.path, bytes: file.originalBytes });
+      perFile.push({ path: file.path, action: 'kept' });
+      continue;
+    }
+
+    // mask action but parse/detect failed → keep original
+    if (!file.entities || !file.parsedText || file.format === null) {
+      outputEntries.push({ path: file.path, bytes: file.originalBytes });
+      perFile.push({
+        path: file.path,
+        action: 'kept',
+        error: file.error ?? 'No parsed text',
+      });
+      continue;
+    }
+
+    const enabledEntities = file.entities.filter(
+      (e) => !disabledEntityKeys.has(`${e.type}:${e.text}`)
+    );
+
+    if (enabledEntities.length === 0) {
+      // All entities were unchecked → keep file as-is, no placeholder noise
+      outputEntries.push({ path: file.path, bytes: file.originalBytes });
+      perFile.push({ path: file.path, action: 'kept' });
+      continue;
+    }
+
+    try {
+      const masked = mask(file.parsedText, enabledEntities, { existing: runningMapping });
+      runningMapping = masked.mapping;
+      const baseName = file.path.replace(/\.[^.]+$/, '');
+      const written = await writeAsFormat(masked.maskedText, file.format, baseName);
+      const writtenBytes = new Uint8Array(await written.blob.arrayBuffer());
+      outputEntries.push({ path: file.path, bytes: writtenBytes });
+      perFile.push({
+        path: file.path,
+        action: 'masked',
+        entityCount: enabledEntities.length,
+      });
+    } catch (err) {
+      outputEntries.push({ path: file.path, bytes: file.originalBytes });
+      perFile.push({
+        path: file.path,
+        action: 'failed',
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  const { blob, filename } = await packZip(outputEntries, outputName);
+  const entities = mappingToSyntheticEntities(runningMapping);
+  return { blob, filename, perFile, mapping: runningMapping, entities };
+}
+
+/**
+ * Convenience: legacy one-shot — analyze + immediately pack with no
+ * filter. Kept for callers that don't need the review step.
+ */
+export async function applyPlan(
+  manifest: ZipManifest,
+  plan: FilePlan,
+  outputName: string,
+  options: ApplyPlanOptions = {}
+): Promise<ZipMaskResult> {
+  const analysis = await analyzeFiles(manifest, plan, options);
+  if (options.signal?.aborted) throw new ZipAbortError();
+  return packZipFromAnalysis(analysis, outputName);
 }
 
 // ---------------------------------------------------------------------------

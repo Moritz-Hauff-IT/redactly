@@ -2,7 +2,12 @@
   import { untrack } from 'svelte';
   import type { ZipManifest } from '@redactly/core/parsers';
   import type { FilePlan, FileAction } from '@redactly/core/orchestrator';
-  import type { ProgressState, ProgressStep, PerFileResult } from '$lib/core/zipFlow.js';
+  import type {
+    ProgressState,
+    ProgressStep,
+    PerFileResult,
+    ZipAnalysis,
+  } from '$lib/core/zipFlow.js';
   import { loc } from '$lib/i18n/locale.svelte.js';
 
   const s = {
@@ -41,6 +46,29 @@
     skipped: { de: 'übersprungen', en: 'skipped' },
     kept: { de: 'unverändert', en: 'kept' },
     failed: { de: 'fehlgeschlagen', en: 'failed' },
+    // Phase-2 review panel
+    reviewTitle: { de: 'Review vor Download', en: 'Review before download' },
+    reviewSummary: {
+      de: '{files} Dateien · {kept} von {entities} Treffern werden maskiert',
+      en: '{files} files · {kept} of {entities} entities will be masked',
+    },
+    reviewHint: {
+      de: 'Klick auf einen Treffer um ihn aus der Maskierung auszuschließen — er bleibt dann als Klartext im Output.',
+      en: 'Click an entity to exclude it from masking — it stays in plaintext in the output.',
+    },
+    download: { de: 'ZIP herunterladen', en: 'Download ZIP' },
+    downloading: { de: 'ZIP wird gepackt …', en: 'Packing ZIP…' },
+    back: { de: '← zurück zur Datei-Auswahl', en: '← back to file selection' },
+    noEntitiesInFile: {
+      de: 'Keine PII gefunden',
+      en: 'No PII found',
+    },
+    fileUnparsable: {
+      de: 'Nicht parsbar — bleibt unverändert',
+      en: 'Not parsable — kept unchanged',
+    },
+    fileSkipped: { de: 'Aus Output ausgeschlossen', en: 'Excluded from output' },
+    fileKept: { de: 'Unverändert übernommen', en: 'Kept as-is' },
   } as const;
 
   interface Props {
@@ -55,10 +83,18 @@
     log?: PerFileResult[];
     /** True once the user has clicked Cancel and we're waiting for current file. */
     aborting?: boolean;
+    /** Phase-2 review state: populated once analysis is done. */
+    analysis?: ZipAnalysis | null;
+    /** User-selected entity exclusion set, keyed by `${type}:${text}`. */
+    disabledEntities?: ReadonlySet<string>;
+    /** True while the ZIP is being packed for download. */
+    downloading?: boolean;
     onClose: () => void;
     onApply: (plan: FilePlan) => void;
     onAbort?: () => void;
     onRegeneratePlan?: () => void;
+    onToggleEntity?: (key: string) => void;
+    onDownload?: () => void;
   }
 
   let {
@@ -69,10 +105,15 @@
     progress = null,
     log = [],
     aborting = false,
+    analysis = null,
+    disabledEntities = new Set(),
+    downloading = false,
     onClose,
     onApply,
     onAbort,
     onRegeneratePlan,
+    onToggleEntity,
+    onDownload,
   }: Props = $props();
 
   // Local working copy of the plan so user toggles don't immediately apply.
@@ -179,6 +220,29 @@
     if (a === 'failed') return loc(s.failed);
     return loc(s.kept);
   }
+
+  // Phase-2 review stats: files count + total entities found + how many
+  // are currently slated to be masked (not excluded by the user).
+  const analysisStats = $derived.by(() => {
+    if (analysis === null) return { files: 0, totalEntities: 0, keptEntities: 0 };
+    let total = 0;
+    let kept = 0;
+    for (const f of analysis.files) {
+      if (f.entities) {
+        for (const e of f.entities) {
+          total++;
+          if (!disabledEntities.has(`${e.type}:${e.text}`)) kept++;
+        }
+      }
+    }
+    return { files: analysis.files.length, totalEntities: total, keptEntities: kept };
+  });
+
+  /** Truncate long secret-like text so the review row doesn't blow up. */
+  function truncate(t: string, max = 60): string {
+    if (t.length <= max) return t;
+    return `${t.slice(0, Math.floor(max * 0.6))}…${t.slice(-Math.floor(max * 0.3))}`;
+  }
 </script>
 
 <div class="drawer-backdrop"></div>
@@ -229,6 +293,15 @@
       {#if applying}
         <p class="text-[12.5px] text-[color:var(--color-ink)]">
           <strong class="text-[color:var(--color-accent)]">{loc(s.progressTitle)}</strong>
+        </p>
+      {:else if analysis}
+        <p class="text-[12.5px] text-[color:var(--color-ink)]">
+          <strong class="text-[color:var(--color-accent)]">{loc(s.reviewTitle)}</strong>
+          —
+          {loc(s.reviewSummary)
+            .replace('{files}', String(analysisStats.files))
+            .replace('{entities}', String(analysisStats.totalEntities))
+            .replace('{kept}', String(analysisStats.keptEntities))}
         </p>
       {:else if loading}
         <p class="text-[12.5px] text-[color:var(--color-ink-soft)]">{loc(s.planning)}</p>
@@ -351,6 +424,82 @@
         <button class="btn-ghost" disabled={aborting} onclick={() => onAbort?.()}>
           {loc(s.abort)}
         </button>
+      </footer>
+    {:else if analysis}
+      <!-- Phase 2: Review panel — per-file accordion with per-entity toggles -->
+      <div class="flex-1 overflow-y-auto px-6 py-4">
+        <p
+          class="mb-3 font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
+        >
+          {loc(s.reviewHint)}
+        </p>
+        <ul class="space-y-2">
+          {#each analysis.files as file (file.path)}
+            <li
+              class="rounded border border-[color:var(--color-rule)] bg-[color:var(--color-bg-elev)] px-3 py-2.5"
+            >
+              <div class="flex items-baseline gap-2">
+                <code
+                  class="flex-1 truncate font-[family-name:var(--font-mono)] text-[12.5px] text-[color:var(--color-ink)]"
+                  title={file.path}>{file.path}</code
+                >
+                <span
+                  class="font-[family-name:var(--font-mono)] text-[10.5px] text-[color:var(--color-ink-mute)]"
+                >
+                  {file.action === 'skip'
+                    ? loc(s.fileSkipped)
+                    : file.action !== 'mask'
+                      ? loc(s.fileKept)
+                      : file.entities && file.entities.length > 0
+                        ? `${file.entities.length} ${loc({ de: 'Treffer', en: 'matches' })}`
+                        : file.error
+                          ? loc(s.fileUnparsable)
+                          : loc(s.noEntitiesInFile)}
+                </span>
+              </div>
+              {#if file.entities && file.entities.length > 0}
+                <ul class="mt-2 flex flex-wrap gap-1.5">
+                  {#each file.entities as entity}
+                    {@const key = `${entity.type}:${entity.text}`}
+                    {@const disabled = disabledEntities.has(key)}
+                    <li>
+                      <button
+                        type="button"
+                        class="entity-chip"
+                        class:disabled
+                        onclick={() => onToggleEntity?.(key)}
+                        title={disabled
+                          ? 'Aktivieren — wird wieder maskiert'
+                          : 'Deaktivieren — bleibt im Output sichtbar'}
+                      >
+                        <span class="chip-type">{entity.type}</span>
+                        <span class="chip-text">{truncate(entity.text)}</span>
+                      </button>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      </div>
+      <footer
+        class="flex items-center justify-between gap-3 border-t border-[color:var(--color-rule)] px-6 py-4"
+      >
+        <span class="text-[11.5px] text-[color:var(--color-ink-mute)]">
+          {downloading ? loc(s.downloading) : ''}
+        </span>
+        <div class="flex items-center gap-2">
+          <button class="btn-ghost" disabled={downloading} onclick={onClose}>{loc(s.cancel)}</button
+          >
+          <button
+            class="btn-primary"
+            disabled={downloading || analysisStats.keptEntities === 0}
+            onclick={() => onDownload?.()}
+          >
+            {downloading ? loc(s.downloading) : loc(s.download)}
+          </button>
+        </div>
       </footer>
     {:else}
       <div class="flex-1 overflow-y-auto px-6 py-4">
@@ -481,5 +630,47 @@
   .log-badge[data-action='failed'] {
     background: color-mix(in oklab, #dc2626 22%, transparent);
     color: #fca5a5;
+  }
+
+  .entity-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px 4px;
+    border-radius: 4px;
+    border: 1px solid var(--color-rule-strong);
+    background: var(--color-bg);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-ink);
+    cursor: pointer;
+    transition: all 0.12s;
+    max-width: 100%;
+  }
+  .entity-chip:hover {
+    border-color: var(--color-accent);
+  }
+  .entity-chip.disabled {
+    background: var(--color-bg-sunk);
+    color: var(--color-ink-mute);
+    text-decoration: line-through;
+    text-decoration-color: var(--color-ink-mute);
+    text-decoration-thickness: 1px;
+    opacity: 0.7;
+  }
+  .chip-type {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--color-accent);
+    text-transform: uppercase;
+  }
+  .entity-chip.disabled .chip-type {
+    color: var(--color-ink-mute);
+  }
+  .chip-text {
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 </style>
