@@ -15,6 +15,7 @@
   import Toast from '$lib/components/Toast.svelte';
   import SettingsDrawer from '$lib/components/SettingsDrawer.svelte';
   import LanguageToggle from '$lib/components/LanguageToggle.svelte';
+  import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
   import { onMount } from 'svelte';
   import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
   import { engineStore } from '$lib/stores/engineStore.svelte.js';
@@ -194,6 +195,7 @@
 
   <SettingsDrawer bind:open={drawerOpen} />
   <Toast />
+  <LoadingOverlay />
 </div>
 
 <style>

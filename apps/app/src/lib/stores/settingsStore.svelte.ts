@@ -63,12 +63,21 @@ function loadEnabledCategories(): Set<EntityCategory> {
 
 function loadNerEnabled(): boolean {
   const raw = safeLocalStorageGet(LS_NER_KEY);
-  return raw === 'true';
+  // Default ON — explicit 'false' is the only opt-out. Previous releases
+  // stored ONLY when true and treated missing as off; for opt-out we now
+  // distinguish missing (= default, currently ON) from explicit 'false'.
+  if (raw === 'false') return false;
+  return true;
 }
 
 function loadWebllmEnabled(): boolean {
   const raw = safeLocalStorageGet(LS_WEBLLM_KEY);
-  return raw === 'true';
+  if (raw === 'false') return false;
+  // Default ON but only if WebGPU is available. Without WebGPU we can't
+  // load the model so defaulting to on would just immediately error out
+  // and confuse first-time visitors on Firefox / Safari / mobile.
+  if (typeof navigator === 'undefined' || !('gpu' in navigator)) return false;
+  return true;
 }
 
 function loadWebllmModelId(): string {
@@ -76,11 +85,12 @@ function loadWebllmModelId(): string {
 }
 
 function loadWebllmTextPii(): boolean {
-  // Off by default — small browser LLMs are too slow/unreliable for primary
-  // text-PII extraction. WebLLM is preferred for orchestration (file routing,
-  // plan generation) where its strengths actually fit.
+  // Default ON — internal eval showed WebLLM-in-text-pipeline jumps name
+  // recall from ~50% (NER alone) to ~100%. The latency cost (~15-45s per
+  // mask) is acceptable when accuracy matters. Explicit 'false' opts out.
   const raw = safeLocalStorageGet(LS_WEBLLM_TEXT_PII_KEY);
-  return raw === 'true';
+  if (raw === 'false') return false;
+  return true;
 }
 
 function createSettingsStore() {
@@ -126,25 +136,19 @@ function createSettingsStore() {
 
     setNerEnabled(b: boolean): void {
       nerEnabled = b;
-      if (b) {
-        safeLocalStorageSet(LS_NER_KEY, 'true');
-      } else {
-        safeLocalStorageRemove(LS_NER_KEY);
-      }
+      // Always persist explicit choice so a default-flip in a future release
+      // can't silently re-enable something the user turned off.
+      safeLocalStorageSet(LS_NER_KEY, b ? 'true' : 'false');
     },
 
     clearNerPreference(): void {
       nerEnabled = false;
-      safeLocalStorageRemove(LS_NER_KEY);
+      safeLocalStorageSet(LS_NER_KEY, 'false');
     },
 
     setWebllmEnabled(b: boolean): void {
       webllmEnabled = b;
-      if (b) {
-        safeLocalStorageSet(LS_WEBLLM_KEY, 'true');
-      } else {
-        safeLocalStorageRemove(LS_WEBLLM_KEY);
-      }
+      safeLocalStorageSet(LS_WEBLLM_KEY, b ? 'true' : 'false');
     },
 
     setWebllmModelId(id: string): void {
@@ -154,16 +158,12 @@ function createSettingsStore() {
 
     clearWebllmPreference(): void {
       webllmEnabled = false;
-      safeLocalStorageRemove(LS_WEBLLM_KEY);
+      safeLocalStorageSet(LS_WEBLLM_KEY, 'false');
     },
 
     setWebllmTextPii(b: boolean): void {
       webllmTextPii = b;
-      if (b) {
-        safeLocalStorageSet(LS_WEBLLM_TEXT_PII_KEY, 'true');
-      } else {
-        safeLocalStorageRemove(LS_WEBLLM_TEXT_PII_KEY);
-      }
+      safeLocalStorageSet(LS_WEBLLM_TEXT_PII_KEY, b ? 'true' : 'false');
     },
   };
 }
