@@ -77,6 +77,11 @@ export const messages = {
   app_settings_open: { de: 'Einstellungen öffnen', en: 'Open settings' },
   app_settings_close: { de: 'Schließen', en: 'Close' },
 
+  // ---- Footer (legal) ----
+  footer_imprint: { de: 'Impressum', en: 'Imprint' },
+  footer_privacy: { de: 'Datenschutz', en: 'Privacy' },
+  footer_terms: { de: 'Nutzungsbedingungen', en: 'Terms' },
+
   // ---- Detection review ----
   detection_title: { de: 'Erkannte Entities', en: 'Detected entities' },
   detection_none: {
