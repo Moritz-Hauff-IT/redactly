@@ -431,19 +431,28 @@ const PREFIX_TO_TYPE: Record<string, { type: EntityType; category: EntityCategor
 function mappingToSyntheticEntities(mapping: Mapping): Entity[] {
   const out: Entity[] = [];
   // mapping.forward is Map<placeholder, original>. Iterate that.
+  // Synthetic positions: start = monotonically-increasing offset, end =
+  // start + length. There's no source text to anchor against in a ZIP run
+  // — these positions exist only so the detection-store's entity-id hash
+  // (`${start}-${end}-${type}-${source}`) is unique per entity. Otherwise
+  // two PERSON entries of equal length collide on the same id and Svelte's
+  // keyed-each errors with 'each_key_duplicate', taking down the whole
+  // mapping-table render.
+  let pos = 0;
   for (const [placeholder, original] of mapping.forward) {
     const m = placeholder.match(/^\[([A-Z_]+)_\d+\]$/);
     const prefix = m?.[1] ?? 'SECRET';
     const mapped = PREFIX_TO_TYPE[prefix] ?? PREFIX_TO_TYPE.SECRET!;
     out.push({
-      start: 0,
-      end: original.length,
+      start: pos,
+      end: pos + original.length,
       type: mapped.type,
       category: mapped.category,
       text: original,
       confidence: 1,
       source: 'llm',
     });
+    pos += original.length + 1; // +1 spacer guarantees no two entities touch
   }
   return out;
 }
