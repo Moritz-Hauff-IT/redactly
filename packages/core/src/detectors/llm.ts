@@ -435,14 +435,13 @@ export function chunkText(text: string, maxSize: number, overlap: number): strin
     // 1. Try a hard email boundary inside the window — split there.
     let cut = -1;
     for (const re of EMAIL_HARD_BOUNDARIES) {
-      // Scan all matches inside the window, take the last one that's
-      // past the halfway mark (so we don't make a tiny chunk + huge one)
+      // Use matchAll with a forcibly-global clone so we iterate all matches
+      // without the infinite-loop pitfall of exec() on a non-global regex.
+      // matchAll requires the global flag, so we re-build the regex with it.
+      const globalRe = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
       let lastIdx = -1;
-      let m: RegExpExecArray | null;
-      const localRe = new RegExp(re.source, re.flags);
-      while ((m = localRe.exec(window)) !== null) {
-        if (m.index > maxSize / 2) lastIdx = m.index;
-        if (localRe.lastIndex === m.index) localRe.lastIndex++; // avoid infinite loop on zero-width
+      for (const m of window.matchAll(globalRe)) {
+        if (m.index !== undefined && m.index > maxSize / 2) lastIdx = m.index;
       }
       if (lastIdx > cut) cut = lastIdx;
     }
