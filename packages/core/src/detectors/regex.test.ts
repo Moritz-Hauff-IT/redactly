@@ -90,7 +90,7 @@ describe('URL detection', () => {
 // ---------------------------------------------------------------------------
 describe('PHONE detection', () => {
   it('detects E.164 phone number', () => {
-    expect(hasMatch('Call me at +4915123456789', 'PHONE')).toBe(true);
+    expect(hasMatch('Call me at +4900001234567', 'PHONE')).toBe(true);
   });
 
   it('detects German local format with area code', () => {
@@ -108,7 +108,7 @@ describe('PHONE detection', () => {
   });
 
   it('phone entity text equals text.slice(start, end)', () => {
-    const text = 'Please call +4915123456789 today';
+    const text = 'Please call +4900001234567 today';
     const [e] = findType(text, 'PHONE');
     if (e) {
       expect(text.slice(e.start, e.end)).toBe(e.text);
@@ -502,7 +502,7 @@ describe('Entity invariants', () => {
   });
 
   it('source is always "regex"', () => {
-    const text = 'user@example.com https://example.com +4915123456789';
+    const text = 'user@example.com https://example.com +4900001234567';
     const entities = detector.detect(text);
     for (const e of entities) {
       expect(e.source).toBe('regex');

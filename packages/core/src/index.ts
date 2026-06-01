@@ -1,4 +1,4 @@
-// @de-pii/core — Detection & masking engine (framework-agnostic)
+// @redactly/core — Detection & masking engine (framework-agnostic)
 
 // Shared types
 export type { Entity, EntityCategory, EntityType, Detector } from './types.js';
@@ -11,7 +11,7 @@ export { NerDetector } from './detectors/ner.js';
 export type { NerOptions, NerProgressEvent } from './detectors/ner.js';
 
 // WebLLM model catalog — safe to re-export (tree-shakeable constants and types only).
-// Do NOT re-export WebLlmDetector here — import it via '@de-pii/core/llm' sub-path only.
+// Do NOT re-export WebLlmDetector here — import it via '@redactly/core/llm' sub-path only.
 export { SUPPORTED_WEBLLM_MODELS } from './detectors/llm.js';
 export type { WebLlmModelInfo, WebLlmOptions, WebLlmProgressEvent } from './detectors/llm.js';
 

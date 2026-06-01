@@ -19,16 +19,16 @@ import {
   type SupportedFormat,
   type ZipManifest,
   type ZipPackEntry,
-} from '@de-pii/core/parsers';
+} from '@redactly/core/parsers';
 import {
   generateFilePlan,
   heuristicPlan,
   type FilePlan,
   type ManifestEntryForLlm,
   type ChatEngine,
-} from '@de-pii/core/orchestrator';
+} from '@redactly/core/orchestrator';
 import { analyze } from './pipeline.js';
-import { mask, type Mapping } from '@de-pii/core/masker';
+import { mask, type Mapping } from '@redactly/core/masker';
 
 // Suppress unused warnings — these symbols are re-exposed for callers that
 // import zipFlow alongside its sub-helpers.
@@ -230,6 +230,6 @@ export async function applyPlan(
   // Empty mapping if no files were actually masked (all skip/kept) — that's
   // a valid state, the masker exports createMapping() but we don't need it
   // here because mappingStore handles null itself; caller decides what to do.
-  const { createMapping } = await import('@de-pii/core/masker');
+  const { createMapping } = await import('@redactly/core/masker');
   return { blob, filename, perFile, mapping: runningMapping ?? createMapping() };
 }

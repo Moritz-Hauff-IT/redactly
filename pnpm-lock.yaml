@@ -44,7 +44,7 @@ importers:
 
   apps/app:
     dependencies:
-      '@de-pii/core':
+      '@redactly/core':
         specifier: workspace:*
         version: link:../../packages/core
       pdfjs-dist:

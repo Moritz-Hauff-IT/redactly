@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { EntityCategory } from '@de-pii/core/types';
+  import type { EntityCategory } from '@redactly/core/types';
   import type { EntityWithId } from '../stores/detectionStore.svelte.js';
   import { detectionStore } from '../stores/detectionStore.svelte.js';
   import { loc } from '$lib/i18n/locale.svelte.js';
@@ -197,7 +197,7 @@
       end: selectionInfo.end,
       text: selectionInfo.text,
       category,
-      type: typeMap[category] as import('@de-pii/core/types').EntityType,
+      type: typeMap[category] as import('@redactly/core/types').EntityType,
       confidence: 1.0,
       source: 'manual',
     });

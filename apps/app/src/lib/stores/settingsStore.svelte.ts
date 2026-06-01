@@ -1,4 +1,4 @@
-import type { EntityCategory } from '@de-pii/core/types';
+import type { EntityCategory } from '@redactly/core/types';
 
 const ALL_CATEGORIES: EntityCategory[] = [
   'person',

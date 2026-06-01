@@ -20,7 +20,7 @@
  *     apps/app/static/models/Xenova/bert-base-multilingual-cased-ner-hrl/
  *     and flip allowLocalModels: true + add localModelPath: '/models/'.
  */
-import { configureNerModelHosting } from '@de-pii/core/ner';
+import { configureNerModelHosting } from '@redactly/core/ner';
 
 export function setupNer(): void {
   configureNerModelHosting({

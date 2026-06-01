@@ -15,7 +15,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # Build core library then app
-RUN pnpm -F @de-pii/core build && pnpm -F @de-pii/app build
+RUN pnpm -F @redactly/core build && pnpm -F @redactly/app build
 
 # ---------------------------------------------------------------------------
 

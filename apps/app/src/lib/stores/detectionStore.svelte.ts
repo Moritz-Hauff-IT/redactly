@@ -1,4 +1,4 @@
-import type { Entity, EntityCategory } from '@de-pii/core/types';
+import type { Entity, EntityCategory } from '@redactly/core/types';
 
 export interface EntityWithId extends Entity {
   id: string;

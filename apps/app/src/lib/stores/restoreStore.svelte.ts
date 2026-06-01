@@ -1,4 +1,4 @@
-import type { RestoreResult } from '@de-pii/core/restorer';
+import type { RestoreResult } from '@redactly/core/restorer';
 
 interface RestoreState {
   input: string;

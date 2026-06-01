@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { EntityCategory } from '@de-pii/core/types';
+  import type { EntityCategory } from '@redactly/core/types';
   import { detectionStore, type EntityWithId } from '../stores/detectionStore.svelte.js';
   import { mappingStore } from '../stores/mappingStore.svelte.js';
   import { loc } from '$lib/i18n/locale.svelte.js';

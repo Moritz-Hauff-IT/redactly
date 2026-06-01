@@ -1,7 +1,7 @@
-import { Pipeline } from '@de-pii/core/pipeline';
-import { RegexDetector } from '@de-pii/core/regex';
-import type { Entity, EntityCategory } from '@de-pii/core/types';
-import type { Detector } from '@de-pii/core/types';
+import { Pipeline } from '@redactly/core/pipeline';
+import { RegexDetector } from '@redactly/core/regex';
+import type { Entity, EntityCategory } from '@redactly/core/types';
+import type { Detector } from '@redactly/core/types';
 import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
 
 /** Minimal public interface we need from NerDetector — avoids importing the class directly. */

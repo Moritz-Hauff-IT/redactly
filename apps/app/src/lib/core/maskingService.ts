@@ -1,7 +1,7 @@
-import { mask } from '@de-pii/core/masker';
-import { restore } from '@de-pii/core/restorer';
-import type { MaskResult } from '@de-pii/core/masker';
-import type { RestoreResult } from '@de-pii/core/restorer';
+import { mask } from '@redactly/core/masker';
+import { restore } from '@redactly/core/restorer';
+import type { MaskResult } from '@redactly/core/masker';
+import type { RestoreResult } from '@redactly/core/restorer';
 import { detectionStore } from '../stores/detectionStore.svelte.js';
 import { mappingStore } from '../stores/mappingStore.svelte.js';
 

@@ -17,7 +17,7 @@ pnpm install
 Run the app locally:
 
 ```bash
-pnpm -F @de-pii/app dev      # http://localhost:5173
+pnpm -F @redactly/app dev      # http://localhost:5173
 ```
 
 ## Before submitting a PR
@@ -33,7 +33,7 @@ pnpm typecheck   # TypeScript strict
 Build the app to catch bundler errors:
 
 ```bash
-pnpm -F @de-pii/app build
+pnpm -F @redactly/app build
 ```
 
 ## Branch naming

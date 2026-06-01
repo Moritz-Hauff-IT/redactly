@@ -1,4 +1,4 @@
-import type { SupportedFormat } from '@de-pii/core/parsers';
+import type { SupportedFormat } from '@redactly/core/parsers';
 
 export interface InputState {
   text: string;

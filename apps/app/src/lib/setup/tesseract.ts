@@ -10,7 +10,7 @@
  * - Worker:          static/tesseract/worker.min.js
  * - Language data:   static/tesseract/lang-data/<lang>.traineddata.gz
  */
-import { configureTesseractPaths } from '@de-pii/core/parsers';
+import { configureTesseractPaths } from '@redactly/core/parsers';
 
 export function setupTesseract(): void {
   configureTesseractPaths({

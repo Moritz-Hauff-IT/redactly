@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { restore } from '@de-pii/core/restorer';
+  import { restore } from '@redactly/core/restorer';
   import { mappingStore } from '../stores/mappingStore.svelte.js';
   import { restoreStore } from '../stores/restoreStore.svelte.js';
   import { loc } from '$lib/i18n/locale.svelte.js';

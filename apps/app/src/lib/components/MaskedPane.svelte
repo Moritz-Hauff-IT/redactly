@@ -47,7 +47,7 @@
     const mapping = mappingStore.get();
 
     try {
-      const { writeAsFormat, writeAsRedactedFormat } = await import('@de-pii/core/parsers');
+      const { writeAsFormat, writeAsRedactedFormat } = await import('@redactly/core/parsers');
 
       // Layout-preserving path: we have the original file bytes AND a mapping
       // of detected entities → placeholders. Overlay redactions onto the

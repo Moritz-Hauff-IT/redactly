@@ -11,8 +11,8 @@
   import { detectionStore } from '$lib/stores/detectionStore.svelte.js';
   import { errorStore } from '$lib/stores/errorStore.svelte.js';
   import { mappingStore } from '$lib/stores/mappingStore.svelte.js';
-  import type { ZipManifest } from '@de-pii/core/parsers';
-  import type { FilePlan } from '@de-pii/core/orchestrator';
+  import type { ZipManifest } from '@redactly/core/parsers';
+  import type { FilePlan } from '@redactly/core/orchestrator';
   import type { ProgressState, PerFileResult } from '$lib/core/zipFlow.js';
 
   type Tab = 'redact' | 'restore';
@@ -35,14 +35,14 @@
   async function handleZipUpload(file: File) {
     try {
       zipPlanLoading = true;
-      const { extractZip } = await import('@de-pii/core/parsers');
+      const { extractZip } = await import('@redactly/core/parsers');
       const { buildPlan } = await import('$lib/core/zipFlow.js');
       // dispatch chat engine lookup — only use webllm if it's loaded
       const { isWebLlmActive } = await import('$lib/core/llmLoader.js');
       const manifest = await extractZip(file, file.name);
       zipManifest = manifest;
       // Show the modal immediately with a heuristic plan so the user sees something
-      const { heuristicPlan } = await import('@de-pii/core/orchestrator');
+      const { heuristicPlan } = await import('@redactly/core/orchestrator');
       const llmManifest = manifest.entries
         .filter((e) => !e.isDir)
         .map((e) => ({

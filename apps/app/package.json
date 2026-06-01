@@ -1,5 +1,5 @@
 {
-  "name": "@de-pii/app",
+  "name": "@redactly/app",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "test:e2e": "pnpm build && pnpm exec playwright test"
   },
   "dependencies": {
-    "@de-pii/core": "workspace:*",
+    "@redactly/core": "workspace:*",
     "pdfjs-dist": "^5.7.284"
   },
   "devDependencies": {

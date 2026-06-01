@@ -9,43 +9,43 @@ export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
   resolve: {
     // Use array form so that more-specific sub-paths are matched before the root.
-    // This prevents '@de-pii/core' from matching '@de-pii/core/parsers' first.
+    // This prevents '@redactly/core' from matching '@redactly/core/parsers' first.
     alias: [
       {
-        find: '@de-pii/core/regex',
+        find: '@redactly/core/regex',
         replacement: path.join(coreRoot, 'detectors/regex.ts'),
       },
       {
-        find: '@de-pii/core/ner',
+        find: '@redactly/core/ner',
         replacement: path.join(coreRoot, 'detectors/ner.ts'),
       },
       {
-        find: '@de-pii/core/llm',
+        find: '@redactly/core/llm',
         replacement: path.join(coreRoot, 'detectors/llm.ts'),
       },
       {
-        find: '@de-pii/core/parsers',
+        find: '@redactly/core/parsers',
         replacement: path.join(coreRoot, 'parsers/index.ts'),
       },
       {
-        find: '@de-pii/core/masker',
+        find: '@redactly/core/masker',
         replacement: path.join(coreRoot, 'masker.ts'),
       },
       {
-        find: '@de-pii/core/restorer',
+        find: '@redactly/core/restorer',
         replacement: path.join(coreRoot, 'restorer.ts'),
       },
       {
-        find: '@de-pii/core/pipeline',
+        find: '@redactly/core/pipeline',
         replacement: path.join(coreRoot, 'pipeline.ts'),
       },
       {
-        find: '@de-pii/core/types',
+        find: '@redactly/core/types',
         replacement: path.join(coreRoot, 'types.ts'),
       },
       // Root alias must come after sub-paths — use regex to avoid matching sub-paths
       {
-        find: /^@de-pii\/core$/,
+        find: /^@redactly\/core$/,
         replacement: path.join(coreRoot, 'index.ts'),
       },
     ],

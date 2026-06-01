@@ -10,7 +10,7 @@ import { engineStore } from '$lib/stores/engineStore.svelte.js';
 import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
 import { enableNer, disableNer } from '$lib/core/pipeline.js';
 import type { NerDetectorLike } from '$lib/core/pipeline.js';
-import type { NerProgressEvent } from '@de-pii/core/ner';
+import type { NerProgressEvent } from '@redactly/core/ner';
 
 /** Re-analyze callback — injected by the page so we don't depend on a global store. */
 export type ReAnalyzeFn = () => Promise<void> | void;
@@ -36,7 +36,7 @@ export async function loadNer(reAnalyze?: ReAnalyzeFn): Promise<void> {
 
   try {
     // Dynamic import keeps @huggingface/transformers out of the main bundle.
-    const { NerDetector } = await import('@de-pii/core/ner');
+    const { NerDetector } = await import('@redactly/core/ner');
 
     const onProgress = (event: NerProgressEvent): void => {
       if (terminated) return;

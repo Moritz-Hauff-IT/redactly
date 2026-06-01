@@ -1,5 +1,5 @@
 {
-  "name": "@de-pii/core",
+  "name": "@redactly/core",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -53,7 +53,7 @@
     "build": "tsc -p .",
     "typecheck": "tsc -p . --noEmit",
     "test": "echo 'Run tests from root: pnpm test'",
-    "test:watch": "vitest --project @de-pii/core"
+    "test:watch": "vitest --project @redactly/core"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",

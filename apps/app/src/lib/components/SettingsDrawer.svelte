@@ -4,8 +4,8 @@
   import { applyCategoryFilter } from '$lib/core/pipeline.js';
   import { loadNer, unloadNer } from '$lib/core/nerLoader.js';
   import { loadWebLlm, unloadWebLlm } from '$lib/core/llmLoader.js';
-  import { SUPPORTED_WEBLLM_MODELS } from '@de-pii/core';
-  import type { EntityCategory } from '@de-pii/core/types';
+  import { SUPPORTED_WEBLLM_MODELS } from '@redactly/core';
+  import type { EntityCategory } from '@redactly/core/types';
   import { loc } from '$lib/i18n/locale.svelte.js';
 
   interface BL {

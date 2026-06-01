@@ -44,7 +44,7 @@ Pasting a support ticket, medical record, or internal email into an LLM exposes 
 
 ```bash
 pnpm install
-pnpm -F @de-pii/app dev      # http://localhost:5173
+pnpm -F @redactly/app dev      # http://localhost:5173
 ```
 
 Run all checks:
@@ -70,7 +70,7 @@ redactly/
 └── .github/workflows/      # CI (lint/test/typecheck) + image build/push
 ```
 
-Internal package scope is `@de-pii/*` — historical naming, external product
+Internal package scope is `@redactly/*` — historical naming, external product
 is **Redactly**. The marketing landing site that runs at
 [redactly.dev](https://redactly.dev) is operator-specific and not part of
 this repository.

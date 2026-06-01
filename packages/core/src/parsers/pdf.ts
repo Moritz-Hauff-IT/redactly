@@ -47,7 +47,7 @@ export class PdfWorkerNotConfiguredError extends Error {
     super(
       'GlobalWorkerOptions.workerSrc is not set. ' +
         'The consuming application must configure the PDF.js worker before calling parsePdfBlob. ' +
-        'See the pdfjs-dist documentation or the @de-pii/core README for the recommended setup.'
+        'See the pdfjs-dist documentation or the @redactly/core README for the recommended setup.'
     );
     this.name = 'PdfWorkerNotConfiguredError';
   }

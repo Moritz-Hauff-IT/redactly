@@ -4,7 +4,7 @@
     UnsupportedFormatError,
     PdfWorkerNotConfiguredError,
     ACCEPTED_EXTENSIONS,
-  } from '@de-pii/core/parsers';
+  } from '@redactly/core/parsers';
   import { inputStore } from '../stores/inputStore.svelte.js';
   import { detectionStore } from '../stores/detectionStore.svelte.js';
   import { errorStore } from '../stores/errorStore.svelte.js';

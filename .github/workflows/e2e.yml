@@ -33,6 +33,6 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run E2E tests
-        run: pnpm -F @de-pii/app test:e2e
+        run: pnpm -F @redactly/app test:e2e
         env:
           CI: true

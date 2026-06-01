@@ -1,4 +1,4 @@
-# @de-pii/app
+# @redactly/app
 
 > TODO: SvelteKit application scaffolded in a later task (task 6).
 

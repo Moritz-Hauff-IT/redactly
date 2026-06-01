@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import type { ZipManifest } from '@de-pii/core/parsers';
-  import type { FilePlan, FileAction } from '@de-pii/core/orchestrator';
+  import type { ZipManifest } from '@redactly/core/parsers';
+  import type { FilePlan, FileAction } from '@redactly/core/orchestrator';
   import type { ProgressState, ProgressStep, PerFileResult } from '$lib/core/zipFlow.js';
   import { loc } from '$lib/i18n/locale.svelte.js';
 

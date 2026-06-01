@@ -32,12 +32,12 @@ export async function loadWebLlm(modelId: string, reAnalyze?: ReAnalyzeFn): Prom
 
   engineStore.setWebllmStatus('loading');
   engineStore.setWebllmProgress(0, 'Initializing WebLLM engine…');
-  console.log('[loadWebLlm] status set to loading, about to dynamic-import @de-pii/core/llm');
+  console.log('[loadWebLlm] status set to loading, about to dynamic-import @redactly/core/llm');
 
   try {
     // Dynamic import keeps @mlc-ai/web-llm out of the main bundle.
-    const { WebLlmDetector } = await import('@de-pii/core/llm');
-    console.log('[loadWebLlm] @de-pii/core/llm imported successfully');
+    const { WebLlmDetector } = await import('@redactly/core/llm');
+    console.log('[loadWebLlm] @redactly/core/llm imported successfully');
 
     const onProgress = (event: {
       status: string;
