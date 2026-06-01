@@ -29,6 +29,7 @@ import {
 } from '@redactly/core/orchestrator';
 import { analyze } from './pipeline.js';
 import { mask, type Mapping } from '@redactly/core/masker';
+import type { Entity, EntityCategory, EntityType } from '@redactly/core/types';
 
 // Suppress unused warnings — these symbols are re-exposed for callers that
 // import zipFlow alongside its sub-helpers.
@@ -47,6 +48,15 @@ export interface ZipMaskResult {
    * Restore tab is ready immediately after the download.
    */
   mapping: Mapping;
+  /**
+   * Synthetic entity list reflecting EVERY masking that happened across
+   * the whole batch — one per (original-value, type) pair from the
+   * accumulated mapping. Positions are stubbed (start=0) because there's
+   * no single source text to anchor against; the list exists so the
+   * detection-review UI in the redact tab can show 'X entities were
+   * masked' after a ZIP run, rather than being empty.
+   */
+  entities: Entity[];
 }
 
 export type PerFileResult = {
@@ -231,5 +241,61 @@ export async function applyPlan(
   // a valid state, the masker exports createMapping() but we don't need it
   // here because mappingStore handles null itself; caller decides what to do.
   const { createMapping } = await import('@redactly/core/masker');
-  return { blob, filename, perFile, mapping: runningMapping ?? createMapping() };
+  const finalMapping = runningMapping ?? createMapping();
+  const entities = mappingToSyntheticEntities(finalMapping);
+  return { blob, filename, perFile, mapping: finalMapping, entities };
+}
+
+// ---------------------------------------------------------------------------
+// Mapping → synthetic Entity[] for UI display
+// ---------------------------------------------------------------------------
+
+/**
+ * Reverse-mapping from masker prefix (e.g. PERSON, EMAIL, LOC, SECRET)
+ * back to the canonical EntityType + category. Masker collapses many
+ * secret subtypes into the single 'SECRET' prefix and renames a few
+ * others (LOCATION → LOC, CREDIT_CARD → CARD), so reversal is lossy
+ * but good enough for a list display.
+ */
+const PREFIX_TO_TYPE: Record<string, { type: EntityType; category: EntityCategory }> = {
+  PERSON: { type: 'PERSON', category: 'person' },
+  ORG: { type: 'ORG', category: 'organization' },
+  LOC: { type: 'LOCATION', category: 'address' },
+  EMAIL: { type: 'EMAIL', category: 'contact' },
+  PHONE: { type: 'PHONE', category: 'contact' },
+  URL: { type: 'URL', category: 'contact' },
+  IP: { type: 'IP', category: 'contact' },
+  IBAN: { type: 'IBAN', category: 'financial' },
+  BIC: { type: 'BIC', category: 'financial' },
+  CARD: { type: 'CREDIT_CARD', category: 'financial' },
+  TAX_ID: { type: 'TAX_ID_DE', category: 'financial' },
+  VAT_ID: { type: 'VAT_ID', category: 'financial' },
+  AHV: { type: 'CH_AHV', category: 'identity' },
+  UID: { type: 'CH_UID', category: 'identity' },
+  PASS: { type: 'CH_PASSPORT', category: 'identity' },
+  AUSWEIS: { type: 'DE_PERSONALAUSWEIS', category: 'identity' },
+  KFZ: { type: 'LICENSE_PLATE', category: 'identity' },
+  EMP_ID: { type: 'EMPLOYEE_ID', category: 'identity' },
+  REF: { type: 'INTERNAL_REF', category: 'identity' },
+  SECRET: { type: 'GENERIC_SECRET', category: 'secret' },
+};
+
+function mappingToSyntheticEntities(mapping: Mapping): Entity[] {
+  const out: Entity[] = [];
+  // mapping.forward is Map<placeholder, original>. Iterate that.
+  for (const [placeholder, original] of mapping.forward) {
+    const m = placeholder.match(/^\[([A-Z_]+)_\d+\]$/);
+    const prefix = m?.[1] ?? 'SECRET';
+    const mapped = PREFIX_TO_TYPE[prefix] ?? PREFIX_TO_TYPE.SECRET!;
+    out.push({
+      start: 0,
+      end: original.length,
+      type: mapped.type,
+      category: mapped.category,
+      text: original,
+      confidence: 1,
+      source: 'llm',
+    });
+  }
+  return out;
 }

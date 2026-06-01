@@ -126,6 +126,12 @@
       // Restore tab: user can paste an LLM response that references entities
       // across the whole batch and get every placeholder swapped back.
       mappingStore.set(result.mapping);
+      // Populate the detection-review table too. Entity positions are
+      // stubbed (no single source text to anchor against in a ZIP run),
+      // but the LIST + counts + per-entity toggles surface what was
+      // masked. Without this the table sits empty after a ZIP and the
+      // user can't see what entities the batch found.
+      detectionStore.setEntities(result.entities);
 
       const masked = result.perFile.filter((f) => f.action === 'masked').length;
       const skipped = result.perFile.filter((f) => f.action === 'skipped').length;
