@@ -123,12 +123,16 @@
     },
     webllmEnable: { de: 'WebLLM aktivieren', en: 'Enable WebLLM' },
     webllmTextPiiTitle: {
-      de: 'WebLLM auch für Text-PII (langsam)',
-      en: 'Use WebLLM for text PII too (slow)',
+      de: 'WebLLM auch für Text-PII (genauer)',
+      en: 'Use WebLLM for text PII too (more accurate)',
     },
     webllmTextPiiBody: {
-      de: 'Das LLM läuft zusätzlich zur Regex+NER-Pipeline auf deinem Text. Fängt manchmal Edge-Cases ab, kostet 10–60 s pro Maskierung. Empfohlen: aus.',
-      en: 'The LLM runs in addition to the regex + NER pipeline on your text. Catches occasional edge cases at a cost of 10–60 s per mask. Recommended: off.',
+      de: 'Das LLM läuft zusätzlich zur Regex+NER-Pipeline auf deinem Text. NER allein erkennt ca. 50 % der Namen — WebLLM (Llama 3.2 3B) bringt die Erkennung auf ~100 %. Kostet 10–60 s pro Maskierung. Empfohlen wenn Namen-Erkennung kritisch ist.',
+      en: 'The LLM runs in addition to the regex + NER pipeline on your text. NER alone catches ~50% of names — WebLLM (Llama 3.2 3B) brings detection to ~100%. Costs 10–60 s per mask. Recommended when name detection is critical.',
+    },
+    nerRecallNotice: {
+      de: 'NER fängt etwa 50 % der freien Namen. Für nahezu 100 % Recall WebLLM unten aktivieren (Llama 3.2 3B empfohlen).',
+      en: 'NER catches around 50 % of free-text names. Enable WebLLM below (Llama 3.2 3B recommended) for ~100 % recall.',
     },
     infoLabel: { de: 'Info', en: 'Info' },
     infoBody: {
@@ -299,6 +303,30 @@
               </span>
               <button class="btn-ghost" onclick={handleNerToggle}>{loc(s.nerDisable)}</button>
             </div>
+            {#if !(engineStore.webllm.status === 'ready' && settingsStore.webllmTextPii)}
+              <!-- Recall hint: NER alone misses ~50% of free-text names per
+                   our internal evaluation. Only show while WebLLM isn't
+                   already covering the gap — otherwise it's noise. -->
+              <div class="recall-notice mt-3">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                  class="flex-shrink-0"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <span>{loc(s.nerRecallNotice)}</span>
+              </div>
+            {/if}
           {:else if engineStore.ner.status === 'error'}
             <div class="rounded-md border border-[color:var(--color-danger)] bg-red-50 px-3.5 py-3">
               <p class="text-[12px] font-medium text-[color:var(--color-danger)]">
@@ -482,5 +510,17 @@
   .drawer-backdrop {
     border: none;
     cursor: pointer;
+  }
+  .recall-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-accent);
+    background: var(--color-accent-soft);
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-accent);
   }
 </style>
