@@ -80,6 +80,17 @@ const DEFAULT_PREFIXES: Record<EntityType, string> = {
   LICENSE_PLATE: 'KFZ',
   EMPLOYEE_ID: 'EMP_ID',
   INTERNAL_REF: 'REF',
+  // Identity — dates, device & vehicle identifiers
+  DATE: 'DATE',
+  MAC: 'MAC',
+  VIN: 'VIN',
+  SERIAL: 'SERIAL',
+  SOCIAL_SECURITY: 'SVNR',
+  DEVICE_ID: 'DEVICE',
+  // Address — precise geo coordinates
+  GEO: 'GEO',
+  // Other — LLM catch-all
+  OTHER_PII: 'SONSTIGES',
   // Secrets - all map to 'SECRET'
   AWS_ACCESS_KEY: 'SECRET',
   AWS_SECRET_KEY: 'SECRET',

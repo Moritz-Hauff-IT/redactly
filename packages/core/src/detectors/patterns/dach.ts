@@ -5,6 +5,17 @@
  */
 import type { RegexRule } from './contact.js';
 
+/**
+ * Header / inbox names are often role accounts ("Premium Support",
+ * "Schadenteam Zentrale") rather than people. This validator rejects those
+ * so the PERSON rules below only emit real-looking names.
+ */
+function isNotRoleAccount(match: string): boolean {
+  return !/\b(?:Team|Support|Premium|Hotline|Empfang|Rezeption|Zentrale|Verwaltung|Abteilung|Info|Sales|Billing|Helpdesk|Claims|Datenschutz|Pannenhilfe|Notfall|Beschwerde|Reklamation)\b|(?:service|center|zentrum|management|stelle|leitung|betreuung|dienst|team|büro|buero)\b/i.test(
+    match
+  );
+}
+
 export const dachRules: RegexRule[] = [
   // ---- CH AHV (Sozialversicherungsnummer) — strict format, no context needed ----
   {
@@ -191,6 +202,7 @@ export const dachRules: RegexRule[] = [
     pattern:
       /(?<=(?:^|\n|\r)\s*(?:Von|An|Cc|Bcc|Empf(?:ä|ae)nger|Absender|From|To|Sender|Reply-To|Sent\s?To):[ \t]+)[A-ZÄÖÜ][a-zäöüß\-]+(?:[ \t][A-ZÄÖÜ][a-zäöüß\-]+){0,3}/gm,
     confidence: 0.85,
+    validate: isNotRoleAccount,
   },
   // "Name <email>" anywhere — high-signal pattern that catches the SECOND,
   // third, etc. recipient on a "To: A <a@…>, B <b@…>, C <c@…>" line where
@@ -205,6 +217,24 @@ export const dachRules: RegexRule[] = [
     pattern:
       /[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-.]+(?:[ \t][A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-.]+){0,3}(?=[ \t]+<[\p{L}\p{N}.+\-_]+@[\p{L}\p{N}.\-]+>)/gu,
     confidence: 0.92,
+    validate: isNotRoleAccount,
+  },
+  // Multi-script names in email headers (Cyrillic, Arabic, CJK, Hangul,
+  // Kana) — the Latin-only header rule above can't see them at all.
+  {
+    type: 'PERSON',
+    category: 'person',
+    pattern:
+      /(?<=(?:^|\n|\r)[ \t]*(?:Von|An|Cc|Bcc|Absender|Empf(?:ä|ae)nger|From|To|Sender|Reply-To):[ \t]*)[\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Han}\p{Script=Hangul}\p{Script=Hiragana}\p{Script=Katakana}][\p{L}\p{M} ]*/gmu,
+    confidence: 0.8,
+  },
+  // Multi-script "Name <email>" form anywhere in the text
+  {
+    type: 'PERSON',
+    category: 'person',
+    pattern:
+      /[\p{Script=Cyrillic}\p{Script=Arabic}\p{Script=Han}\p{Script=Hangul}\p{Script=Hiragana}\p{Script=Katakana}][\p{L}\p{M} ]*(?=[ \t]*<[\p{L}\p{N}.+\-_]+@[\p{L}\p{N}.\-]+>)/gu,
+    confidence: 0.85,
   },
   // Salutation + capitalized name(s): "Hallo Martin Müller", "Sehr geehrte Frau Schmidt"
   {
@@ -213,6 +243,12 @@ export const dachRules: RegexRule[] = [
     pattern:
       /(?<=\b(?:Hallo|Hi|Liebe[rn]?|Sehr geehrte[rn]?|Werte[rn]?|Herr|Frau|Hr\.|Fr\.|Dr\.|Prof\.|Mag\.|Dipl\.) )(?:[A-ZÄÖÜ][a-zäöüß\-]+(?:[\s\-][A-ZÄÖÜ][a-zäöüß\-]+){0,3})/g,
     confidence: 0.8,
+    // "Sehr geehrte Damen und Herren", "Liebes Team" etc. are salutations to
+    // groups/roles, not names.
+    validate: (match) =>
+      !/^(?:Damen|Herren|Damen und Herren|Kunde|Kundin|Kollege|Kollegin|Team|Mitarbeiter|Leser|Support|Pannenhilfe|Service|Hotline|Kundenservice|Kundendienst|Empfang|Rezeption|Sekretariat|Reisebuero|Reisebüro|Schadenteam|Helpdesk|Zentrale|Verwaltung|Sales|Billing|Admin|Staff)\b/i.test(
+        match
+      ),
   },
   // Closing-salutation + person name: "Mit freundlichen Grüßen [NAME]".
   // Captures the FULL name (first + last + optional middle) so NER's

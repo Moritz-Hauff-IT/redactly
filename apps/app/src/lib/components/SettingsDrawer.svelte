@@ -68,6 +68,14 @@
       label: { de: 'Organisationen', en: 'Organisations' },
       description: { de: 'Firmennamen (NER)', en: 'Company names (NER)' },
     },
+    {
+      cat: 'other',
+      label: { de: 'Sonstiges', en: 'Other' },
+      description: {
+        de: 'Sensible Angaben ohne eigene Kategorie, z. B. Gesundheitsdaten (nur WebLLM)',
+        en: 'Sensitive data without its own category, e.g. health info (WebLLM only)',
+      },
+    },
   ];
 
   // Inline UI strings used by the drawer template.

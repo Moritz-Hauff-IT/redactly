@@ -8,6 +8,7 @@ import { contactRules, type RegexRule } from './patterns/contact.js';
 import { financialRules } from './patterns/financial.js';
 import { secretRules } from './patterns/secrets.js';
 import { dachRules } from './patterns/dach.js';
+import { extraRules } from './patterns/extras.js';
 
 /**
  * Rules where the actual entity text lives in a capture group rather than the
@@ -38,7 +39,13 @@ export class RegexDetector implements Detector {
   private readonly rules: RegexRule[];
 
   constructor(
-    rules: RegexRule[] = [...contactRules, ...financialRules, ...secretRules, ...dachRules]
+    rules: RegexRule[] = [
+      ...contactRules,
+      ...financialRules,
+      ...secretRules,
+      ...dachRules,
+      ...extraRules,
+    ]
   ) {
     this.rules = rules;
   }

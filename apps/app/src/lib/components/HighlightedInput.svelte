@@ -43,6 +43,10 @@
       bg: 'bg-amber-300/40 text-amber-100',
       bgDisabled: 'bg-amber-300/10 text-amber-500 line-through',
     },
+    other: {
+      bg: 'bg-pink-300/40 text-pink-100',
+      bgDisabled: 'bg-pink-300/10 text-pink-500 line-through',
+    },
   };
 
   // Build highlighted HTML from text + entities (sorted, non-overlapping)
@@ -191,6 +195,7 @@
       identity: 'INTERNAL_REF',
       secret: 'GENERIC_SECRET',
       organization: 'ORG',
+      other: 'OTHER_PII',
     };
     detectionStore.addEntity({
       start: selectionInfo.start,
@@ -212,6 +217,7 @@
     identity: { de: 'ID', en: 'ID' },
     secret: { de: 'Secret', en: 'Secret' },
     organization: { de: 'Firma', en: 'Org' },
+    other: { de: 'Sonstiges', en: 'Other' },
   };
 
   const markAsLabel = $derived(loc({ de: '+ markieren als', en: '+ mark as' }));

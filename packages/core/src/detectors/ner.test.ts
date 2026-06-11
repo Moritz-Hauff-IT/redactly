@@ -471,3 +471,78 @@ describe('B-/I- prefix stripping', () => {
     expect(e!.category).toBe('organization');
   });
 });
+
+// ---------------------------------------------------------------------------
+// PII-model labels & abbreviation filtering
+// ---------------------------------------------------------------------------
+
+describe('entity mapping — PII-specialised model labels', () => {
+  it('maps GIVENNAME to PERSON/person', async () => {
+    const text = 'Hallo, Martin war hier';
+    const { detector } = buildDetector([
+      { entity_group: 'GIVENNAME', word: 'Martin', start: 7, end: 13, score: 0.95 },
+    ]);
+    const entities = await detector.detect(text);
+    expect(entities).toHaveLength(1);
+    expect(entities[0]!.type).toBe('PERSON');
+    expect(entities[0]!.category).toBe('person');
+  });
+
+  it('maps TELEPHONENUM to PHONE/contact', async () => {
+    const text = 'Ruf an: +49 89 1234567';
+    const start = text.indexOf('+49');
+    const { detector } = buildDetector([
+      {
+        entity_group: 'TELEPHONENUM',
+        word: '+49 89 1234567',
+        start,
+        end: start + '+49 89 1234567'.length,
+        score: 0.92,
+      },
+    ]);
+    const entities = await detector.detect(text);
+    expect(entities).toHaveLength(1);
+    expect(entities[0]!.type).toBe('PHONE');
+    expect(entities[0]!.category).toBe('contact');
+  });
+
+  it('maps ZIPCODE to LOCATION/address', async () => {
+    const text = 'PLZ 80331 in München';
+    const { detector } = buildDetector([
+      { entity_group: 'ZIPCODE', word: '80331', start: 4, end: 9, score: 0.9 },
+    ]);
+    const entities = await detector.detect(text);
+    expect(entities).toHaveLength(1);
+    expect(entities[0]!.type).toBe('LOCATION');
+  });
+
+  it('maps SOCIALNUM to SOCIAL_SECURITY/identity', async () => {
+    const text = 'SV 12290374K005 ok';
+    const { detector } = buildDetector([
+      { entity_group: 'SOCIALNUM', word: '12290374K005', start: 3, end: 15, score: 0.9 },
+    ]);
+    const entities = await detector.detect(text);
+    expect(entities).toHaveLength(1);
+    expect(entities[0]!.type).toBe('SOCIAL_SECURITY');
+  });
+});
+
+describe('abbreviation artifacts are dropped', () => {
+  it('drops "z.B." tagged as ORG', async () => {
+    const text = 'Produkte z.B. Schrauben';
+    const { detector } = buildDetector([
+      { entity_group: 'ORG', word: 'z.B.', start: 9, end: 13, score: 0.88 },
+    ]);
+    const entities = await detector.detect(text);
+    expect(entities).toHaveLength(0);
+  });
+
+  it('drops single-character artifacts', async () => {
+    const text = 'A sagte hallo';
+    const { detector } = buildDetector([
+      { entity_group: 'PER', word: 'A', start: 0, end: 1, score: 0.9 },
+    ]);
+    const entities = await detector.detect(text);
+    expect(entities).toHaveLength(0);
+  });
+});

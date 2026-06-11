@@ -147,22 +147,125 @@ function normalizeLabel(label: string): string {
   return label.replace(/^[BI]-/, '');
 }
 
+/**
+ * Maps both the classic CoNLL labels (PER/ORG/LOC) of general NER models and
+ * the fine-grained labels of PII-specialised token classifiers (piiranha-style:
+ * GIVENNAME, TELEPHONENUM, ZIPCODE, …) so swapping the model only requires a
+ * config change, not code.
+ */
 function mapLabel(label: string): LabelMapping {
   const normalized = normalizeLabel(label).toUpperCase();
   switch (normalized) {
     case 'PER':
     case 'PERSON':
+    case 'GIVENNAME':
+    case 'SURNAME':
+    case 'MIDDLENAME':
+    case 'LASTNAME':
+    case 'FIRSTNAME':
+    case 'USERNAME':
       return { type: 'PERSON', category: 'person' };
     case 'ORG':
+    case 'ORGANIZATION':
+    case 'COMPANYNAME':
       return { type: 'ORG', category: 'organization' };
     case 'LOC':
     case 'LOCATION':
+    case 'STREET':
+    case 'BUILDINGNUM':
+    case 'BUILDING':
+    case 'CITY':
+    case 'STATE':
+    case 'COUNTY':
+    case 'ZIPCODE':
+    case 'SECONDARYADDRESS':
       return { type: 'LOCATION', category: 'address' };
+    case 'EMAIL':
+      return { type: 'EMAIL', category: 'contact' };
+    case 'TELEPHONENUM':
+    case 'PHONE':
+    case 'PHONENUM':
+      return { type: 'PHONE', category: 'contact' };
+    case 'IP':
+    case 'IPV4':
+    case 'IPV6':
+      return { type: 'IP', category: 'contact' };
+    case 'DATE':
+    case 'DOB':
+    case 'BOD':
+      return { type: 'DATE', category: 'identity' };
+    case 'PASSPORTNUM':
+    case 'PASSPORT':
+      return { type: 'CH_PASSPORT', category: 'identity' };
+    case 'IDCARDNUM':
+    case 'IDCARD':
+      return { type: 'DE_PERSONALAUSWEIS', category: 'identity' };
+    case 'SOCIALNUM':
+    case 'SSN':
+      return { type: 'SOCIAL_SECURITY', category: 'identity' };
+    case 'DRIVERLICENSENUM':
+    case 'DRIVERLICENSE':
+    case 'IDNUM':
+      return { type: 'INTERNAL_REF', category: 'identity' };
+    case 'VEHICLEVIN':
+    case 'VIN':
+      return { type: 'VIN', category: 'identity' };
+    case 'VEHICLEVRM':
+      return { type: 'LICENSE_PLATE', category: 'identity' };
+    case 'MAC':
+      return { type: 'MAC', category: 'identity' };
+    case 'TAXNUM':
+      return { type: 'TAX_ID_DE', category: 'financial' };
+    case 'CREDITCARDNUMBER':
+    case 'CREDITCARDCVV':
+      return { type: 'CREDIT_CARD', category: 'financial' };
+    case 'ACCOUNTNUM':
+    case 'IBAN':
+      return { type: 'IBAN', category: 'financial' };
+    case 'BIC':
+      return { type: 'BIC', category: 'financial' };
     case 'MISC':
     default:
       // MISC is too noisy; unknown labels are also dropped
       return null;
   }
+}
+
+/**
+ * German/English abbreviations and filler tokens that NER models sometimes
+ * tag as entities ("z.B." as ORG is a classic). Dropped outright.
+ */
+const COMMON_ABBREVIATIONS = new Set([
+  'z.b',
+  'u.a',
+  'u.ä',
+  'd.h',
+  'd.i',
+  'o.ä',
+  'u.u',
+  'i.d.r',
+  'z.t',
+  'u.s.w',
+  'usw',
+  'etc',
+  'ggf',
+  'bzw',
+  'inkl',
+  'exkl',
+  'ca',
+  'vs',
+  'evtl',
+  'max',
+  'min',
+  'e.g',
+  'i.e',
+]);
+
+function isCommonAbbreviation(word: string): boolean {
+  const trimmed = word.trim();
+  if (trimmed.length < 2) return true;
+  const normalized = trimmed.toLowerCase().replace(/[.\s]+$/, '');
+  return COMMON_ABBREVIATIONS.has(normalized);
 }
 
 // ---------------------------------------------------------------------------
@@ -312,6 +415,12 @@ export class NerDetector implements Detector {
         start = start + leadingSpaces;
         end = start + trimmed.length;
         entityText = trimmed;
+      }
+
+      // Drop abbreviation artifacts ("z.B." tagged as ORG, single chars)
+      if (isCommonAbbreviation(entityText)) {
+        droppedByLabel.push(raw);
+        continue;
       }
 
       // Slice/offset reconciliation. Three reasons offsets can diverge from
