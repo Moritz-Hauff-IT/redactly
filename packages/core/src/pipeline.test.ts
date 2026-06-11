@@ -81,16 +81,18 @@ describe('Pipeline — same-span deduplication', () => {
   });
 
   it('prefers non-regex source when confidence is tied', async () => {
+    // Span must cover the full token — non-regex entities ending mid-word
+    // are dropped by the word-boundary sanity filter.
     const regexEnt = makeEntity({
       start: 0,
-      end: 10,
+      end: 13,
       type: 'EMAIL',
       confidence: 0.9,
       source: 'regex',
     });
     const nerEnt = makeEntity({
       start: 0,
-      end: 10,
+      end: 13,
       type: 'EMAIL',
       confidence: 0.9,
       source: 'ner',
@@ -337,5 +339,98 @@ describe('Pipeline.toggle and Pipeline.toggleType', () => {
     pipeline.toggleType('EMAIL', true);
     result = await pipeline.analyze('text');
     expect(result.entities).toHaveLength(1);
+  });
+});
+
+describe('Pipeline — span sanity filters', () => {
+  it('drops entities whose text spans a line break', async () => {
+    const text = 'Viele Grüße\nLorenz';
+    const wrapped = makeEntity({
+      start: 6,
+      end: 18,
+      type: 'PERSON',
+      category: 'person',
+      text: text.slice(6, 18),
+      source: 'llm',
+    });
+
+    const pipeline = new Pipeline({ detectors: [stubDetector('d1', [wrapped])] });
+    const { entities } = await pipeline.analyze(text);
+    expect(entities).toHaveLength(0);
+  });
+
+  it('drops non-regex entities that start or end mid-word', async () => {
+    const text = 'Buchhaltung intern';
+    // NER offset bug: span covers only "Buch" inside "Buchhaltung"
+    const midWord = makeEntity({
+      start: 0,
+      end: 4,
+      type: 'PERSON',
+      category: 'person',
+      text: 'Buch',
+      source: 'ner',
+    });
+
+    const pipeline = new Pipeline({ detectors: [stubDetector('d1', [midWord])] });
+    const { entities } = await pipeline.analyze(text);
+    expect(entities).toHaveLength(0);
+  });
+
+  it('keeps regex entities even when bordered by letters (shape-anchored)', async () => {
+    const text = 'Buchhaltung intern';
+    const midWord = makeEntity({
+      start: 0,
+      end: 4,
+      type: 'INTERNAL_REF',
+      category: 'identity',
+      text: 'Buch',
+      source: 'regex',
+    });
+
+    const pipeline = new Pipeline({ detectors: [stubDetector('d1', [midWord])] });
+    const { entities } = await pipeline.analyze(text);
+    expect(entities).toHaveLength(1);
+  });
+});
+
+describe('Pipeline — person name propagation', () => {
+  it('marks additional mentions of confirmed multi-part person names', async () => {
+    const text = 'Von: Sabine Hofmann\nWie besprochen meldet sich Frau Hofmann morgen.';
+    const start = text.indexOf('Sabine Hofmann');
+    const seed = makeEntity({
+      start,
+      end: start + 'Sabine Hofmann'.length,
+      type: 'PERSON',
+      category: 'person',
+      text: 'Sabine Hofmann',
+      source: 'ner',
+    });
+
+    const pipeline = new Pipeline({ detectors: [stubDetector('d1', [seed])] });
+    const { entities } = await pipeline.analyze(text);
+
+    const second = entities.find((e) => e.start > seed.end && e.type === 'PERSON');
+    expect(second).toBeDefined();
+    // The stopword "Frau" must NOT be absorbed into the propagated span
+    expect(second!.text).toBe('Hofmann');
+    expect(second!.source).toBe('manual');
+  });
+
+  it('does NOT propagate from single-word person entities', async () => {
+    const text = 'Hallo Sabine, bitte melde dich. Sabine kommt morgen.';
+    const seed = makeEntity({
+      start: 6,
+      end: 12,
+      type: 'PERSON',
+      category: 'person',
+      text: 'Sabine',
+      source: 'ner',
+    });
+
+    const pipeline = new Pipeline({ detectors: [stubDetector('d1', [seed])] });
+    const { entities } = await pipeline.analyze(text);
+
+    // Only the seed itself — no propagation seeded by a single token
+    expect(entities.filter((e) => e.type === 'PERSON')).toHaveLength(1);
   });
 });

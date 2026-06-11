@@ -12,6 +12,7 @@
     identity: { de: 'ID', en: 'ID' },
     secret: { de: 'Secret', en: 'Secret' },
     organization: { de: 'Firma', en: 'Org' },
+    other: { de: 'Sonstiges', en: 'Other' },
   };
 
   // UI strings local to this component

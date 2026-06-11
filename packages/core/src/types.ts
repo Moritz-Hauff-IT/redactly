@@ -8,7 +8,8 @@ export type EntityCategory =
   | 'address' // postal / street / city (later NER)
   | 'financial' // IBAN, BIC, credit-card, tax IDs
   | 'identity' // gov-issued IDs not directly financial: passport, AHV, license plate, employee ID, case ref
-  | 'secret'; // API keys, tokens, JWT, private keys
+  | 'secret' // API keys, tokens, JWT, private keys
+  | 'other'; // LLM catch-all for clearly personal data outside the types above (health, religion, …)
 
 export type EntityType =
   // contact
@@ -36,6 +37,17 @@ export type EntityType =
   | 'LICENSE_PLATE'
   | 'EMPLOYEE_ID'
   | 'INTERNAL_REF'
+  // identity — dates, device & vehicle identifiers
+  | 'DATE'
+  | 'MAC'
+  | 'VIN'
+  | 'SERIAL'
+  | 'SOCIAL_SECURITY'
+  | 'DEVICE_ID'
+  // address — precise geo coordinates (lat/lon, DMS, what3words, plus codes)
+  | 'GEO'
+  // other — LLM catch-all for clearly personal data outside the types above
+  | 'OTHER_PII'
   // secrets
   | 'AWS_ACCESS_KEY'
   | 'AWS_SECRET_KEY'

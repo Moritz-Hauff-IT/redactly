@@ -5,7 +5,7 @@
  * The mock returns deterministic hand-crafted outputs for controlled inputs.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { WebLlmDetector, SUPPORTED_WEBLLM_MODELS } from './llm.js';
+import { WebLlmDetector, SUPPORTED_WEBLLM_MODELS, isLikelyBinaryChunk } from './llm.js';
 import type { WebLlmOptions, WebLlmProgressEvent } from './llm.js';
 
 // ---------------------------------------------------------------------------
@@ -282,11 +282,13 @@ describe('entity parsing and type mapping', () => {
   });
 
   it('maps SECRET to GENERIC_SECRET/secret', async () => {
+    // ≥12 unbroken key-ish chars — shorter SECRET candidates are dropped
+    // by the shape filter (guards against names mislabeled as SECRET).
     const response = JSON.stringify({
-      entities: [{ text: 'sk-abc123', type: 'SECRET', confidence: 0.92 }],
+      entities: [{ text: 'sk-abc123def456ghi789', type: 'SECRET', confidence: 0.92 }],
     });
     const { detector } = buildDetector({ response });
-    const text = 'api_key = sk-abc123';
+    const text = 'api_key = sk-abc123def456ghi789';
     const entities = await detector.detect(text);
     expect(entities[0]!.type).toBe('GENERIC_SECRET');
     expect(entities[0]!.category).toBe('secret');
@@ -529,5 +531,151 @@ describe('progress callback', () => {
     expect(events.some((e) => e.status === 'init')).toBe(true);
     expect(events.some((e) => e.status === 'download')).toBe(true);
     expect(events.some((e) => e.status === 'ready')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Expanded label mapping (ported prompt types)
+// ---------------------------------------------------------------------------
+
+describe('expanded type mapping', () => {
+  it('maps DATE to DATE/identity', async () => {
+    const response = JSON.stringify({
+      entities: [{ text: '14.03.1987', type: 'DATE', confidence: 0.9 }],
+    });
+    const { detector } = buildDetector({ response });
+    const entities = await detector.detect('geboren am 14.03.1987 in München');
+    expect(entities[0]!.type).toBe('DATE');
+    expect(entities[0]!.category).toBe('identity');
+  });
+
+  it('maps GEO to GEO/address', async () => {
+    const response = JSON.stringify({
+      entities: [{ text: '48.137, 11.576', type: 'GEO', confidence: 0.9 }],
+    });
+    const { detector } = buildDetector({ response });
+    const entities = await detector.detect('Standort: 48.137, 11.576 gespeichert');
+    expect(entities[0]!.type).toBe('GEO');
+    expect(entities[0]!.category).toBe('address');
+  });
+
+  it('maps KENNZEICHEN variant to LICENSE_PLATE', async () => {
+    const response = JSON.stringify({
+      entities: [{ text: 'M-AB 1234', type: 'KENNZEICHEN', confidence: 0.85 }],
+    });
+    const { detector } = buildDetector({ response });
+    const entities = await detector.detect('Wagen M-AB 1234 parkt');
+    expect(entities[0]!.type).toBe('LICENSE_PLATE');
+  });
+
+  it('maps REF to INTERNAL_REF/identity', async () => {
+    const response = JSON.stringify({
+      entities: [{ text: 'KD-774201', type: 'REF', confidence: 0.9 }],
+    });
+    const { detector } = buildDetector({ response });
+    const entities = await detector.detect('Kundennummer KD-774201 bitte angeben');
+    expect(entities[0]!.type).toBe('INTERNAL_REF');
+  });
+
+  it('maps OTHER to OTHER_PII/other', async () => {
+    const response = JSON.stringify({
+      entities: [{ text: 'Diabetes Typ 2', type: 'OTHER', confidence: 0.9 }],
+    });
+    const { detector } = buildDetector({ response });
+    const entities = await detector.detect('Diagnose: Diabetes Typ 2 festgestellt');
+    expect(entities[0]!.type).toBe('OTHER_PII');
+    expect(entities[0]!.category).toBe('other');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Quality filters on model output
+// ---------------------------------------------------------------------------
+
+describe('output quality filters', () => {
+  it('drops stopword-only candidates (greeting boilerplate)', async () => {
+    const text = 'Mit freundlichen Grüßen folgt der Text';
+    const response = JSON.stringify({
+      entities: [{ text: 'Mit freundlichen Grüßen', type: 'PERSON', confidence: 0.9 }],
+    });
+    const { detector } = buildDetector({ response });
+    const entities = await detector.detect(text);
+    expect(entities).toHaveLength(0);
+  });
+
+  it('drops field labels like "Kundennummer"', async () => {
+    const text = 'Kundennummer: 4711 hier';
+    const response = JSON.stringify({
+      entities: [{ text: 'Kundennummer', type: 'REF', confidence: 0.9 }],
+    });
+    const { detector } = buildDetector({ response });
+    const entities = await detector.detect(text);
+    expect(entities).toHaveLength(0);
+  });
+
+  it('drops sentence fragments longer than 8 words', async () => {
+    const text = 'bitte überweisen Sie den Betrag auf das unten genannte Konto der Firma';
+    const response = JSON.stringify({
+      entities: [{ text, type: 'PERSON', confidence: 0.9 }],
+    });
+    const { detector } = buildDetector({ response });
+    const entities = await detector.detect(text);
+    expect(entities).toHaveLength(0);
+  });
+
+  it('drops SECRET candidates that do not look like keys', async () => {
+    const text = 'Martin Müller wohnt hier';
+    const response = JSON.stringify({
+      entities: [{ text: 'Martin Müller', type: 'SECRET', confidence: 0.95 }],
+    });
+    const { detector } = buildDetector({ response });
+    const entities = await detector.detect(text);
+    expect(entities).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Error resilience
+// ---------------------------------------------------------------------------
+
+describe('chunk failure handling', () => {
+  it('detect() resolves [] and fires onError when the engine call fails', async () => {
+    const onError = vi.fn();
+    const { detector } = buildDetector({ failCreate: true }, { onError });
+    const entities = await detector.detect('Hallo Martin Müller');
+    expect(entities).toEqual([]);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]![0]).toMatchObject({ failedChunks: 1, totalChunks: 1 });
+  });
+
+  it('detect() resolves [] and fires onError when engine init fails', async () => {
+    const onError = vi.fn();
+    const factory = vi.fn().mockRejectedValue(new Error('no WebGPU'));
+    const detector = new WebLlmDetector({
+      modelId: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
+      onError,
+      _engineFactory: factory,
+    });
+    const entities = await detector.detect('Hallo Martin');
+    expect(entities).toEqual([]);
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Binary chunk detection
+// ---------------------------------------------------------------------------
+
+describe('isLikelyBinaryChunk', () => {
+  it('returns true for a long base64 blob', () => {
+    expect(isLikelyBinaryChunk('QUJD'.repeat(200))).toBe(true);
+  });
+
+  it('returns false for prose of the same length', () => {
+    expect(isLikelyBinaryChunk('Hallo Welt, wie geht es dir heute? '.repeat(30))).toBe(false);
+  });
+
+  it('returns false for short strings', () => {
+    expect(isLikelyBinaryChunk('QUJD'.repeat(50))).toBe(false);
   });
 });

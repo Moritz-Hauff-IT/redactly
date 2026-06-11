@@ -8,6 +8,7 @@ const ALL_CATEGORIES: EntityCategory[] = [
   'identity',
   'secret',
   'organization',
+  'other',
 ];
 
 const LS_CATEGORIES_KEY = 'de-pii:settings:categories';

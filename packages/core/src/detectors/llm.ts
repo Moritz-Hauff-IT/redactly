@@ -78,6 +78,29 @@ export interface WebLlmOptions {
    * often catches what the first missed. Default 1 (single pass).
    */
   selfConsistencyPasses?: number;
+  /**
+   * Per-request timeout in ms. Default 180_000 (3 min) — sized for small
+   * in-browser models on consumer WebGPU. Raise it for slow devices, lower
+   * it when fronting a fast LLM server.
+   */
+  requestTimeoutMs?: number;
+  /**
+   * Max characters per LLM call. Default 1500 — small in-browser models lose
+   * track past ~2 KB context. A server-hosted model handles much larger
+   * windows (e.g. 6000) with fewer round-trips.
+   */
+  chunkSize?: number;
+  /** Overlap between chunks so boundary entities are seen in at least one
+   * window. Default 200. Clamped to chunkSize - 1. */
+  chunkOverlap?: number;
+  /** Response token budget per call. Default 800. */
+  maxTokens?: number;
+  /**
+   * Called when one or more chunks failed (engine unreachable, timeout, …).
+   * detect() still resolves with the entities from the successful chunks —
+   * this callback is the UI's chance to warn that coverage is partial.
+   */
+  onError?: (info: { failedChunks: number; totalChunks: number; message: string }) => void;
   /** Verbose console logging during detect — surfaces raw response, parse
    * results, and per-rule drops. Off by default. */
   debug?: boolean;
@@ -144,27 +167,381 @@ type EngineFactory = (
 
 type LabelMapping = { type: EntityType; category: EntityCategory };
 
+/**
+ * Accepts both the canonical prompt types AND the label variants small
+ * models drift into (BANK for ORG, KENNZEICHEN for PLATE, SVNR for SSN, …).
+ * Tolerant mapping costs nothing and rescues otherwise-valid detections.
+ */
 function mapLlmLabel(label: string): LabelMapping | null {
   switch (label.toUpperCase()) {
     case 'PERSON':
+    case 'NAME':
+    case 'GIVENNAME':
+    case 'SURNAME':
       return { type: 'PERSON', category: 'person' };
     case 'ORG':
+    case 'ORGANIZATION':
+    case 'COMPANY':
+    case 'BANK':
       return { type: 'ORG', category: 'organization' };
     case 'LOCATION':
-      return { type: 'LOCATION', category: 'address' };
     case 'ADDRESS':
+    case 'STREET':
+    case 'CITY':
+    case 'ZIP':
+    case 'POSTCODE':
       return { type: 'LOCATION', category: 'address' };
+    case 'GEO':
+    case 'COORDINATES':
+    case 'COORDINATE':
+    case 'GPS':
+    case 'LATLON':
+    case 'WHAT3WORDS':
+    case 'PLUSCODE':
+      return { type: 'GEO', category: 'address' };
     case 'EMAIL':
       return { type: 'EMAIL', category: 'contact' };
     case 'PHONE':
       return { type: 'PHONE', category: 'contact' };
+    case 'IP':
+      return { type: 'IP', category: 'contact' };
+    case 'DATE':
+    case 'DOB':
+    case 'BIRTHDATE':
+      return { type: 'DATE', category: 'identity' };
+    case 'PASSPORT':
+      return { type: 'CH_PASSPORT', category: 'identity' };
+    case 'ID':
+    case 'IDCARD':
+    case 'PERSONALAUSWEIS':
+      return { type: 'DE_PERSONALAUSWEIS', category: 'identity' };
+    case 'SSN':
+    case 'SOCIAL':
+    case 'SOCIALNUMBER':
+    case 'SVNR':
+      return { type: 'SOCIAL_SECURITY', category: 'identity' };
+    case 'VIN':
+      return { type: 'VIN', category: 'identity' };
+    case 'MAC':
+      return { type: 'MAC', category: 'identity' };
+    case 'SERIAL':
+      return { type: 'SERIAL', category: 'identity' };
+    case 'PLATE':
+    case 'LICENSE_PLATE':
+    case 'KENNZEICHEN':
+      return { type: 'LICENSE_PLATE', category: 'identity' };
+    case 'CUSTOMERID':
+    case 'ORDERID':
+    case 'BOOKING':
+    case 'REF':
+    case 'REFERENCE':
+      return { type: 'INTERNAL_REF', category: 'identity' };
+    case 'EMPLOYEE':
+    case 'EMPLOYEE_ID':
+    case 'EMPLOYEEID':
+    case 'PERSONALNUMMER':
+    case 'PERSONALNR':
+    case 'STAFF_ID':
+      return { type: 'EMPLOYEE_ID', category: 'identity' };
+    case 'VAT':
+    case 'VAT_ID':
+    case 'VATID':
+    case 'UST':
+    case 'UST_IDNR':
+    case 'UID':
+      return { type: 'VAT_ID', category: 'financial' };
+    case 'IBAN':
     case 'FINANCIAL':
+    case 'ACCOUNT':
       return { type: 'IBAN', category: 'financial' };
+    case 'BIC':
+      return { type: 'BIC', category: 'financial' };
+    case 'CREDIT_CARD':
+    case 'CARD':
+    case 'CREDITCARD':
+      return { type: 'CREDIT_CARD', category: 'financial' };
+    case 'TAX':
+    case 'TAX_ID':
+    case 'TAXNUM':
+      return { type: 'TAX_ID_DE', category: 'financial' };
     case 'SECRET':
       return { type: 'GENERIC_SECRET', category: 'secret' };
+    case 'OTHER':
+    case 'OTHER_PII':
+    case 'MISC':
+    case 'SONSTIGES':
+      return { type: 'OTHER_PII', category: 'other' };
     default:
       return null;
   }
+}
+
+/**
+ * Words that, on their own, never constitute PII: greeting/closing vocab,
+ * field labels, role accounts, function words (DE + EN). Small models love
+ * returning "Mit freundlichen Grüßen" or "Kundennummer" as entities — when
+ * every word of a candidate is in this set, it's dropped.
+ */
+const TRIVIAL_WORDS = new Set([
+  'der',
+  'die',
+  'das',
+  'den',
+  'dem',
+  'des',
+  'ein',
+  'eine',
+  'einer',
+  'einem',
+  'einen',
+  'und',
+  'oder',
+  'bei',
+  'mit',
+  'für',
+  'von',
+  'vom',
+  'zu',
+  'zur',
+  'zum',
+  'auf',
+  'an',
+  'in',
+  'im',
+  'am',
+  'als',
+  'wie',
+  'auch',
+  'nur',
+  'noch',
+  'sehr',
+  'bitte',
+  'danke',
+  'ja',
+  'nein',
+  'ist',
+  'sind',
+  'war',
+  'wird',
+  'wurde',
+  'werden',
+  'haben',
+  'hat',
+  'hier',
+  'dort',
+  'dann',
+  'wenn',
+  'weil',
+  'dass',
+  'ob',
+  'aber',
+  'sie',
+  'ihr',
+  'ihre',
+  'ihrer',
+  'unser',
+  'unsere',
+  'mein',
+  'meine',
+  'name',
+  'vorname',
+  'nachname',
+  'firma',
+  'adresse',
+  'anschrift',
+  'rechnungsadresse',
+  'lieferadresse',
+  'kontakt',
+  'kontaktdaten',
+  'telefon',
+  'tel',
+  'mobil',
+  'fax',
+  'email',
+  'mail',
+  'iban',
+  'bic',
+  'bank',
+  'konto',
+  'kontoinhaber',
+  'kundennummer',
+  'kundennr',
+  'mitgliedsnummer',
+  'betreff',
+  'datum',
+  'geburtsdatum',
+  'nummer',
+  'nr',
+  'referenz',
+  'vorgang',
+  'buchung',
+  'bestellung',
+  'rückfragen',
+  'überweisen',
+  'überweisung',
+  'vertrag',
+  'gruß',
+  'gruss',
+  'grüße',
+  'grüsse',
+  'grüßen',
+  'grüssen',
+  'freundlich',
+  'freundliche',
+  'freundlichen',
+  'freundlichem',
+  'herzlich',
+  'herzliche',
+  'herzlichen',
+  'beste',
+  'besten',
+  'liebe',
+  'lieber',
+  'liebem',
+  'lieben',
+  'viele',
+  'vielen',
+  'geehrte',
+  'geehrter',
+  'geehrten',
+  'damen',
+  'herren',
+  'herr',
+  'frau',
+  'hallo',
+  'guten',
+  'tag',
+  'morgen',
+  'abend',
+  'team',
+  'hochachtungsvoll',
+  'mfg',
+  'lg',
+  'vg',
+  'verbleibe',
+  'support',
+  'pannenhilfe',
+  'catering',
+  'service',
+  'hotline',
+  'kundenservice',
+  'kundendienst',
+  'vertrieb',
+  'empfang',
+  'rezeption',
+  'buchhaltung',
+  'sekretariat',
+  'info',
+  'redaktion',
+  'marketing',
+  'personal',
+  'einkauf',
+  'lager',
+  'technik',
+  'verwaltung',
+  'zentrale',
+  'abteilung',
+  'büro',
+  'filiale',
+  'helpdesk',
+  'helpline',
+  'reisebuero',
+  'reisebüro',
+  'schadenteam',
+  'fuhrpark',
+  'sales',
+  'billing',
+  'admin',
+  'help',
+  'desk',
+  'staff',
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'to',
+  'for',
+  'of',
+  'with',
+  'at',
+  'on',
+  'please',
+  'thank',
+  'thanks',
+  'you',
+  'yes',
+  'no',
+  'is',
+  'are',
+  'was',
+  'will',
+  'first',
+  'last',
+  'company',
+  'address',
+  'contact',
+  'phone',
+  'account',
+  'number',
+  'customer',
+  'member',
+  'subject',
+  'date',
+  'regards',
+  'best',
+  'kind',
+  'warm',
+  'warmest',
+  'sincerely',
+  'yours',
+  'faithfully',
+  'dear',
+  'hello',
+  'hi',
+  'cheers',
+  'transfer',
+  'reference',
+  'wishes',
+  'take',
+  'care',
+  'greetings',
+]);
+
+/** True when the candidate contains no digits/@ and every word is trivial. */
+function isTrivialNonEntity(candidate: string): boolean {
+  const trimmed = candidate.trim();
+  if (!trimmed) return true;
+  // Digits or @ signal a real value (phone, ref, email) — keep those.
+  if (/[\d@]/.test(trimmed)) return false;
+  const words = trimmed
+    .toLowerCase()
+    .split(/[^a-zäöüß]+/i)
+    .filter(Boolean);
+  if (words.length === 0) return false;
+  return words.every((w) => TRIVIAL_WORDS.has(w));
+}
+
+/**
+ * Detects chunks that are predominantly one unbroken token run (base64
+ * blobs, minified bundles, data URIs). The LLM can't find prose PII in
+ * those and burns its whole token budget trying — skip them. Regex + NER
+ * still scan the full text, so keys/IBANs inside blobs are not lost.
+ */
+export function isLikelyBinaryChunk(chunk: string): boolean {
+  if (chunk.length < 500) return false;
+  let longestRun = 0;
+  let run = 0;
+  for (let i = 0; i < chunk.length; i++) {
+    const c = chunk.charCodeAt(i);
+    if (c === 32 || c === 9 || c === 10 || c === 13) {
+      run = 0;
+    } else {
+      run++;
+      if (run > longestRun) longestRun = run;
+    }
+  }
+  return longestRun >= 500;
 }
 
 // ---------------------------------------------------------------------------
@@ -218,24 +595,40 @@ function _buildPromptBody(text: string, hintSection: string): string {
   //
   // Strong "WÖRTLICH aus dem Text" instruction + clear textual fence (XML-style
   // <text> tags) helps small models distinguish instructions from input data.
-  return `Du bist ein PII-Extraktor. Antworte AUSSCHLIESSLICH mit gültigem JSON ohne Markdown, ohne Erklärungen.
+  return `Du bist ein PII-Extraktor für deutsche UND englische Texte. Antworte AUSSCHLIESSLICH mit gültigem JSON ohne Markdown, ohne Erklärungen.
 
-Aufgabe: Finde ALLE Personennamen, Email-Adressen, Telefonnummern, Organisationen, Orte, IBANs und Secrets im Text. Sei großzügig — lieber etwas mehr markieren als zu wenig.
+Aufgabe: Finde ALLE KONKRETEN personenbezogenen WERTE (PII) im Text — sei VOLLSTÄNDIG. Dies dient dem Datenschutz und jeder Treffer wird danach von einem Menschen geprüft: eine ÜBERSEHENE PII ist schlimmer als ein Treffer zu viel. Im Zweifel also MARKIEREN. Markiere dabei nur echte Werte (Namen, Nummern, Adressen, …), NICHT die umgebenden Wörter, Feldbezeichnungen oder Satzteile (siehe Regel 5–6).
+
+Zu erfassende Typen (type-Wert in Großbuchstaben):
+- PERSON: Personennamen (Vor-, Nach-, Vollname; auch einzeln stehende); auch Benutzernamen/Logins/@handles und Social-Media-Profile
+- ORG: Firmen, Banken, Institutionen, Vereine (z. B. "UniCredit Bank Austria")
+- LOCATION: Adressen, Straßen + Hausnr., Orte, PLZ, Plätze, Kreuzungen
+- GEO: Geokoordinaten (z. B. "48.137, 11.576" oder "N 48° 08.123 E 11° 34.567"), what3words, Plus Codes — metergenaue Standorte
+- EMAIL, PHONE, IP
+- DATE: Geburtsdaten, OP-/Termin-/Buchungsdaten (z. B. "14.03.1987", "born on 12/12/1990")
+- IBAN, BIC, CREDIT_CARD (auch CVV und Endung/letzte 4 Ziffern), TAX (Steuer-ID), VAT (USt-IdNr.)
+- PASSPORT (Reisepass-/Kinderreisepass-Nr.), ID (Personalausweis), SSN (Sozialversicherungsnr.)
+- VIN (Fahrgestellnummer), MAC (MAC-Adresse), SERIAL (Geräte-/Seriennummer), PLATE (KFZ-Kennzeichen)
+- EMPLOYEE: Personalnummer, Mitarbeiter-ID
+- REF: Kunden-, Mitglieds-, Bestell-, Auftrags-, Antrags-, Vorgangs-, Buchungsnummern, Versicherungs-/Patienten-/Aktennummern (z. B. "KD-774201", "MT-CH-2098")
+- SECRET: API-Keys, Tokens, Passwörter, Session-IDs (NUR lange, zusammenhängende Schlüssel/Zeichenketten ohne Leerzeichen — NIEMALS Namen, Adressen oder Telefonnummern als SECRET markieren)
+- OTHER: sonstige eindeutig personenbezogene/sensible Daten, die in KEINEN Typ oben passen — z. B. Gesundheits-/Diagnoseangaben, Religion, Gewerkschaft, ethnische Herkunft, sexuelle Orientierung, biometrische Merkmale. Nur konkret Personenbezogenes, kein Allerwelts-Text.
 
 Regeln:
 1. Jeder "text"-Wert MUSS Zeichen für Zeichen aus dem Input zwischen den <text>-Tags stammen. Nichts erfinden.
-2. Personennamen markieren — sowohl vollständige Namen (Vor- und Nachname als EIN Span) ALS AUCH einzelne Vor- oder Nachnamen wenn sie alleinstehen. Besonders beachten: nach Grußformeln wie "Viele Grüße", "Liebe Grüße", "Mit freundlichen Grüßen", "Beste Grüße", "Best regards", "Cheers", "Kind regards" folgt fast immer ein Personenname (oft nur der Vorname) — diesen IMMER als PERSON markieren. WICHTIG: die Grußformel selbst gehört NICHT zum Namen-Span. Falsch: {"text":"Viele Grüße Lorenz","type":"PERSON"}. Richtig: {"text":"Lorenz","type":"PERSON"}.
-3. In E-Mail-Headern (From, To, Cc, An, Von) sind die Namen vor den "<email@…>" Adressen IMMER PERSON-Treffer.
-4. type ist einer von: PERSON, ORG, LOCATION, EMAIL, PHONE, IBAN, SECRET.
-5. Geldbeträge, Quartale, Datumsangaben und Versionsnummern sind KEINE PII — nicht markieren.
+2. Personennamen: vollständige Namen als EIN Span, einzelne Vor-/Nachnamen auch. Nach Grußformeln ("Viele Grüße", "Mit freundlichen Grüßen", "Best regards", "Kind regards", "Cheers") folgt fast immer ein Name — IMMER als PERSON markieren. Die Grußformel selbst gehört NICHT zum Span. Falsch: {"text":"Viele Grüße Lorenz",...}. Richtig: {"text":"Lorenz",...}.
+3. In E-Mail-Headern (From, To, Cc, An, Von) sind die Namen vor "<email@…>" IMMER PERSON.
+4. Bei mehrteiligen Werten (Straße + Hausnummer, Vor- + Nachname, Präfix + Nummer wie "PAY-CH-998812") den GESAMTEN Wert als einen Span markieren, nicht nur einen Teil.
+5. KEINE PII (nicht markieren): reine Geldbeträge, Quartale, Prozentwerte, Mengenangaben, Software-Versionsnummern, allgemeine Wörter.
+6. NIEMALS Feldbezeichnungen, Anweisungen oder Satzfragmente markieren — nur den Wert dahinter. Beispiele für FALSCHE Treffer (nicht markieren): "Bitte überweisen auf", "Kontakt bei Rückfragen", "Kontakt", "Kontaktdaten", "Rechnungsadresse", "Name", "Telefon", "IBAN", "Kundennummer", "Sehr geehrte Damen und Herren", "Mit freundlichen Grüßen", "Viele Grüße", "Best regards". Markiere stattdessen NUR den konkreten Wert (z. B. die IBAN selbst, den Namen selbst).
 
 Wichtig zur "text"-Form:
-- Email NIEMALS in spitze Klammern setzen: "name@firma.de" (gut), NICHT "<name@firma.de>" (falsch).
-- Email-Adresse EXAKT wie im Input übernehmen (gleiche Groß-/Kleinschreibung).
-- Personennamen ohne führendes "@" oder "<": "Vorname Nachname", NICHT "@Vorname Nachname" oder "<Vorname Nachname>".
-- Wenn im Input "Name <email>" steht, sind das ZWEI Treffer: einer für den Namen, einer für die Email — beide ohne die Klammern.
+- Email NIEMALS in spitze Klammern: "name@firma.de" (gut), NICHT "<name@firma.de>".
+- Email exakt wie im Input (gleiche Groß-/Kleinschreibung).
+- Namen ohne führendes "@" oder "<".
+- "Name <email>" sind ZWEI Treffer (Name + Email), beide ohne Klammern.
 
-Schema: {"entities":[{"text":"<wörtlicher Substring>","type":"<TYP>"}, {"text":"...","type":"..."}, ...]}
+Schema: {"entities":[{"text":"<wörtlicher Substring>","type":"<TYP>"}, ...]}
 ${hintSection}
 <text>
 ${text}
@@ -518,6 +911,13 @@ export class WebLlmDetector implements Detector {
   private readonly onProgress: ((event: WebLlmProgressEvent) => void) | undefined;
   private readonly onChunkProgress: ((current: number, total: number) => void) | undefined;
   private readonly selfConsistencyPasses: number;
+  private readonly requestTimeoutMs: number;
+  private readonly chunkSize: number;
+  private readonly chunkOverlap: number;
+  private readonly maxTokens: number;
+  private readonly onError:
+    | ((info: { failedChunks: number; totalChunks: number; message: string }) => void)
+    | undefined;
   private readonly debug: boolean;
   private readonly engineFactory: EngineFactory;
 
@@ -530,6 +930,11 @@ export class WebLlmDetector implements Detector {
     this.onProgress = options.onProgress;
     this.onChunkProgress = options.onChunkProgress;
     this.selfConsistencyPasses = Math.max(1, options.selfConsistencyPasses ?? 1);
+    this.requestTimeoutMs = Math.max(1_000, options.requestTimeoutMs ?? 180_000);
+    this.chunkSize = Math.max(500, options.chunkSize ?? 1500);
+    this.chunkOverlap = Math.max(0, Math.min(options.chunkOverlap ?? 200, this.chunkSize - 1));
+    this.maxTokens = Math.max(64, options.maxTokens ?? 800);
+    this.onError = options.onError;
     this.debug = options.debug ?? false;
     this.engineFactory = options._engineFactory ?? defaultEngineFactory;
   }
@@ -581,11 +986,6 @@ export class WebLlmDetector implements Detector {
     return this.loadPromise;
   }
 
-  /** Max characters per LLM call. Small models lose track past ~2 KB context. */
-  private static readonly CHUNK_SIZE = 1500;
-  /** Overlap between chunks so entities at boundaries are caught in at least one. */
-  private static readonly CHUNK_OVERLAP = 200;
-
   async detect(text: string, hints?: import('../types.js').DetectorHints): Promise<Entity[]> {
     console.log('[WebLlmDetector] ENTRY', {
       debug: this.debug,
@@ -594,7 +994,17 @@ export class WebLlmDetector implements Detector {
       priorEntities: hints?.priorEntities?.length ?? 0,
     });
 
-    await this.ready();
+    try {
+      await this.ready();
+    } catch (err) {
+      // Engine failed to initialize (no WebGPU, download error, server
+      // unreachable). Degrade gracefully: regex + NER results still stand,
+      // the UI gets a chance to warn via onError.
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[WebLlmDetector] not ready — engine init failed', err);
+      this.onError?.({ failedChunks: 1, totalChunks: 1, message: msg });
+      return [];
+    }
     const eng = this.engine;
     if (eng === null) {
       console.log('[WebLlmDetector] engine null after ready() — disposed?');
@@ -603,31 +1013,50 @@ export class WebLlmDetector implements Detector {
 
     // For short texts, run a single call. For longer texts, split into
     // overlapping chunks — small LLMs degrade past ~2 KB context.
-    if (text.length <= WebLlmDetector.CHUNK_SIZE) {
-      // Single chunk path — still fire so the UI can render an
-      // 'LLM is thinking' state even when nothing is split.
-      this.onChunkProgress?.(1, 1);
-      return this.detectChunk(eng, text, text, hints?.priorEntities);
+    const chunks =
+      text.length <= this.chunkSize ? [text] : chunkText(text, this.chunkSize, this.chunkOverlap);
+    if (chunks.length > 1) {
+      console.log(
+        `[WebLlmDetector] long text (${text.length} chars) — ${chunks.length} chunks of ${this.chunkSize} (overlap ${this.chunkOverlap})`
+      );
     }
 
-    console.log(
-      `[WebLlmDetector] long text (${text.length} chars) — chunking into windows of ${WebLlmDetector.CHUNK_SIZE} chars (overlap ${WebLlmDetector.CHUNK_OVERLAP})`
-    );
-    const chunks = chunkText(text, WebLlmDetector.CHUNK_SIZE, WebLlmDetector.CHUNK_OVERLAP);
-
     const allEntities: Entity[] = [];
+    let failedChunks = 0;
+    let lastError = '';
     let i = 0;
+    let skippedBinary = 0;
     // Emit an initial 0/total so the UI flips to 'LLM analysing' immediately
     // instead of waiting for the first chunk to finish.
     this.onChunkProgress?.(0, chunks.length);
     for (const chunk of chunks) {
       i++;
+      if (isLikelyBinaryChunk(chunk)) {
+        skippedBinary++;
+        this.onChunkProgress?.(i, chunks.length);
+        continue;
+      }
       console.log(`[WebLlmDetector] chunk ${i}/${chunks.length} (${chunk.length} chars)`);
       this.onChunkProgress?.(i, chunks.length);
       // Pass full source for indexOf — entities anchor to original text positions
       // regardless of which chunk they were found in.
-      const chunkEntities = await this.detectChunk(eng, chunk, text, hints?.priorEntities);
-      allEntities.push(...chunkEntities);
+      try {
+        const chunkEntities = await this.detectChunk(eng, chunk, text, hints?.priorEntities);
+        allEntities.push(...chunkEntities);
+      } catch (err) {
+        // One failed chunk must not lose the results of the others.
+        failedChunks++;
+        lastError = err instanceof Error ? err.message : String(err);
+        console.error(`[WebLlmDetector] chunk ${i}/${chunks.length} failed`, err);
+      }
+    }
+    if (skippedBinary > 0) {
+      console.log(
+        `[WebLlmDetector] skipped ${skippedBinary}/${chunks.length} binary/base64 chunks (no prose PII; regex+NER still scanned them)`
+      );
+    }
+    if (failedChunks > 0) {
+      this.onError?.({ failedChunks, totalChunks: chunks.length, message: lastError });
     }
 
     // Dedupe by (start, end) — overlapping chunks may report the same entity twice
@@ -666,16 +1095,19 @@ export class WebLlmDetector implements Detector {
     // different completions; deterministic re-runs would be wasted work.
     const allRaw: RawLlmEntity[] = [];
     let lastContent = '';
+    let anyPassSucceeded = false;
+    let lastPassError: unknown;
     for (let pass = 0; pass < this.selfConsistencyPasses; pass++) {
       let rawContent: string;
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
       try {
         const passLabel =
           this.selfConsistencyPasses > 1 ? ` (pass ${pass + 1}/${this.selfConsistencyPasses})` : '';
         console.log(`[WebLlmDetector] calling eng.chat.completions.create()${passLabel}`);
         const t0 = performance.now();
-        // 180-second timeout — Llama-1B on consumer WebGPU produces ~30-60
-        // tokens/sec; allow headroom for slow devices and first-call shader
-        // compilation. max_tokens caps the runaway-JSON risk.
+        // Timeout sized via requestTimeoutMs — Llama-1B on consumer WebGPU
+        // produces ~30-60 tokens/sec; allow headroom for slow devices and
+        // first-call shader compilation. max_tokens caps runaway-JSON risk.
         const createPromise = eng.chat.completions.create({
           messages: [
             {
@@ -685,25 +1117,40 @@ export class WebLlmDetector implements Detector {
             },
             { role: 'user', content: prompt },
           ],
-          max_tokens: 800,
+          max_tokens: this.maxTokens,
           // Stagger temperature across passes: 0.1, 0.3, 0.5, ... so each
           // pass explores a slightly different distribution. First pass
           // stays at the deterministic baseline.
           temperature: 0.1 + pass * 0.2,
         });
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('WebLLM create() timed out after 180s')), 180_000)
-        );
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(
+            () => reject(new Error(`WebLLM create() timed out after ${this.requestTimeoutMs}ms`)),
+            this.requestTimeoutMs
+          );
+        });
         const response = await Promise.race([createPromise, timeoutPromise]);
         const elapsed = Math.round(performance.now() - t0);
         console.log(`[WebLlmDetector] create() resolved in ${elapsed}ms`);
         rawContent = response.choices[0]?.message?.content ?? '';
         lastContent = rawContent;
+        anyPassSucceeded = true;
       } catch (err) {
+        lastPassError = err;
         console.error('[WebLlmDetector] create() failed', err);
         continue; // Allow other passes to proceed even if one fails
+      } finally {
+        clearTimeout(timeoutHandle);
       }
       allRaw.push(...parseJsonResponse(rawContent));
+    }
+
+    // Every pass failed — surface it so detect() can count this chunk as
+    // failed and notify via onError instead of silently emitting nothing.
+    if (!anyPassSucceeded) {
+      throw lastPassError instanceof Error
+        ? lastPassError
+        : new Error(String(lastPassError ?? 'LLM call failed'));
     }
 
     // Union across passes — dedupe by (text, type) so the same entity from
@@ -729,8 +1176,31 @@ export class WebLlmDetector implements Detector {
         droppedByLabel.push(raw);
         continue;
       }
+      // SECRET must look like an actual key/token — small models love
+      // mislabeling names or addresses as SECRET, which then leaks them
+      // under a too-coarse placeholder. Demand a single unbroken token of
+      // key-ish characters.
+      if (
+        mapping.type === 'GENERIC_SECRET' &&
+        !/^[A-Za-z0-9_\-.+/=:]{12,}$/.test(raw.text.trim())
+      ) {
+        droppedByLabel.push(raw);
+        continue;
+      }
       if (raw.confidence < this.minConfidence) {
         droppedByConfidence.push(raw);
+        continue;
+      }
+      // Stopword-only candidates ("Mit freundlichen Grüßen", "Kundennummer")
+      // are field labels / boilerplate, not values.
+      if (isTrivialNonEntity(raw.text)) {
+        droppedByLabel.push(raw);
+        continue;
+      }
+      // No legitimate PII value is longer than ~8 words — longer spans are
+      // sentence fragments the model failed to trim.
+      if (raw.text.trim().split(/\s+/).length > 8) {
+        droppedByLabel.push(raw);
         continue;
       }
 
