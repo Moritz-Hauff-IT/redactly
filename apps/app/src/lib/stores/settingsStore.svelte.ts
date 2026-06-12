@@ -55,22 +55,19 @@ function loadEnabledCategories(): Set<EntityCategory> {
 }
 
 function loadNerEnabled(): boolean {
-  const raw = safeLocalStorageGet(LS_NER_KEY);
-  // Default ON — explicit 'false' is the only opt-out. Previous releases
-  // stored ONLY when true and treated missing as off; for opt-out we now
-  // distinguish missing (= default, currently ON) from explicit 'false'.
-  if (raw === 'false') return false;
-  return true;
+  // Default OFF — first-time visitors get instant regex-only detection with
+  // no model download. NER is opt-in via Settings; the explicit choice is
+  // persisted as 'true'/'false' and restored on the next visit.
+  return safeLocalStorageGet(LS_NER_KEY) === 'true';
 }
 
 function loadWebllmEnabled(): boolean {
-  const raw = safeLocalStorageGet(LS_WEBLLM_KEY);
-  if (raw === 'false') return false;
-  // Default ON but only if WebGPU is available. Without WebGPU we can't
-  // load the model so defaulting to on would just immediately error out
-  // and confuse first-time visitors on Firefox / Safari / mobile.
+  // Without WebGPU we can't load the model, so an enabled flag would only
+  // produce an immediate error (or a stuck loading state) — treat as off.
   if (typeof navigator === 'undefined' || !('gpu' in navigator)) return false;
-  return true;
+  // Default OFF — same opt-in contract as NER: no multi-GB download until
+  // the user enables WebLLM in Settings.
+  return safeLocalStorageGet(LS_WEBLLM_KEY) === 'true';
 }
 
 function loadWebllmModelId(): string {
