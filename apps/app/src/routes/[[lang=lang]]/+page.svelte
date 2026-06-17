@@ -249,7 +249,7 @@
 <div class="flex flex-col gap-5">
   <!-- Top tabs: redact / restore -->
   <div
-    class="-mb-px flex gap-1 border-b border-[color:var(--color-rule)]"
+    class="-mb-0.5 flex gap-2 border-b-2 border-[color:var(--color-ink)]"
     role="tablist"
     aria-label="Workspace mode"
   >
@@ -320,34 +320,28 @@
     position: relative;
     font-family: var(--font-mono);
     font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
     background: transparent;
-    border: 0;
-    padding: 9px 18px 11px;
+    border: 2px solid transparent;
+    border-bottom: 0;
+    padding: 9px 20px 10px;
+    margin-bottom: -2px;
     cursor: pointer;
     color: var(--color-ink-mute);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    letter-spacing: 0.02em;
     transition:
-      color 0.16s var(--ease-out),
-      border-color 0.16s var(--ease-out);
+      color 0.1s,
+      background 0.1s;
   }
-  .tab-btn:hover {
-    color: var(--color-ink-soft);
-  }
-  .tab-btn.active {
+  .tab-btn:hover:not(.active) {
     color: var(--color-ink);
-    border-bottom-color: var(--color-accent);
+    background: var(--color-lime);
   }
-  /* Soft glow under the active tab's underline */
-  .tab-btn.active::after {
-    content: '';
-    position: absolute;
-    left: 18px;
-    right: 18px;
-    bottom: -1px;
-    height: 8px;
-    background: radial-gradient(60% 100% at 50% 100%, rgba(184, 71, 12, 0.28), transparent 70%);
-    pointer-events: none;
+  /* Active tab reads as a solid block welded onto the baseline rule */
+  .tab-btn.active {
+    color: var(--color-bg-elev);
+    background: var(--color-ink);
+    border-color: var(--color-ink);
   }
 </style>
