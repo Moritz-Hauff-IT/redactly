@@ -102,6 +102,10 @@ export const messages = {
   ws_state_masked: { de: 'maskiert', en: 'masked' },
   ws_btn_mask: { de: 'Maskieren', en: 'Mask' },
   ws_btn_restore: { de: 'Wiederherstellen', en: 'Restore' },
+  ws_analysis_hint: {
+    de: 'läuft lokal in deinem Browser — nichts wird hochgeladen',
+    en: 'running locally in your browser — nothing is uploaded',
+  },
 
   // ---- Caution banner ----
   caution_lead: { de: 'Bitte selbst gegenprüfen.', en: 'Always double-check yourself.' },

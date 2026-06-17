@@ -40,6 +40,28 @@
     !mappingStore.current || mappingStore.current.forward.size === 0
   );
 
+  // Live status shown in the bridge while a mask run is in flight, so an
+  // LLM pass (which can take many seconds) never looks frozen.
+  const analysisMessage = $derived.by(() => {
+    if (detectorLoading) return t('btn_mask_loading', { detector: detectorLoading });
+    if (engineStore.webllmDetect.total > 0) {
+      return t('btn_mask_llm_chunk', {
+        current: engineStore.webllmDetect.current,
+        total: engineStore.webllmDetect.total,
+      });
+    }
+    return t('btn_mask_analyzing');
+  });
+  // 0..1 when we have a real percentage, null → indeterminate bar.
+  const analysisProgress = $derived.by(() => {
+    if (detectorLoading === 'WebLLM') return engineStore.webllm.progress;
+    if (detectorLoading === 'NER') return engineStore.ner.progress;
+    if (engineStore.webllmDetect.total > 0) {
+      return engineStore.webllmDetect.current / engineStore.webllmDetect.total;
+    }
+    return null;
+  });
+
   // ZIP flow state
   let zipManifest = $state<ZipManifest | null>(null);
   let zipPlan = $state<FilePlan | null>(null);
@@ -284,6 +306,7 @@
             onclick={() => uiStore.setMode('redact')}
             role="tab"
             aria-selected={uiStore.mode === 'redact'}
+            data-testid="mask-tab"
           >
             {t('ws_tab_mask')}
           </button>
@@ -293,6 +316,7 @@
             onclick={() => uiStore.setMode('restore')}
             role="tab"
             aria-selected={uiStore.mode === 'restore'}
+            data-testid="restore-tab"
           >
             {t('ws_tab_restore')}
           </button>
@@ -300,7 +324,45 @@
       </div>
 
       {#if uiStore.mode === 'redact'}
-        <MaskedPane {maskedText} embedded />
+        {#if isAnalyzing}
+          <div class="analysis" data-testid="analysis-status">
+            <svg
+              class="h-7 w-7 animate-spin text-[color:var(--color-accent)]"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle
+                cx="8"
+                cy="8"
+                r="6"
+                stroke="currentColor"
+                stroke-opacity="0.25"
+                stroke-width="2"
+              />
+              <path
+                d="M14 8a6 6 0 00-6-6"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+            <div class="w-full max-w-[280px]">
+              <p class="analysis-msg">{analysisMessage}</p>
+              <div class="mini-track" class:indeterminate={analysisProgress === null}>
+                <div
+                  class="mini-fill"
+                  style:width={analysisProgress !== null
+                    ? `${Math.round(analysisProgress * 100)}%`
+                    : null}
+                ></div>
+              </div>
+            </div>
+            <p class="analysis-hint">{t('ws_analysis_hint')}</p>
+          </div>
+        {:else}
+          <MaskedPane {maskedText} embedded />
+        {/if}
       {:else}
         <RestorePane embedded />
       {/if}
@@ -494,5 +556,57 @@
     cursor: not-allowed;
     box-shadow: none;
     transform: none;
+  }
+
+  /* In-bridge analysis status (keeps an LLM pass from looking frozen) */
+  .analysis {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 32px;
+    text-align: center;
+  }
+  .analysis-msg {
+    margin: 0 0 10px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--color-ink);
+  }
+  .analysis-hint {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-ink-mute);
+  }
+  .mini-track {
+    position: relative;
+    height: 5px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-bg-elev);
+    border: 1px solid var(--color-rule);
+  }
+  .mini-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--color-accent);
+    box-shadow: 0 0 10px rgba(242, 150, 12, 0.6);
+    transition: width 0.3s var(--ease);
+  }
+  .mini-track.indeterminate .mini-fill {
+    width: 40%;
+    animation: bridge-slide 1.1s var(--ease) infinite;
+  }
+  @keyframes bridge-slide {
+    0% {
+      transform: translateX(-120%);
+    }
+    100% {
+      transform: translateX(320%);
+    }
   }
 </style>
