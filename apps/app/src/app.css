@@ -14,9 +14,13 @@
   --color-rule-strong: #cdc4b1;
   --color-accent: #b8470c;
   --color-accent-soft: #fceee2;
+  --color-accent-2: #0e7490;
   --color-highlight: #fde68a;
   --color-danger: #b91c1c;
   --color-ok: #15803d;
+  --color-warn: #b45309;
+  --color-warn-bg: #fdf4e3;
+  --color-warn-border: #f0d9a8;
 
   /* Per-category accents — pastel BG + dark FG */
   --color-cat-person-bg: #fde2e4;
@@ -39,6 +43,19 @@
   --font-serif: 'IBM Plex Serif', Georgia, serif;
 }
 
+/* Non-color design tokens — kept out of @theme so Tailwind doesn't emit
+   utility classes for them. Warm-tinted shadows so depth reads as "paper
+   lifting off paper" rather than a generic grey drop-shadow. */
+:root {
+  --shadow-xs: 0 1px 2px rgba(74, 60, 36, 0.05);
+  --shadow-sm: 0 1px 2px rgba(74, 60, 36, 0.05), 0 2px 6px rgba(74, 60, 36, 0.05);
+  --shadow-md: 0 2px 4px rgba(74, 60, 36, 0.05), 0 8px 20px rgba(74, 60, 36, 0.08);
+  --shadow-lg: 0 4px 8px rgba(74, 60, 36, 0.06), 0 18px 40px rgba(74, 60, 36, 0.12);
+  --shadow-accent: 0 2px 6px rgba(184, 71, 12, 0.25), 0 8px 24px rgba(184, 71, 12, 0.22);
+  --ring-accent: 0 0 0 3px rgba(184, 71, 12, 0.16);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 html,
 body {
   margin: 0;
@@ -56,8 +73,41 @@ body {
 /* Subtle paper grain — radial dot pattern, very low contrast */
 body {
   min-height: 100vh;
+  position: relative;
+  background-color: var(--color-bg);
   background-image: radial-gradient(circle at 1px 1px, rgba(140, 120, 90, 0.04) 1px, transparent 0);
   background-size: 4px 4px;
+}
+
+/* Atmospheric aurora — two soft, fixed, blurred colour washes behind all
+   content. Warm accent (top-left) + cool teal (bottom-right) give the flat
+   paper a quiet sense of depth without competing with the UI. Pinned via a
+   fixed pseudo-element so it never scrolls or intercepts pointer events. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42rem 42rem at 12% -8%, rgba(242, 150, 12, 0.1), transparent 60%),
+    radial-gradient(38rem 38rem at 100% 108%, rgba(14, 116, 144, 0.09), transparent 60%),
+    radial-gradient(30rem 30rem at 88% 4%, rgba(184, 71, 12, 0.05), transparent 55%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body::before {
+    animation: aurora-drift 24s var(--ease-out) infinite alternate;
+  }
+}
+
+@keyframes aurora-drift {
+  from {
+    transform: translate3d(-1.2%, -0.8%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(1.2%, 0.8%, 0) scale(1.06);
+  }
 }
 
 /* Mono label — small caps for section markers */
@@ -122,45 +172,81 @@ body {
   border-color: var(--color-ink-soft);
   color: var(--color-ink);
 }
+.chip:hover {
+  transform: translateY(-1px);
+}
 .chip.active {
   background: var(--color-ink);
   color: var(--color-bg);
   border-color: var(--color-ink);
+  box-shadow: var(--shadow-xs);
 }
 .chip-all.active {
   background: var(--color-accent);
   border-color: var(--color-accent);
+  box-shadow: var(--ring-accent);
 }
 
 /* Primary action button */
 .btn-primary {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-family: var(--font-sans);
   font-weight: 600;
   font-size: 13px;
-  background: var(--color-accent);
+  background: linear-gradient(180deg, #c75416 0%, var(--color-accent) 55%, #a63d08 100%);
   color: white;
-  border: 1px solid var(--color-accent);
+  border: 1px solid #9a3909;
   padding: 8px 18px;
-  border-radius: 6px;
+  border-radius: 7px;
   cursor: pointer;
+  overflow: hidden;
+  box-shadow: var(--shadow-accent);
   transition:
-    background 0.12s,
-    transform 0.06s;
+    box-shadow 0.18s var(--ease-out),
+    transform 0.12s var(--ease-out),
+    filter 0.18s var(--ease-out);
+}
+/* Moving sheen on hover */
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 80%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.6s var(--ease-out);
 }
 .btn-primary:hover:not(:disabled) {
-  background: #9a3909;
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow:
+    var(--shadow-accent),
+    0 0 0 4px rgba(184, 71, 12, 0.12);
 }
-.btn-primary:active {
-  transform: translateY(1px);
+.btn-primary:hover:not(:disabled)::after {
+  transform: translateX(120%);
+}
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--shadow-xs);
 }
 .btn-primary:disabled {
   background: var(--color-rule-strong);
   border-color: var(--color-rule-strong);
   color: var(--color-ink-mute);
   cursor: not-allowed;
+  box-shadow: none;
+}
+.btn-primary > * {
+  position: relative;
+  z-index: 1;
 }
 .btn-primary .kbd {
   font-family: var(--font-mono);
@@ -226,6 +312,7 @@ body {
   border: 1px solid var(--color-rule);
   border-radius: 999px;
   background: var(--color-bg-elev);
+  box-shadow: var(--shadow-xs);
 }
 .pill .dot {
   width: 7px;
@@ -321,21 +408,33 @@ body {
   flex-direction: column;
   background: var(--color-bg-elev);
   border: 1px solid var(--color-rule);
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   min-height: 320px;
   /* Cap height so the textarea scrolls internally (not the page).
      Without this the pane grows with content, the page scrolls, and
      the highlight overlay loses sync with the textarea text. */
   max-height: 70vh;
+  box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow 0.22s var(--ease-out),
+    border-color 0.22s var(--ease-out),
+    transform 0.22s var(--ease-out);
+}
+.pane:hover {
+  box-shadow: var(--shadow-md);
+}
+.pane:focus-within {
+  border-color: var(--color-rule-strong);
+  box-shadow: var(--shadow-md);
 }
 .pane-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--color-rule);
-  padding: 10px 14px;
-  background: var(--color-bg);
+  padding: 11px 15px;
+  background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-sunk) 140%);
 }
 .pane-title {
   font-family: var(--font-mono);
@@ -372,4 +471,93 @@ body {
   display: flex;
   flex-direction: column;
   box-shadow: -8px 0 32px rgba(26, 24, 20, 0.08);
+}
+
+/* Sticky, frosted top bar */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: color-mix(in srgb, var(--color-bg) 78%, transparent);
+  backdrop-filter: saturate(140%) blur(10px);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
+}
+
+/* Brand wordmark — warm gradient ink */
+.brand-word {
+  background: linear-gradient(135deg, var(--color-ink) 30%, var(--color-accent) 140%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.brand-mark {
+  filter: drop-shadow(0 2px 5px rgba(184, 71, 12, 0.22));
+  transition: transform 0.3s var(--ease-out);
+}
+a:hover > .brand-mark {
+  transform: rotate(-4deg) scale(1.05);
+}
+
+/* Caution banner — slim, warm-amber reminder that detection isn't perfect.
+   Left accent rule + warning glyph; non-intrusive but always legible. */
+.caution {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-warn-border);
+  border-left: 3px solid var(--color-warn);
+  border-radius: 10px;
+  background: linear-gradient(
+    180deg,
+    var(--color-warn-bg) 0%,
+    color-mix(in srgb, var(--color-warn-bg) 70%, #fff) 100%
+  );
+  box-shadow: var(--shadow-xs);
+  animation: caution-in 0.45s var(--ease-out) both;
+}
+@keyframes caution-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.caution-icon {
+  flex-shrink: 0;
+  margin-top: 0.5px;
+  color: var(--color-warn);
+}
+.caution-text {
+  flex: 1;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #6b4a1a;
+}
+.caution-text strong {
+  font-weight: 600;
+  color: #5a3d12;
+}
+.caution-dismiss {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-warn) 75%, transparent);
+  cursor: pointer;
+  transition:
+    background 0.14s,
+    color 0.14s;
+}
+.caution-dismiss:hover {
+  background: color-mix(in srgb, var(--color-warn) 14%, transparent);
+  color: var(--color-warn);
 }

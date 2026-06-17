@@ -86,6 +86,14 @@ export const messages = {
   app_settings_open: { de: 'Einstellungen öffnen', en: 'Open settings' },
   app_settings_close: { de: 'Schließen', en: 'Close' },
 
+  // ---- Caution banner ----
+  caution_lead: { de: 'Bitte selbst gegenprüfen.', en: 'Always double-check yourself.' },
+  caution_body: {
+    de: 'Regex, NER und KI erkennen PII nicht zu 100 %. Prüfe den maskierten Text vor dem Weitergeben — nur so bist du sicher, dass nichts Sensibles übrig bleibt.',
+    en: 'Regex, NER and AI don’t catch PII with 100 % certainty. Review the masked text before sharing it — that’s the only way to be sure nothing sensitive slips through.',
+  },
+  caution_dismiss: { de: 'Hinweis ausblenden', en: 'Dismiss notice' },
+
   // ---- Footer (legal) ----
   footer_imprint: { de: 'Impressum', en: 'Imprint' },
   footer_privacy: { de: 'Datenschutz', en: 'Privacy' },

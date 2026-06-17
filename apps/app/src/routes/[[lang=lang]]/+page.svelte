@@ -4,6 +4,7 @@
   import MaskedPane from '$lib/components/MaskedPane.svelte';
   import DetectionReview from '$lib/components/DetectionReview.svelte';
   import RestorePane from '$lib/components/RestorePane.svelte';
+  import CautionBanner from '$lib/components/CautionBanner.svelte';
   import ZipReview from '$lib/components/ZipReview.svelte';
   import { analyze } from '$lib/core/pipeline.js';
   import { maskText } from '$lib/core/maskingService.js';
@@ -273,6 +274,9 @@
   </div>
 
   {#if activeTab === 'redact'}
+    <!-- Detection-isn't-perfect reminder — dismissible, persisted -->
+    <CautionBanner />
+
     <!-- Two panes: input | output -->
     <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
       <InputPane
@@ -313,6 +317,7 @@
 
 <style>
   .tab-btn {
+    position: relative;
     font-family: var(--font-mono);
     font-size: 12px;
     background: transparent;
@@ -324,8 +329,8 @@
     margin-bottom: -1px;
     letter-spacing: 0.02em;
     transition:
-      color 0.12s,
-      border-color 0.12s;
+      color 0.16s var(--ease-out),
+      border-color 0.16s var(--ease-out);
   }
   .tab-btn:hover {
     color: var(--color-ink-soft);
@@ -333,5 +338,16 @@
   .tab-btn.active {
     color: var(--color-ink);
     border-bottom-color: var(--color-accent);
+  }
+  /* Soft glow under the active tab's underline */
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    bottom: -1px;
+    height: 8px;
+    background: radial-gradient(60% 100% at 50% 100%, rgba(184, 71, 12, 0.28), transparent 70%);
+    pointer-events: none;
   }
 </style>
