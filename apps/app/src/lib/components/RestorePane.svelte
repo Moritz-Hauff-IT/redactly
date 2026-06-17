@@ -4,6 +4,12 @@
   import { restoreStore } from '../stores/restoreStore.svelte.js';
   import { loc } from '$lib/i18n/locale.svelte.js';
 
+  interface Props {
+    /** Render bare (no outer card / header) to sit flush in the workspace bridge. */
+    embedded?: boolean;
+  }
+  const { embedded = false }: Props = $props();
+
   let tolerant = $state(true);
   let copied = $state(false);
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -98,28 +104,21 @@
   const hasInput = $derived(restoreStore.input.trim().length > 0);
 </script>
 
-<div class="rounded-lg border border-[color:var(--color-rule)] bg-[color:var(--color-bg-elev)]">
-  <header
-    class="flex items-center justify-between border-b border-[color:var(--color-rule)] px-4 py-3"
+{#snippet tolerantToggle()}
+  <label
+    class="flex items-center gap-2 text-[11.5px] text-[color:var(--color-ink-soft)]"
+    title={loc(s.tolerantTip)}
   >
-    <h2
-      class="font-[family-name:var(--font-serif)] text-[16px] leading-none font-medium text-[color:var(--color-ink)]"
-    >
-      {loc(s.heading)}
-    </h2>
-    <label
-      class="flex items-center gap-2 text-[11.5px] text-[color:var(--color-ink-soft)]"
-      title={loc(s.tolerantTip)}
-    >
-      <input
-        type="checkbox"
-        bind:checked={tolerant}
-        class="h-3.5 w-3.5 accent-[color:var(--color-accent)]"
-      />
-      {loc(s.tolerantLabel)}
-    </label>
-  </header>
+    <input
+      type="checkbox"
+      bind:checked={tolerant}
+      class="h-3.5 w-3.5 accent-[color:var(--color-accent)]"
+    />
+    {loc(s.tolerantLabel)}
+  </label>
+{/snippet}
 
+{#snippet body()}
   <div class="p-4">
     {#if mappingEmpty && hasInput}
       <div
@@ -141,7 +140,7 @@
         </p>
       </div>
     {:else}
-      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 {embedded ? '' : 'lg:grid-cols-2'}">
         <div class="flex flex-col gap-2">
           <span class="label">{loc(s.inputLabel)}</span>
           <textarea
@@ -234,4 +233,30 @@
       {/if}
     {/if}
   </div>
-</div>
+{/snippet}
+
+{#if embedded}
+  <div class="flex min-h-0 flex-1 flex-col overflow-auto">
+    <div
+      class="flex items-center justify-between gap-3 border-b border-[color:var(--color-rule)] px-4 py-2.5"
+    >
+      <span class="label">{loc(s.heading)}</span>
+      {@render tolerantToggle()}
+    </div>
+    {@render body()}
+  </div>
+{:else}
+  <div class="rounded-lg border border-[color:var(--color-rule)] bg-[color:var(--color-bg-elev)]">
+    <header
+      class="flex items-center justify-between border-b border-[color:var(--color-rule)] px-4 py-3"
+    >
+      <h2
+        class="font-[family-name:var(--font-serif)] text-[16px] leading-none font-medium text-[color:var(--color-ink)]"
+      >
+        {loc(s.heading)}
+      </h2>
+      {@render tolerantToggle()}
+    </header>
+    {@render body()}
+  </div>
+{/if}

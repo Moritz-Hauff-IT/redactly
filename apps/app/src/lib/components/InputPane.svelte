@@ -8,32 +8,15 @@
   import { inputStore } from '../stores/inputStore.svelte.js';
   import { detectionStore } from '../stores/detectionStore.svelte.js';
   import { errorStore } from '../stores/errorStore.svelte.js';
-  import { engineStore } from '../stores/engineStore.svelte.js';
-  import { settingsStore } from '../stores/settingsStore.svelte.js';
   import { t } from '$lib/i18n/locale.svelte.js';
   import HighlightedInput from './HighlightedInput.svelte';
 
   interface Props {
     onchange?: () => void;
-    onmask?: () => void;
-    isAnalyzing?: boolean;
     onZip?: (file: File) => void;
   }
 
-  const { onchange, onmask, isAnalyzing = false, onZip }: Props = $props();
-
-  // Block masking while any enabled detector is still downloading / initialising
-  // — masking with a half-loaded NER engine would silently fall back to regex
-  // and produce false negatives. Disabled detectors are ignored (regex-only is
-  // a valid mode). 'error' state also doesn't block — user can still proceed
-  // with whatever else loaded successfully.
-  const detectorLoading = $derived.by(() => {
-    const nerLoading = settingsStore.nerEnabled && engineStore.ner.status === 'loading';
-    const llmLoading = settingsStore.webllmEnabled && engineStore.webllm.status === 'loading';
-    if (nerLoading) return 'NER';
-    if (llmLoading) return 'WebLLM';
-    return null;
-  });
+  const { onchange, onZip }: Props = $props();
 
   let fileInputEl = $state<HTMLInputElement | null>(null);
   let isDragOver = $state(false);
@@ -155,6 +138,20 @@ Buchhaltung, Müller GmbH
 <div class="pane">
   <div class="pane-head">
     <span class="pane-title">
+      <svg
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </svg>
       {inputStore.filename ? inputStore.filename : t('input_title')}
     </span>
     <div class="flex items-center gap-2">
@@ -171,6 +168,21 @@ Buchhaltung, Müller GmbH
           {t('input_chars', { n: inputStore.text.length })}
         </span>
       {/if}
+      <input
+        bind:this={fileInputEl}
+        type="file"
+        accept={ACCEPTED_EXTENSIONS}
+        class="sr-only"
+        onchange={handleFileChange}
+        aria-label="Datei auswählen"
+      />
+      <button
+        class="btn-ghost"
+        onclick={() => fileInputEl?.click()}
+        title={ACCEPTED_EXTENSIONS.replace(/,/g, ' ')}
+      >
+        {t('btn_file_upload')}
+      </button>
       <button class="btn-ghost" onclick={loadSample} title="Beispieltext laden">
         {t('btn_example')}
       </button>
@@ -191,11 +203,18 @@ Buchhaltung, Müller GmbH
     ondrop={handleDrop}
   >
     {#if isDragOver}
-      <div class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+      <div
+        class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5"
+      >
         <span
           class="font-[family-name:var(--font-mono)] text-[12px] font-medium text-[color:var(--color-accent)]"
         >
           {t('file_drop_hint')}
+        </span>
+        <span
+          class="font-[family-name:var(--font-mono)] text-[10.5px] text-[color:var(--color-ink-mute)]"
+        >
+          {t('files_hint')}
         </span>
       </div>
     {/if}
@@ -257,85 +276,5 @@ Buchhaltung, Müller GmbH
         oninput={handleTextChange}
       />
     {/if}
-  </div>
-
-  <!-- Bottom toolbar: file upload + primary mask button -->
-  <div
-    class="flex items-center gap-3 border-t border-[color:var(--color-rule)] bg-[color:var(--color-bg)] px-4 py-3"
-  >
-    <input
-      bind:this={fileInputEl}
-      type="file"
-      accept={ACCEPTED_EXTENSIONS}
-      class="sr-only"
-      onchange={handleFileChange}
-      aria-label="Datei auswählen"
-    />
-    <button class="btn-ghost" onclick={() => fileInputEl?.click()}>{t('btn_file_upload')}</button>
-    <span
-      class="font-[family-name:var(--font-mono)] text-[10.5px] text-[color:var(--color-ink-mute)]"
-      title={ACCEPTED_EXTENSIONS.replace(/,/g, ' ')}
-    >
-      {t('files_hint')}
-    </span>
-
-    <button
-      type="button"
-      data-testid="mask-button"
-      class="btn-primary ml-auto"
-      disabled={!inputStore.text.trim() || isAnalyzing || detectorLoading !== null}
-      onclick={() => onmask?.()}
-      title={detectorLoading
-        ? t('btn_mask_waiting_for', { detector: detectorLoading })
-        : 'Erkennt PII und maskiert (⌘↵)'}
-    >
-      {#if detectorLoading}
-        <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <circle
-            cx="8"
-            cy="8"
-            r="6"
-            stroke="currentColor"
-            stroke-opacity="0.35"
-            stroke-width="2"
-          />
-          <path
-            d="M14 8a6 6 0 00-6-6"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-          />
-        </svg>
-        {t('btn_mask_loading', { detector: detectorLoading })}
-      {:else if isAnalyzing}
-        <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <circle
-            cx="8"
-            cy="8"
-            r="6"
-            stroke="currentColor"
-            stroke-opacity="0.35"
-            stroke-width="2"
-          />
-          <path
-            d="M14 8a6 6 0 00-6-6"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-          />
-        </svg>
-        {#if engineStore.webllmDetect.total > 0}
-          {t('btn_mask_llm_chunk', {
-            current: engineStore.webllmDetect.current,
-            total: engineStore.webllmDetect.total,
-          })}
-        {:else}
-          {t('btn_mask_analyzing')}
-        {/if}
-      {:else}
-        <span>{t('btn_mask')}</span>
-        <span class="kbd">⌘↵</span>
-      {/if}
-    </button>
   </div>
 </div>

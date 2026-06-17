@@ -86,6 +86,23 @@ export const messages = {
   app_settings_open: { de: 'Einstellungen öffnen', en: 'Open settings' },
   app_settings_close: { de: 'Schließen', en: 'Close' },
 
+  // ---- Top-bar reassurance chips ----
+  chip_runtime: { de: 'läuft im Browser', en: 'runs in browser' },
+  chip_server: { de: 'kein Server', en: 'no server' },
+  chip_telemetry: { de: 'keine Telemetrie', en: 'no telemetry' },
+
+  // ---- Workspace (mockup-style) ----
+  ws_original: { de: 'Original', en: 'Original' },
+  ws_tab_mask: { de: 'Maskiert → an die KI', en: 'Masked → to the AI' },
+  ws_tab_restore: { de: 'KI-Antwort → zurück', en: 'AI reply → back' },
+  ws_inspector: { de: 'Erkannte Daten', en: 'Detected data' },
+  ws_vault_local: { de: '🔒 lokal', en: '🔒 local' },
+  ws_status: { de: 'Status', en: 'Status' },
+  ws_state_original: { de: 'original', en: 'original' },
+  ws_state_masked: { de: 'maskiert', en: 'masked' },
+  ws_btn_mask: { de: 'Maskieren', en: 'Mask' },
+  ws_btn_restore: { de: 'Wiederherstellen', en: 'Restore' },
+
   // ---- Caution banner ----
   caution_lead: { de: 'Bitte selbst gegenprüfen.', en: 'Always double-check yourself.' },
   caution_body: {

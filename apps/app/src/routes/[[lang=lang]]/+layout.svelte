@@ -105,13 +105,10 @@
 </script>
 
 <div class="flex min-h-screen flex-col">
-  <!-- Topbar — brand on left, status + settings on right -->
-  <header
-    class="app-header flex items-baseline justify-between border-b border-[color:var(--color-rule)] px-9 pt-5 pb-4"
-  >
-    <a href="/" class="flex items-center gap-3" aria-label="Redactly">
-      <!-- Brand mark — the three redaction bars (matches favicon + landing).
-           Inlined SVG so it's one fewer request and inherits color cleanly. -->
+  <!-- Topbar — brand left, privacy chips + controls right -->
+  <header class="app-header flex items-center gap-4 px-6 py-3">
+    <a href="/" class="flex items-center gap-2.5" aria-label="Redactly">
+      <!-- Original Redactly mark — navy tile with three redaction bars -->
       <svg
         width="22"
         height="22"
@@ -121,28 +118,34 @@
         aria-hidden="true"
         class="brand-mark flex-shrink-0"
       >
-        <rect x="0" y="0" width="100" height="100" rx="20" fill="#0F172A" />
+        <rect
+          x="0.5"
+          y="0.5"
+          width="99"
+          height="99"
+          rx="20"
+          fill="#0F172A"
+          stroke="rgba(255,255,255,0.12)"
+        />
         <rect x="22" y="25.5" width="42" height="11" rx="2.5" fill="#3A475C" />
         <rect x="22" y="44.5" width="57.6" height="11" rx="2.5" fill="#F2960C" />
         <rect x="22" y="63.5" width="27.6" height="11" rx="2.5" fill="#3A475C" />
       </svg>
-      <span
-        class="brand-word font-[family-name:var(--font-serif)] text-[22px] leading-none font-medium tracking-[-0.01em]"
-      >
-        Redactly
-      </span>
-      <span class="text-[color:var(--color-rule-strong)]">·</span>
-      <span
-        class="font-[family-name:var(--font-mono)] text-[11px] tracking-[0.02em] text-[color:var(--color-ink-mute)]"
-      >
-        {t('app_brand_tagline')}
-      </span>
+      <span class="brand-word text-[17px] leading-none">Redactly</span>
     </a>
+
+    <div class="hidden items-center gap-4 lg:flex">
+      <span class="hchip"><span class="led"></span>{t('chip_runtime')}</span>
+      <span class="hchip">{t('chip_server')}</span>
+      <span class="hchip">{t('chip_telemetry')}</span>
+    </div>
+
+    <div class="flex-1"></div>
 
     <div class="flex items-center gap-2.5">
       <span class="pill" title={backendStatus.title}>
         <span class="dot {backendStatus.dot}"></span>
-        <span>{backendStatus.label}</span>
+        <span class="hidden sm:inline">{backendStatus.label}</span>
       </span>
       <LanguageToggle />
       <button
@@ -206,5 +209,21 @@
   }
   .footer-link:hover {
     color: var(--color-accent);
+  }
+  /* Top-bar reassurance chips */
+  .hchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--color-ink-mute);
+  }
+  .led {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-ok);
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.55);
   }
 </style>

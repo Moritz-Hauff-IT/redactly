@@ -1,59 +1,56 @@
 @import 'tailwindcss';
 
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @theme {
-  /* Warm paper palette — editorial/clinical, inspired by depii-tool reference */
-  --color-bg: #faf8f3;
-  --color-bg-elev: #ffffff;
-  --color-bg-sunk: #f3efe6;
-  --color-ink: #1a1814;
-  --color-ink-soft: #5e574c;
-  --color-ink-mute: #948a7a;
-  --color-rule: #e6dfd0;
-  --color-rule-strong: #cdc4b1;
-  --color-accent: #b8470c;
-  --color-accent-soft: #fceee2;
-  --color-accent-2: #0e7490;
-  --color-highlight: #fde68a;
-  --color-danger: #b91c1c;
-  --color-ok: #15803d;
-  --color-warn: #b45309;
-  --color-warn-bg: #fdf4e3;
-  --color-warn-border: #f0d9a8;
+  /* "Console" palette — deep navy surfaces + the brand orange (#F2960C) and
+     brand navy (#0F172A) from the Redactly mark. Dark, calm, product-grade. */
+  --color-bg: #0b1120;
+  --color-bg-elev: #0d1526;
+  --color-bg-sunk: #0f172a;
+  --color-ink: #e2e8f0;
+  --color-ink-soft: #94a3b8;
+  --color-ink-mute: #64748b;
+  --color-rule: #1e293b;
+  --color-rule-strong: #273449;
+  --color-accent: #f2960c;
+  --color-accent-2: #c2710a;
+  --color-accent-soft: rgba(242, 150, 12, 0.13);
+  --color-highlight: #f2960c;
+  --color-danger: #f87171;
+  --color-ok: #22c55e;
+  --color-warn: #fbbf24;
+  --color-warn-bg: rgba(251, 191, 36, 0.08);
+  --color-warn-border: rgba(251, 191, 36, 0.28);
 
-  /* Per-category accents — pastel BG + dark FG */
-  --color-cat-person-bg: #fde2e4;
-  --color-cat-person-fg: #831843;
-  --color-cat-contact-bg: #dbeafe;
-  --color-cat-contact-fg: #1e3a8a;
-  --color-cat-address-bg: #dcfce7;
-  --color-cat-address-fg: #14532d;
-  --color-cat-financial-bg: #fed7aa;
-  --color-cat-financial-fg: #7c2d12;
-  --color-cat-secret-bg: #fecaca;
-  --color-cat-secret-fg: #7f1d1d;
-  --color-cat-organization-bg: #f3e8ff;
-  --color-cat-organization-fg: #581c87;
-  --color-cat-identity-bg: #fef3c7;
-  --color-cat-identity-fg: #78350f;
+  /* Per-category accents — translucent tint + light foreground, tuned for navy */
+  --color-cat-person-bg: rgba(244, 114, 182, 0.2);
+  --color-cat-person-fg: #f9a8d4;
+  --color-cat-contact-bg: rgba(56, 189, 248, 0.18);
+  --color-cat-contact-fg: #7dd3fc;
+  --color-cat-address-bg: rgba(52, 211, 153, 0.18);
+  --color-cat-address-fg: #6ee7b7;
+  --color-cat-financial-bg: rgba(242, 150, 12, 0.2);
+  --color-cat-financial-fg: #fcd34d;
+  --color-cat-secret-bg: rgba(248, 113, 113, 0.2);
+  --color-cat-secret-fg: #fca5a5;
+  --color-cat-organization-bg: rgba(167, 139, 250, 0.2);
+  --color-cat-organization-fg: #c4b5fd;
+  --color-cat-identity-bg: rgba(125, 211, 252, 0.16);
+  --color-cat-identity-fg: #bae6fd;
 
-  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --font-serif: 'IBM Plex Serif', Georgia, serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-serif: 'Inter', system-ui, sans-serif;
 }
 
-/* Non-color design tokens — kept out of @theme so Tailwind doesn't emit
-   utility classes for them. Warm-tinted shadows so depth reads as "paper
-   lifting off paper" rather than a generic grey drop-shadow. */
 :root {
-  --shadow-xs: 0 1px 2px rgba(74, 60, 36, 0.05);
-  --shadow-sm: 0 1px 2px rgba(74, 60, 36, 0.05), 0 2px 6px rgba(74, 60, 36, 0.05);
-  --shadow-md: 0 2px 4px rgba(74, 60, 36, 0.05), 0 8px 20px rgba(74, 60, 36, 0.08);
-  --shadow-lg: 0 4px 8px rgba(74, 60, 36, 0.06), 0 18px 40px rgba(74, 60, 36, 0.12);
-  --shadow-accent: 0 2px 6px rgba(184, 71, 12, 0.25), 0 8px 24px rgba(184, 71, 12, 0.22);
-  --ring-accent: 0 0 0 3px rgba(184, 71, 12, 0.16);
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 12px;
+  --r-pill: 999px;
+  --glow-accent: 0 4px 18px -4px rgba(242, 150, 12, 0.55);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 html,
@@ -69,250 +66,175 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-
-/* Subtle paper grain — radial dot pattern, very low contrast */
 body {
   min-height: 100vh;
-  position: relative;
-  background-color: var(--color-bg);
-  background-image: radial-gradient(circle at 1px 1px, rgba(140, 120, 90, 0.04) 1px, transparent 0);
-  background-size: 4px 4px;
-}
-
-/* Atmospheric aurora — two soft, fixed, blurred colour washes behind all
-   content. Warm accent (top-left) + cool teal (bottom-right) give the flat
-   paper a quiet sense of depth without competing with the UI. Pinned via a
-   fixed pseudo-element so it never scrolls or intercepts pointer events. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(42rem 42rem at 12% -8%, rgba(242, 150, 12, 0.1), transparent 60%),
-    radial-gradient(38rem 38rem at 100% 108%, rgba(14, 116, 144, 0.09), transparent 60%),
-    radial-gradient(30rem 30rem at 88% 4%, rgba(184, 71, 12, 0.05), transparent 55%);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  body::before {
-    animation: aurora-drift 24s var(--ease-out) infinite alternate;
-  }
-}
-
-@keyframes aurora-drift {
-  from {
-    transform: translate3d(-1.2%, -0.8%, 0) scale(1);
-  }
-  to {
-    transform: translate3d(1.2%, 0.8%, 0) scale(1.06);
-  }
 }
 
 /* Mono label — small caps for section markers */
 .label {
   font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-ink-mute);
+  color: var(--color-ink-soft);
 }
 
 /* Segmented control */
 .seg {
   display: inline-flex;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--color-bg-elev);
+  gap: 4px;
 }
 .seg-btn {
   font-family: var(--font-mono);
   font-size: 12px;
+  font-weight: 500;
   background: transparent;
-  border: 0;
-  padding: 7px 14px;
+  border: 1px solid transparent;
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
   cursor: pointer;
-  color: var(--color-ink-soft);
-  border-right: 1px solid var(--color-rule);
-  transition:
-    background 0.12s,
-    color 0.12s;
-}
-.seg-btn:last-child {
-  border-right: 0;
+  color: var(--color-ink-mute);
+  transition: all 0.14s var(--ease);
 }
 .seg-btn:hover:not(:disabled) {
-  background: var(--color-bg-sunk);
-  color: var(--color-ink);
+  color: var(--color-ink-soft);
 }
 .seg-btn.active {
-  background: var(--color-ink);
-  color: var(--color-bg);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-color: rgba(242, 150, 12, 0.32);
 }
 .seg-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-/* Pill chip — for category filters */
+/* Pill chip — filters, legend */
 .chip {
   font-family: var(--font-mono);
   font-size: 11px;
   border: 1px solid var(--color-rule-strong);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--color-bg-elev);
   padding: 4px 11px;
   cursor: pointer;
   color: var(--color-ink-soft);
-  transition: all 0.12s;
+  transition: all 0.14s var(--ease);
 }
 .chip:hover {
-  border-color: var(--color-ink-soft);
   color: var(--color-ink);
-}
-.chip:hover {
-  transform: translateY(-1px);
+  border-color: var(--color-ink-mute);
 }
 .chip.active {
-  background: var(--color-ink);
-  color: var(--color-bg);
-  border-color: var(--color-ink);
-  box-shadow: var(--shadow-xs);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-color: rgba(242, 150, 12, 0.4);
 }
 .chip-all.active {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  box-shadow: var(--ring-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-color: rgba(242, 150, 12, 0.4);
 }
 
-/* Primary action button */
+/* Primary action button — brand orange */
 .btn-primary {
-  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-family: var(--font-sans);
   font-weight: 600;
   font-size: 13px;
-  background: linear-gradient(180deg, #c75416 0%, var(--color-accent) 55%, #a63d08 100%);
-  color: white;
-  border: 1px solid #9a3909;
-  padding: 8px 18px;
-  border-radius: 7px;
+  color: #1a1206;
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  padding: 9px 18px;
+  border-radius: var(--r-md);
   cursor: pointer;
-  overflow: hidden;
-  box-shadow: var(--shadow-accent);
+  box-shadow: var(--glow-accent);
   transition:
-    box-shadow 0.18s var(--ease-out),
-    transform 0.12s var(--ease-out),
-    filter 0.18s var(--ease-out);
-}
-/* Moving sheen on hover */
-.btn-primary::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.28) 50%,
-    transparent 80%
-  );
-  transform: translateX(-120%);
-  transition: transform 0.6s var(--ease-out);
+    transform 0.14s var(--ease),
+    background 0.14s,
+    box-shadow 0.18s;
 }
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.06);
+  background: #ffa92a;
+  border-color: #ffa92a;
   transform: translateY(-1px);
-  box-shadow:
-    var(--shadow-accent),
-    0 0 0 4px rgba(184, 71, 12, 0.12);
-}
-.btn-primary:hover:not(:disabled)::after {
-  transform: translateX(120%);
+  box-shadow: 0 6px 22px -4px rgba(242, 150, 12, 0.7);
 }
 .btn-primary:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: var(--shadow-xs);
 }
 .btn-primary:disabled {
-  background: var(--color-rule-strong);
+  background: var(--color-bg-sunk);
   border-color: var(--color-rule-strong);
   color: var(--color-ink-mute);
   cursor: not-allowed;
   box-shadow: none;
 }
-.btn-primary > * {
-  position: relative;
-  z-index: 1;
-}
 .btn-primary .kbd {
   font-family: var(--font-mono);
   font-size: 10.5px;
-  opacity: 0.8;
-  padding-left: 4px;
-  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  opacity: 0.7;
+  padding-left: 6px;
+  border-left: 1px solid rgba(26, 18, 6, 0.3);
   margin-left: 2px;
 }
 
-/* Ghost button — secondary actions */
+/* Ghost / secondary button */
 .btn-ghost {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
   background: transparent;
   border: 1px solid var(--color-rule-strong);
   padding: 5px 11px;
-  border-radius: 5px;
+  border-radius: var(--r-sm);
   cursor: pointer;
   color: var(--color-ink-soft);
-  transition: all 0.12s;
+  transition: all 0.14s var(--ease);
 }
 .btn-ghost:hover:not(:disabled) {
-  border-color: var(--color-ink-soft);
   color: var(--color-ink);
-  background: var(--color-bg-sunk);
+  border-color: var(--color-ink-mute);
 }
 .btn-ghost:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-/* Icon button — for header */
+/* Icon button */
 .btn-icon {
   background: transparent;
-  border: 1px solid transparent;
+  border: 1px solid var(--color-rule-strong);
   color: var(--color-ink-soft);
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition:
-    background 0.12s,
-    color 0.12s;
+  transition: all 0.14s var(--ease);
 }
 .btn-icon:hover {
-  background: var(--color-bg-sunk);
   color: var(--color-ink);
+  border-color: var(--color-ink-mute);
+  background: var(--color-bg-elev);
 }
 
-/* Backend / status pill */
+/* Status pill */
 .pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--color-ink-soft);
   padding: 5px 11px;
   border: 1px solid var(--color-rule);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--color-bg-elev);
-  box-shadow: var(--shadow-xs);
 }
 .pill .dot {
   width: 7px;
@@ -322,12 +244,12 @@ body::before {
 }
 .pill .dot.online {
   background: var(--color-ok);
-  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
 }
 .pill .dot.loading {
   background: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(184, 71, 12, 0.12);
-  animation: pulse 1.4s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(242, 150, 12, 0.6);
+  animation: pulse 1.3s ease-in-out infinite;
 }
 .pill .dot.error {
   background: var(--color-danger);
@@ -338,24 +260,24 @@ body::before {
     opacity: 1;
   }
   50% {
-    opacity: 0.45;
+    opacity: 0.4;
   }
 }
 
 /* Entity highlight — per-category bg + fg.
    In the textarea overlay (.overlay-highlights), text must stay transparent
-   AND have zero horizontal padding so the spans don't shift the wrap points
-   relative to the underlying textarea (which has no per-word padding). */
+   AND have zero horizontal padding so spans don't shift wrap points relative
+   to the underlying textarea. */
 .ent {
   padding: 0 2px;
-  border-radius: 2px;
+  border-radius: 3px;
   cursor: pointer;
   transition: opacity 0.1s;
 }
 .overlay-highlights .ent {
   color: transparent !important;
   padding: 0 !important;
-  border-radius: 0 !important;
+  border-radius: 2px !important;
 }
 .ent[data-cat='person'] {
   background: var(--color-cat-person-bg);
@@ -390,61 +312,51 @@ body::before {
   text-decoration: line-through;
 }
 
-/* Placeholder token in output — small inline tag */
+/* Placeholder token — orange-tinted inline tag */
 .token {
   display: inline-block;
   font-family: var(--font-mono);
+  font-weight: 600;
   font-size: 0.85em;
-  background: var(--color-bg-sunk);
-  border: 1px solid var(--color-rule);
+  background: var(--color-accent-soft);
+  border: 1px solid rgba(242, 150, 12, 0.35);
   color: var(--color-accent);
   padding: 0 5px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
-/* Pane card */
+/* Pane — flush dark tile (the workspace grid supplies the separating lines) */
 .pane {
   display: flex;
   flex-direction: column;
   background: var(--color-bg-elev);
   border: 1px solid var(--color-rule);
-  border-radius: 12px;
+  border-radius: var(--r-lg);
   overflow: hidden;
   min-height: 320px;
-  /* Cap height so the textarea scrolls internally (not the page).
-     Without this the pane grows with content, the page scrolls, and
-     the highlight overlay loses sync with the textarea text. */
-  max-height: 70vh;
-  box-shadow: var(--shadow-sm);
-  transition:
-    box-shadow 0.22s var(--ease-out),
-    border-color 0.22s var(--ease-out),
-    transform 0.22s var(--ease-out);
-}
-.pane:hover {
-  box-shadow: var(--shadow-md);
-}
-.pane:focus-within {
-  border-color: var(--color-rule-strong);
-  box-shadow: var(--shadow-md);
+  max-height: 72vh;
 }
 .pane-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   border-bottom: 1px solid var(--color-rule);
-  padding: 11px 15px;
-  background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-sunk) 140%);
+  padding: 12px 16px;
+  background: var(--color-bg-sunk);
 }
 .pane-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-ink-mute);
+  color: var(--color-ink-soft);
 }
 
-/* Focus ring — accent color */
+/* Focus ring */
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
@@ -454,8 +366,8 @@ body::before {
 .drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(26, 24, 20, 0.45);
-  backdrop-filter: blur(2px);
+  background: rgba(3, 6, 14, 0.66);
+  backdrop-filter: blur(3px);
   z-index: 40;
 }
 .drawer {
@@ -465,41 +377,38 @@ body::before {
   bottom: 0;
   width: 100%;
   max-width: 480px;
-  background: var(--color-bg);
+  background: var(--color-bg-elev);
   border-left: 1px solid var(--color-rule-strong);
   z-index: 50;
   display: flex;
   flex-direction: column;
-  box-shadow: -8px 0 32px rgba(26, 24, 20, 0.08);
+  box-shadow: -24px 0 60px -20px rgba(0, 0, 0, 0.8);
 }
 
-/* Sticky, frosted top bar */
+/* Top bar */
 .app-header {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: color-mix(in srgb, var(--color-bg) 78%, transparent);
-  backdrop-filter: saturate(140%) blur(10px);
-  -webkit-backdrop-filter: saturate(140%) blur(10px);
+  background: linear-gradient(#0c1424, #0a1020);
+  border-bottom: 1px solid var(--color-rule);
 }
 
-/* Brand wordmark — warm gradient ink */
+/* Brand wordmark — mono, matches the mockup */
 .brand-word {
-  background: linear-gradient(135deg, var(--color-ink) 30%, var(--color-accent) 140%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
 }
 .brand-mark {
-  filter: drop-shadow(0 2px 5px rgba(184, 71, 12, 0.22));
-  transition: transform 0.3s var(--ease-out);
+  transition: transform 0.2s var(--ease);
 }
 a:hover > .brand-mark {
-  transform: rotate(-4deg) scale(1.05);
+  transform: translateY(-1px);
 }
 
-/* Caution banner — slim, warm-amber reminder that detection isn't perfect.
-   Left accent rule + warning glyph; non-intrusive but always legible. */
+/* Caution banner — slim amber strip */
 .caution {
   display: flex;
   align-items: flex-start;
@@ -507,39 +416,23 @@ a:hover > .brand-mark {
   padding: 10px 14px;
   border: 1px solid var(--color-warn-border);
   border-left: 3px solid var(--color-warn);
-  border-radius: 10px;
-  background: linear-gradient(
-    180deg,
-    var(--color-warn-bg) 0%,
-    color-mix(in srgb, var(--color-warn-bg) 70%, #fff) 100%
-  );
-  box-shadow: var(--shadow-xs);
-  animation: caution-in 0.45s var(--ease-out) both;
-}
-@keyframes caution-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  border-radius: var(--r-md);
+  background: var(--color-warn-bg);
 }
 .caution-icon {
   flex-shrink: 0;
-  margin-top: 0.5px;
+  margin-top: 1px;
   color: var(--color-warn);
 }
 .caution-text {
   flex: 1;
   font-size: 12.5px;
   line-height: 1.5;
-  color: #6b4a1a;
+  color: var(--color-ink-soft);
 }
 .caution-text strong {
   font-weight: 600;
-  color: #5a3d12;
+  color: var(--color-ink);
 }
 .caution-dismiss {
   flex-shrink: 0;
@@ -549,15 +442,13 @@ a:hover > .brand-mark {
   width: 24px;
   height: 24px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   background: transparent;
-  color: color-mix(in srgb, var(--color-warn) 75%, transparent);
+  color: var(--color-ink-mute);
   cursor: pointer;
-  transition:
-    background 0.14s,
-    color 0.14s;
+  transition: all 0.14s;
 }
 .caution-dismiss:hover {
-  background: color-mix(in srgb, var(--color-warn) 14%, transparent);
-  color: var(--color-warn);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-ink);
 }

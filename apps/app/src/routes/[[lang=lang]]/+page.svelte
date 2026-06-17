@@ -14,16 +14,31 @@
   import { mappingStore } from '$lib/stores/mappingStore.svelte.js';
   import { engineStore } from '$lib/stores/engineStore.svelte.js';
   import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
+  import { uiStore } from '$lib/stores/uiStore.svelte.js';
+  import { t } from '$lib/i18n/locale.svelte.js';
   import type { ZipManifest } from '@redactly/core/parsers';
   import type { FilePlan } from '@redactly/core/orchestrator';
   import type { ProgressState, PerFileResult } from '$lib/core/zipFlow.js';
 
-  type Tab = 'redact' | 'restore';
-
   let maskedText = $state('');
   let isAnalyzing = $state(false);
   let hasMasked = $state(false);
-  let activeTab = $state<Tab>('redact');
+
+  // Block masking while an enabled detector is still loading — a half-loaded
+  // NER engine would silently fall back to regex and miss entities.
+  const detectorLoading = $derived.by(() => {
+    const nerLoading = settingsStore.nerEnabled && engineStore.ner.status === 'loading';
+    const llmLoading = settingsStore.webllmEnabled && engineStore.webllm.status === 'loading';
+    if (nerLoading) return 'NER';
+    if (llmLoading) return 'WebLLM';
+    return null;
+  });
+  const canMask = $derived(
+    inputStore.text.trim().length > 0 && !isAnalyzing && detectorLoading === null
+  );
+  const restoreDisabled = $derived(
+    !mappingStore.current || mappingStore.current.forward.size === 0
+  );
 
   // ZIP flow state
   let zipManifest = $state<ZipManifest | null>(null);
@@ -235,64 +250,147 @@
     maskedText = result.maskedText;
   });
 
+  /** Mask + ensure the bridge shows the masked result. */
+  function doMask() {
+    uiStore.setMode('redact');
+    handleMaskClick();
+  }
+
   // Keyboard shortcut: Cmd/Ctrl + Enter triggers mask
   function handleKeydown(e: KeyboardEvent) {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && activeTab === 'redact') {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && uiStore.mode === 'redact') {
       e.preventDefault();
-      handleMaskClick();
+      doMask();
     }
   }
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="flex flex-col gap-5">
-  <!-- Top tabs: redact / restore -->
-  <div
-    class="-mb-px flex gap-1 border-b border-[color:var(--color-rule)]"
-    role="tablist"
-    aria-label="Workspace mode"
-  >
-    <button
-      class="tab-btn"
-      class:active={activeTab === 'redact'}
-      onclick={() => (activeTab = 'redact')}
-      role="tab"
-      aria-selected={activeTab === 'redact'}
-    >
-      redact
-    </button>
-    <button
-      class="tab-btn"
-      class:active={activeTab === 'restore'}
-      onclick={() => (activeTab = 'restore')}
-      role="tab"
-      aria-selected={activeTab === 'restore'}
-    >
-      ↺ restore
-    </button>
-  </div>
+<div class="flex flex-col gap-3.5">
+  <CautionBanner />
 
-  {#if activeTab === 'redact'}
-    <!-- Detection-isn't-perfect reminder — dismissible, persisted -->
-    <CautionBanner />
+  <!-- Three-column workspace: Original · Bridge (mask/restore) · Inspector -->
+  <div class="work-grid">
+    <InputPane onchange={handleInputChange} onZip={handleZipUpload} />
 
-    <!-- Two panes: input | output -->
-    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-      <InputPane
-        onchange={handleInputChange}
-        onmask={handleMaskClick}
-        {isAnalyzing}
-        onZip={handleZipUpload}
-      />
-      <MaskedPane {maskedText} />
+    <!-- Bridge: switches between masked output and restore -->
+    <div class="pane">
+      <div class="pane-head">
+        <div class="seg" role="tablist" aria-label="Bridge mode">
+          <button
+            class="seg-btn"
+            class:active={uiStore.mode === 'redact'}
+            onclick={() => uiStore.setMode('redact')}
+            role="tab"
+            aria-selected={uiStore.mode === 'redact'}
+          >
+            {t('ws_tab_mask')}
+          </button>
+          <button
+            class="seg-btn"
+            class:active={uiStore.mode === 'restore'}
+            onclick={() => uiStore.setMode('restore')}
+            role="tab"
+            aria-selected={uiStore.mode === 'restore'}
+          >
+            {t('ws_tab_restore')}
+          </button>
+        </div>
+      </div>
+
+      {#if uiStore.mode === 'redact'}
+        <MaskedPane {maskedText} embedded />
+      {:else}
+        <RestorePane embedded />
+      {/if}
     </div>
 
-    <!-- Detection review — mapping table below panes -->
-    <DetectionReview />
-  {:else}
-    <RestorePane />
-  {/if}
+    <!-- Inspector -->
+    <DetectionReview inspector />
+  </div>
+
+  <!-- Action bar -->
+  <div class="actionbar">
+    <span class="stat">
+      {t('ws_status')}:
+      <b>{hasMasked ? t('ws_state_masked') : t('ws_state_original')}</b>
+    </span>
+    {#if detectionStore.entities.length > 0}
+      <span class="stat-sep">·</span>
+      <span class="stat">
+        {detectionStore.activeEntities.length}/{detectionStore.entities.length}
+      </span>
+    {/if}
+
+    <div class="flex-1"></div>
+
+    <button
+      class="actionbtn restore"
+      disabled={restoreDisabled}
+      onclick={() => uiStore.setMode('restore')}
+    >
+      <span>↺</span>
+      {t('ws_btn_restore')}
+    </button>
+    <button
+      class="actionbtn mask"
+      data-testid="mask-button"
+      disabled={!canMask}
+      onclick={doMask}
+      title={detectorLoading
+        ? t('btn_mask_waiting_for', { detector: detectorLoading })
+        : 'Erkennt PII und maskiert (⌘↵)'}
+    >
+      {#if detectorLoading}
+        <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle
+            cx="8"
+            cy="8"
+            r="6"
+            stroke="currentColor"
+            stroke-opacity="0.35"
+            stroke-width="2"
+          />
+          <path
+            d="M14 8a6 6 0 00-6-6"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+        {t('btn_mask_loading', { detector: detectorLoading })}
+      {:else if isAnalyzing}
+        <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle
+            cx="8"
+            cy="8"
+            r="6"
+            stroke="currentColor"
+            stroke-opacity="0.35"
+            stroke-width="2"
+          />
+          <path
+            d="M14 8a6 6 0 00-6-6"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+        {#if engineStore.webllmDetect.total > 0}
+          {t('btn_mask_llm_chunk', {
+            current: engineStore.webllmDetect.current,
+            total: engineStore.webllmDetect.total,
+          })}
+        {:else}
+          {t('btn_mask_analyzing')}
+        {/if}
+      {:else}
+        <span>▮</span>
+        {t('ws_btn_mask')}
+      {/if}
+    </button>
+  </div>
 </div>
 
 {#if zipManifest && zipPlan}
@@ -316,38 +414,85 @@
 {/if}
 
 <style>
-  .tab-btn {
-    position: relative;
+  .work-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    align-items: stretch;
+  }
+  @media (min-width: 1024px) {
+    .work-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 340px;
+    }
+  }
+
+  .actionbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 18px;
+    border: 1px solid var(--color-rule);
+    border-radius: var(--r-lg);
+    background: var(--color-bg-sunk);
+  }
+  .stat {
     font-family: var(--font-mono);
     font-size: 12px;
-    background: transparent;
-    border: 0;
-    padding: 9px 18px 11px;
-    cursor: pointer;
     color: var(--color-ink-mute);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    letter-spacing: 0.02em;
-    transition:
-      color 0.16s var(--ease-out),
-      border-color 0.16s var(--ease-out);
   }
-  .tab-btn:hover {
-    color: var(--color-ink-soft);
+  .stat b {
+    color: var(--color-accent);
+    font-weight: 600;
   }
-  .tab-btn.active {
+  .stat-sep {
+    color: var(--color-rule-strong);
+  }
+
+  .actionbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 11px;
+    padding: 11px 22px;
+    border: 1px solid var(--color-rule-strong);
+    background: var(--color-bg-elev);
     color: var(--color-ink);
-    border-bottom-color: var(--color-accent);
+    transition:
+      transform 0.14s var(--ease),
+      background 0.14s,
+      border-color 0.14s,
+      box-shadow 0.18s;
   }
-  /* Soft glow under the active tab's underline */
-  .tab-btn.active::after {
-    content: '';
-    position: absolute;
-    left: 18px;
-    right: 18px;
-    bottom: -1px;
-    height: 8px;
-    background: radial-gradient(60% 100% at 50% 100%, rgba(184, 71, 12, 0.28), transparent 70%);
-    pointer-events: none;
+  .actionbtn.restore {
+    background: #15243c;
+    border-color: #33507a;
+    color: #bcd4f5;
+  }
+  .actionbtn.restore:hover:not(:disabled) {
+    border-color: #5b87c4;
+    color: #e2ecfb;
+    transform: translateY(-1px);
+  }
+  .actionbtn.mask {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #1a1206;
+    box-shadow: var(--glow-accent);
+  }
+  .actionbtn.mask:hover:not(:disabled) {
+    background: #ffa92a;
+    border-color: #ffa92a;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 22px -4px rgba(242, 150, 12, 0.7);
+  }
+  .actionbtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
   }
 </style>
