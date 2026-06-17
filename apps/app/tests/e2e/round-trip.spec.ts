@@ -36,8 +36,8 @@ test('full round-trip: mask PII then restore from LLM response', async ({ page, 
   await expect(copyFeedback).toBeVisible({ timeout: 3_000 });
 
   // 5. Switch to the Restore tab — the pane is gated behind a tab toggle
-  //    and isn't mounted until the user clicks "restore".
-  await page.getByRole('tab', { name: /restore/i }).click();
+  //    and isn't mounted until the user clicks it.
+  await page.getByTestId('restore-tab').click();
 
   // 6. In the Restore pane textarea, paste a simulated LLM response
   const llmResponse =
