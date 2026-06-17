@@ -1,59 +1,56 @@
 @import 'tailwindcss';
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @theme {
-  /* Neo-brutalist / editorial-tech palette — stark off-white, ink-black
-     structure, electric lime CTA, magenta secondary pop. Deliberately cool
-     and high-contrast: nothing left of the old warm-paper look. */
-  --color-bg: #f3f2ea;
-  --color-bg-elev: #ffffff;
-  --color-bg-sunk: #e9e7db;
-  --color-ink: #0a0a0a;
-  --color-ink-soft: #2f2d28;
-  --color-ink-mute: #76736a;
-  --color-rule: #0a0a0a;
-  --color-rule-strong: #0a0a0a;
-  --color-accent: #e5004c;
-  --color-accent-soft: #ffdbe8;
-  --color-accent-2: #2563eb;
-  --color-lime: #c8fa28;
-  --color-highlight: #c8fa28;
-  --color-danger: #d61f1f;
-  --color-ok: #12a150;
-  --color-warn: #0a0a0a;
-  --color-warn-bg: #ffe600;
-  --color-warn-border: #0a0a0a;
+  /* "Console" palette — deep navy surfaces + the brand orange (#F2960C) and
+     brand navy (#0F172A) from the Redactly mark. Dark, calm, product-grade. */
+  --color-bg: #0b1120;
+  --color-bg-elev: #0d1526;
+  --color-bg-sunk: #0f172a;
+  --color-ink: #e2e8f0;
+  --color-ink-soft: #94a3b8;
+  --color-ink-mute: #64748b;
+  --color-rule: #1e293b;
+  --color-rule-strong: #273449;
+  --color-accent: #f2960c;
+  --color-accent-2: #c2710a;
+  --color-accent-soft: rgba(242, 150, 12, 0.13);
+  --color-highlight: #f2960c;
+  --color-danger: #f87171;
+  --color-ok: #22c55e;
+  --color-warn: #fbbf24;
+  --color-warn-bg: rgba(251, 191, 36, 0.08);
+  --color-warn-border: rgba(251, 191, 36, 0.28);
 
-  /* Per-category accents — flat bold tints, ink-black foreground */
-  --color-cat-person-bg: #ffc9de;
-  --color-cat-person-fg: #0a0a0a;
-  --color-cat-contact-bg: #bcd9ff;
-  --color-cat-contact-fg: #0a0a0a;
-  --color-cat-address-bg: #b6f0c6;
-  --color-cat-address-fg: #0a0a0a;
-  --color-cat-financial-bg: #ffd29e;
-  --color-cat-financial-fg: #0a0a0a;
-  --color-cat-secret-bg: #ffc2c2;
-  --color-cat-secret-fg: #0a0a0a;
-  --color-cat-organization-bg: #e2c2ff;
-  --color-cat-organization-fg: #0a0a0a;
-  --color-cat-identity-bg: #ffe98a;
-  --color-cat-identity-fg: #0a0a0a;
+  /* Per-category accents — translucent tint + light foreground, tuned for navy */
+  --color-cat-person-bg: rgba(244, 114, 182, 0.2);
+  --color-cat-person-fg: #f9a8d4;
+  --color-cat-contact-bg: rgba(56, 189, 248, 0.18);
+  --color-cat-contact-fg: #7dd3fc;
+  --color-cat-address-bg: rgba(52, 211, 153, 0.18);
+  --color-cat-address-fg: #6ee7b7;
+  --color-cat-financial-bg: rgba(242, 150, 12, 0.2);
+  --color-cat-financial-fg: #fcd34d;
+  --color-cat-secret-bg: rgba(248, 113, 113, 0.2);
+  --color-cat-secret-fg: #fca5a5;
+  --color-cat-organization-bg: rgba(167, 139, 250, 0.2);
+  --color-cat-organization-fg: #c4b5fd;
+  --color-cat-identity-bg: rgba(125, 211, 252, 0.16);
+  --color-cat-identity-fg: #bae6fd;
 
-  --font-sans: 'Space Grotesk', system-ui, sans-serif;
-  --font-mono: 'Space Mono', ui-monospace, monospace;
-  --font-serif: 'Space Grotesk', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-serif: 'Inter', system-ui, sans-serif;
 }
 
-/* Non-color design tokens — kept out of @theme so Tailwind doesn't emit
-   utility classes for them. Hard, un-blurred offset shadows are the core
-   brutalist signature ("the box casts a solid block, not a soft glow"). */
 :root {
-  --shadow-hard-sm: 2px 2px 0 0 var(--color-ink);
-  --shadow-hard: 4px 4px 0 0 var(--color-ink);
-  --shadow-hard-lg: 7px 7px 0 0 var(--color-ink);
-  --ease-snap: cubic-bezier(0.2, 0.9, 0.3, 1);
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 12px;
+  --r-pill: 999px;
+  --glow-accent: 0 4px 18px -4px rgba(242, 150, 12, 0.55);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 html,
@@ -69,231 +66,190 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-
-/* Faint blueprint grid — techy, structured, replaces the warm paper grain. */
 body {
   min-height: 100vh;
-  background-color: var(--color-bg);
-  background-image:
-    linear-gradient(rgba(10, 10, 10, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(10, 10, 10, 0.045) 1px, transparent 1px);
-  background-size: 30px 30px;
 }
 
 /* Mono label — small caps for section markers */
 .label {
   font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-ink);
-  font-weight: 700;
+  color: var(--color-ink-soft);
 }
 
-/* Segmented control — boxed, ink-bordered */
+/* Segmented control */
 .seg {
   display: inline-flex;
-  border: 2px solid var(--color-ink);
-  border-radius: 0;
-  overflow: hidden;
-  background: var(--color-bg-elev);
-  box-shadow: var(--shadow-hard-sm);
+  gap: 4px;
 }
 .seg-btn {
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   background: transparent;
-  border: 0;
-  padding: 7px 14px;
+  border: 1px solid transparent;
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
   cursor: pointer;
-  color: var(--color-ink-soft);
-  border-right: 2px solid var(--color-ink);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  transition:
-    background 0.1s var(--ease-snap),
-    color 0.1s var(--ease-snap);
-}
-.seg-btn:last-child {
-  border-right: 0;
+  color: var(--color-ink-mute);
+  transition: all 0.14s var(--ease);
 }
 .seg-btn:hover:not(:disabled) {
-  background: var(--color-lime);
-  color: var(--color-ink);
+  color: var(--color-ink-soft);
 }
 .seg-btn.active {
-  background: var(--color-ink);
-  color: var(--color-bg-elev);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-color: rgba(242, 150, 12, 0.32);
 }
 .seg-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-/* Pill chip — for category filters */
+/* Pill chip — filters, legend */
 .chip {
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 700;
-  border: 2px solid var(--color-ink);
-  border-radius: 0;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--r-pill);
   background: var(--color-bg-elev);
-  padding: 3px 10px;
+  padding: 4px 11px;
   cursor: pointer;
-  color: var(--color-ink);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  transition:
-    transform 0.08s var(--ease-snap),
-    box-shadow 0.08s var(--ease-snap),
-    background 0.1s;
+  color: var(--color-ink-soft);
+  transition: all 0.14s var(--ease);
 }
 .chip:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: var(--shadow-hard-sm);
+  color: var(--color-ink);
+  border-color: var(--color-ink-mute);
 }
 .chip.active {
-  background: var(--color-ink);
-  color: var(--color-bg-elev);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-color: rgba(242, 150, 12, 0.4);
 }
 .chip-all.active {
-  background: var(--color-lime);
-  color: var(--color-ink);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-color: rgba(242, 150, 12, 0.4);
 }
 
-/* Primary action button — lime fill, ink border, hard shadow, tactile press */
+/* Primary action button — brand orange */
 .btn-primary {
-  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-family: var(--font-sans);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  background: var(--color-lime);
-  color: var(--color-ink);
-  border: 2px solid var(--color-ink);
-  padding: 8px 18px;
-  border-radius: 0;
+  color: #1a1206;
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  padding: 9px 18px;
+  border-radius: var(--r-md);
   cursor: pointer;
-  box-shadow: var(--shadow-hard);
+  box-shadow: var(--glow-accent);
   transition:
-    transform 0.08s var(--ease-snap),
-    box-shadow 0.08s var(--ease-snap);
+    transform 0.14s var(--ease),
+    background 0.14s,
+    box-shadow 0.18s;
 }
 .btn-primary:hover:not(:disabled) {
-  transform: translate(-2px, -2px);
-  box-shadow: var(--shadow-hard-lg);
+  background: #ffa92a;
+  border-color: #ffa92a;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px -4px rgba(242, 150, 12, 0.7);
 }
 .btn-primary:active:not(:disabled) {
-  transform: translate(2px, 2px);
-  box-shadow: 0 0 0 0 var(--color-ink);
+  transform: translateY(0);
 }
 .btn-primary:disabled {
   background: var(--color-bg-sunk);
+  border-color: var(--color-rule-strong);
   color: var(--color-ink-mute);
   cursor: not-allowed;
-  box-shadow: var(--shadow-hard-sm);
+  box-shadow: none;
 }
 .btn-primary .kbd {
   font-family: var(--font-mono);
   font-size: 10.5px;
   opacity: 0.7;
   padding-left: 6px;
-  border-left: 2px solid rgba(10, 10, 10, 0.25);
+  border-left: 1px solid rgba(26, 18, 6, 0.3);
   margin-left: 2px;
 }
 
-/* Ghost / secondary button — white fill, ink border, hard press */
+/* Ghost / secondary button */
 .btn-ghost {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  font-weight: 700;
-  background: var(--color-bg-elev);
-  border: 2px solid var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid var(--color-rule-strong);
   padding: 5px 11px;
-  border-radius: 0;
+  border-radius: var(--r-sm);
   cursor: pointer;
-  color: var(--color-ink);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  box-shadow: var(--shadow-hard-sm);
-  transition:
-    transform 0.08s var(--ease-snap),
-    box-shadow 0.08s var(--ease-snap),
-    background 0.1s;
+  color: var(--color-ink-soft);
+  transition: all 0.14s var(--ease);
 }
 .btn-ghost:hover:not(:disabled) {
-  background: var(--color-lime);
-  transform: translate(-1px, -1px);
-  box-shadow: var(--shadow-hard);
-}
-.btn-ghost:active:not(:disabled) {
-  transform: translate(1px, 1px);
-  box-shadow: 0 0 0 0 var(--color-ink);
+  color: var(--color-ink);
+  border-color: var(--color-ink-mute);
 }
 .btn-ghost:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-  box-shadow: none;
 }
 
-/* Icon button — for header */
+/* Icon button */
 .btn-icon {
-  background: var(--color-bg-elev);
-  border: 2px solid var(--color-ink);
-  color: var(--color-ink);
+  background: transparent;
+  border: 1px solid var(--color-rule-strong);
+  color: var(--color-ink-soft);
   width: 34px;
   height: 34px;
-  border-radius: 0;
+  border-radius: var(--r-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow-hard-sm);
-  transition:
-    transform 0.08s var(--ease-snap),
-    box-shadow 0.08s var(--ease-snap),
-    background 0.1s;
+  transition: all 0.14s var(--ease);
 }
 .btn-icon:hover {
-  background: var(--color-lime);
-  transform: translate(-1px, -1px);
-  box-shadow: var(--shadow-hard);
+  color: var(--color-ink);
+  border-color: var(--color-ink-mute);
+  background: var(--color-bg-elev);
 }
 
-/* Backend / status pill */
+/* Status pill */
 .pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-ink);
+  font-size: 11.5px;
+  color: var(--color-ink-soft);
   padding: 5px 11px;
-  border: 2px solid var(--color-ink);
-  border-radius: 0;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--r-pill);
   background: var(--color-bg-elev);
-  box-shadow: var(--shadow-hard-sm);
 }
 .pill .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
   background: var(--color-ink-mute);
 }
 .pill .dot.online {
   background: var(--color-ok);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
 }
 .pill .dot.loading {
   background: var(--color-accent);
-  animation: pulse 1.1s steps(2, end) infinite;
+  box-shadow: 0 0 8px rgba(242, 150, 12, 0.6);
+  animation: pulse 1.3s ease-in-out infinite;
 }
 .pill .dot.error {
   background: var(--color-danger);
@@ -304,25 +260,24 @@ body {
     opacity: 1;
   }
   50% {
-    opacity: 0.3;
+    opacity: 0.4;
   }
 }
 
 /* Entity highlight — per-category bg + fg.
    In the textarea overlay (.overlay-highlights), text must stay transparent
-   AND have zero horizontal padding so the spans don't shift the wrap points
-   relative to the underlying textarea (which has no per-word padding). */
+   AND have zero horizontal padding so spans don't shift wrap points relative
+   to the underlying textarea. */
 .ent {
   padding: 0 2px;
-  border-radius: 0;
-  box-shadow: inset 0 -2px 0 0 rgba(10, 10, 10, 0.55);
+  border-radius: 3px;
   cursor: pointer;
   transition: opacity 0.1s;
 }
 .overlay-highlights .ent {
   color: transparent !important;
   padding: 0 !important;
-  border-radius: 0 !important;
+  border-radius: 2px !important;
 }
 .ent[data-cat='person'] {
   background: var(--color-cat-person-bg);
@@ -355,64 +310,55 @@ body {
 .ent.disabled {
   opacity: 0.4;
   text-decoration: line-through;
-  box-shadow: none;
 }
 
-/* Placeholder token in output — boxed mono tag */
+/* Placeholder token — orange-tinted inline tag */
 .token {
   display: inline-block;
   font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 0.82em;
-  background: var(--color-lime);
-  border: 1.5px solid var(--color-ink);
-  color: var(--color-ink);
+  font-weight: 600;
+  font-size: 0.85em;
+  background: var(--color-accent-soft);
+  border: 1px solid rgba(242, 150, 12, 0.35);
+  color: var(--color-accent);
   padding: 0 5px;
-  border-radius: 0;
+  border-radius: 4px;
 }
 
-/* Pane card — heavy ink border + hard offset shadow */
+/* Pane — flush dark tile (the workspace grid supplies the separating lines) */
 .pane {
   display: flex;
   flex-direction: column;
   background: var(--color-bg-elev);
-  border: 2px solid var(--color-ink);
-  border-radius: 0;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--r-lg);
   overflow: hidden;
   min-height: 320px;
-  /* Cap height so the textarea scrolls internally (not the page).
-     Without this the pane grows with content, the page scrolls, and
-     the highlight overlay loses sync with the textarea text. */
-  max-height: 70vh;
-  box-shadow: var(--shadow-hard);
-  transition:
-    box-shadow 0.12s var(--ease-snap),
-    transform 0.12s var(--ease-snap);
-}
-.pane:focus-within {
-  transform: translate(-2px, -2px);
-  box-shadow: var(--shadow-hard-lg);
+  max-height: 72vh;
 }
 .pane-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 2px solid var(--color-ink);
-  padding: 10px 14px;
-  background: var(--color-bg);
+  gap: 10px;
+  border-bottom: 1px solid var(--color-rule);
+  padding: 12px 16px;
+  background: var(--color-bg-sunk);
 }
 .pane-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.1em;
+  font-size: 12px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-weight: 700;
-  color: var(--color-ink);
+  color: var(--color-ink-soft);
 }
 
-/* Focus ring — chunky, accent color */
+/* Focus ring */
 :focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
@@ -420,7 +366,8 @@ body {
 .drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(10, 10, 10, 0.5);
+  background: rgba(3, 6, 14, 0.66);
+  backdrop-filter: blur(3px);
   z-index: 40;
 }
 .drawer {
@@ -430,93 +377,78 @@ body {
   bottom: 0;
   width: 100%;
   max-width: 480px;
-  background: var(--color-bg);
-  border-left: 3px solid var(--color-ink);
+  background: var(--color-bg-elev);
+  border-left: 1px solid var(--color-rule-strong);
   z-index: 50;
   display: flex;
   flex-direction: column;
-  box-shadow: -8px 0 0 0 rgba(10, 10, 10, 0.12);
+  box-shadow: -24px 0 60px -20px rgba(0, 0, 0, 0.8);
 }
 
-/* Sticky top bar — solid, thick ink underline */
+/* Top bar */
 .app-header {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: var(--color-bg);
-  border-bottom: 3px solid var(--color-ink);
+  background: linear-gradient(#0c1424, #0a1020);
+  border-bottom: 1px solid var(--color-rule);
 }
 
-/* Brand wordmark — heavy grotesk, tight tracking */
+/* Brand wordmark — mono, matches the mockup */
 .brand-word {
-  color: var(--color-ink);
+  font-family: var(--font-mono);
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
 }
 .brand-mark {
-  transition: transform 0.18s var(--ease-snap);
+  transition: transform 0.2s var(--ease);
 }
 a:hover > .brand-mark {
-  transform: rotate(-3deg) translate(-1px, -1px);
+  transform: translateY(-1px);
 }
 
-/* Caution banner — bold yellow block, ink border, hard shadow */
+/* Caution banner — slim amber strip */
 .caution {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 13px 16px;
-  border: 2px solid var(--color-ink);
-  border-radius: 0;
+  gap: 11px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-warn-border);
+  border-left: 3px solid var(--color-warn);
+  border-radius: var(--r-md);
   background: var(--color-warn-bg);
-  box-shadow: var(--shadow-hard);
-  animation: caution-in 0.25s var(--ease-snap) both;
-}
-@keyframes caution-in {
-  from {
-    opacity: 0;
-    transform: translate(-4px, -4px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(0, 0);
-  }
 }
 .caution-icon {
   flex-shrink: 0;
   margin-top: 1px;
-  color: var(--color-ink);
+  color: var(--color-warn);
 }
 .caution-text {
   flex: 1;
   font-size: 12.5px;
   line-height: 1.5;
-  color: var(--color-ink);
-  font-weight: 500;
+  color: var(--color-ink-soft);
 }
 .caution-text strong {
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  font-weight: 600;
+  color: var(--color-ink);
 }
 .caution-dismiss {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border: 2px solid var(--color-ink);
-  border-radius: 0;
-  background: var(--color-bg-elev);
-  color: var(--color-ink);
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--color-ink-mute);
   cursor: pointer;
-  transition:
-    transform 0.08s var(--ease-snap),
-    box-shadow 0.08s var(--ease-snap),
-    background 0.1s;
+  transition: all 0.14s;
 }
 .caution-dismiss:hover {
-  background: var(--color-ink);
-  color: var(--color-warn-bg);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-ink);
 }

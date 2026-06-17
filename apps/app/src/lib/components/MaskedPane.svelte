@@ -6,9 +6,12 @@
 
   interface Props {
     maskedText: string;
+    /** When true, render bare (no outer pane card / header) so the component
+     * can sit flush inside another container — e.g. the workspace bridge. */
+    embedded?: boolean;
   }
 
-  const { maskedText }: Props = $props();
+  const { maskedText, embedded = false }: Props = $props();
 
   let copied = $state(false);
   let textPreviewOpen = $state(false);
@@ -82,32 +85,29 @@
   }
 </script>
 
-<div class="pane">
-  <div class="pane-head">
-    <span class="pane-title">{t('output_title')}</span>
-    <div class="flex items-center gap-2">
-      {#if !isFileMode}
-        <button class="btn-ghost" disabled={!maskedText} onclick={downloadMasked}>
-          {t('btn_download')}
-        </button>
-        <button
-          data-testid="copy-masked"
-          class="btn-ghost"
-          disabled={!maskedText}
-          onclick={copyToClipboard}
+{#snippet controls()}
+  {#if !isFileMode}
+    <button class="btn-ghost" disabled={!maskedText} onclick={downloadMasked}>
+      {t('btn_download')}
+    </button>
+    <button
+      data-testid="copy-masked"
+      class="btn-ghost"
+      disabled={!maskedText}
+      onclick={copyToClipboard}
+    >
+      {#if copied}
+        <span data-testid="copy-feedback" class="text-[color:var(--color-ok)]"
+          >{t('btn_copied')}</span
         >
-          {#if copied}
-            <span data-testid="copy-feedback" class="text-[color:var(--color-ok)]"
-              >{t('btn_copied')}</span
-            >
-          {:else}
-            {t('btn_copy')}
-          {/if}
-        </button>
+      {:else}
+        {t('btn_copy')}
       {/if}
-    </div>
-  </div>
+    </button>
+  {/if}
+{/snippet}
 
+{#snippet content()}
   {#if isFileMode}
     {#if maskedText}
       <div class="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
@@ -173,4 +173,41 @@
       {/if}
     </div>
   {/if}
-</div>
+{/snippet}
+
+{#if embedded}
+  <div class="flex min-h-0 flex-1 flex-col">
+    {#if !isFileMode}
+      <div
+        class="flex items-center justify-end gap-2 border-b border-[color:var(--color-rule)] px-3 py-2"
+      >
+        {@render controls()}
+      </div>
+    {/if}
+    {@render content()}
+  </div>
+{:else}
+  <div class="pane">
+    <div class="pane-head">
+      <span class="pane-title">
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+        {t('output_title')}
+      </span>
+      <div class="flex items-center gap-2">{@render controls()}</div>
+    </div>
+    {@render content()}
+  </div>
+{/if}
