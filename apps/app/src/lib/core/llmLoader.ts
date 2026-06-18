@@ -63,8 +63,14 @@ export async function loadWebLlm(modelId: string, reAnalyze?: ReAnalyzeFn): Prom
 
   try {
     // Dynamic import keeps @mlc-ai/web-llm out of the main bundle.
-    const { WebLlmDetector } = await import('@redactly/core/llm');
+    const { WebLlmDetector, SUPPORTED_WEBLLM_MODELS } = await import('@redactly/core/llm');
     console.log('[loadWebLlm] @redactly/core/llm imported successfully');
+
+    // Per-model masking tuning (chunk size + output token budget). Bigger,
+    // more capable models get larger chunks + a larger max_tokens so fewer
+    // round-trips run and the JSON answer isn't truncated. Falls back to the
+    // detector defaults for unknown ids.
+    const modelInfo = SUPPORTED_WEBLLM_MODELS.find((m) => m.id === modelId);
 
     const onProgress = (event: {
       status: string;
@@ -102,6 +108,8 @@ export async function loadWebLlm(modelId: string, reAnalyze?: ReAnalyzeFn): Prom
       onProgress,
       onChunkProgress,
       debug: true,
+      ...(modelInfo?.chunkSize ? { chunkSize: modelInfo.chunkSize } : {}),
+      ...(modelInfo?.maxTokens ? { maxTokens: modelInfo.maxTokens } : {}),
     });
     detector = webllmDetector as unknown as WebLlmDetectorLike;
 

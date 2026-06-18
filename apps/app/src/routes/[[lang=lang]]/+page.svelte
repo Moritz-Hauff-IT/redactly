@@ -18,7 +18,7 @@
   import { t } from '$lib/i18n/locale.svelte.js';
   import type { ZipManifest } from '@redactly/core/parsers';
   import type { FilePlan } from '@redactly/core/orchestrator';
-  import type { ProgressState, PerFileResult } from '$lib/core/zipFlow.js';
+  import type { ProgressState, PerFileResult, ZipFileOutput } from '$lib/core/zipFlow.js';
 
   let maskedText = $state('');
   let isAnalyzing = $state(false);
@@ -77,6 +77,46 @@
   let zipAnalysis = $state<import('$lib/core/zipFlow.js').ZipAnalysis | null>(null);
   let zipDisabledEntities = $state<Set<string>>(new Set());
   let zipDownloading = $state(false);
+
+  // ZIP result, shown in the workspace panes (file list + per-file preview +
+  // individual download) after processing. null → normal single-text mode.
+  let zipResult = $state<{ files: ZipFileOutput[]; blob: Blob; filename: string } | null>(null);
+  let zipSelected = $state(0);
+  const selectedZipFile = $derived(zipResult?.files[zipSelected] ?? null);
+
+  function triggerDownload(blob: Blob, name: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function baseName(path: string): string {
+    return path.split('/').pop() || path;
+  }
+
+  function downloadZipFile(f: ZipFileOutput) {
+    if (!f.bytes) return;
+    triggerDownload(
+      new Blob([f.bytes as BlobPart], { type: f.mimeType || 'application/octet-stream' }),
+      baseName(f.path)
+    );
+  }
+
+  function downloadAllZip() {
+    if (zipResult) triggerDownload(zipResult.blob, zipResult.filename);
+  }
+
+  function clearZipResult() {
+    zipResult = null;
+    zipSelected = 0;
+    detectionStore.clear();
+    inputStore.reset();
+    hasMasked = false;
+    maskedText = '';
+  }
 
   async function handleZipUpload(file: File) {
     try {
@@ -188,25 +228,27 @@
       const outputName = zipManifest.filename.replace(/\.zip$/i, '') + '-masked.zip';
       const result = await packZipFromAnalysis(zipAnalysis, outputName, zipDisabledEntities);
 
-      // Trigger download
-      const url = URL.createObjectURL(result.blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = result.filename;
-      a.click();
-      URL.revokeObjectURL(url);
-
       mappingStore.set(result.mapping);
       detectionStore.setEntities(result.entities);
+
+      // Open the result in the workspace: every file stays visible, clickable
+      // (preview original + masked) and individually downloadable — plus the
+      // combined ZIP. No forced auto-download.
+      zipResult = {
+        files: result.perFileOutputs,
+        blob: result.blob,
+        filename: result.filename,
+      };
+      zipSelected = 0;
+      uiStore.setMode('redact');
 
       const masked = result.perFile.filter((f) => f.action === 'masked').length;
       const skipped = result.perFile.filter((f) => f.action === 'skipped').length;
       const failed = result.perFile.filter((f) => f.action === 'failed').length;
-      const placeholders = result.mapping.forward.size;
       errorStore.show(
-        `ZIP fertig: ${masked} maskiert, ${skipped} übersprungen${failed > 0 ? `, ${failed} fehlgeschlagen` : ''} · ${placeholders} Platzhalter im Restore`
+        `ZIP fertig: ${masked} maskiert, ${skipped} übersprungen${failed > 0 ? `, ${failed} fehlgeschlagen` : ''} — Dateien im Arbeitsbereich, einzeln oder als ZIP herunterladbar`
       );
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 200));
       closeZipModal();
     } catch (err) {
       errorStore.show(
@@ -294,7 +336,53 @@
 
   <!-- Three-column workspace: Original · Bridge (mask/restore) · Inspector -->
   <div class="work-grid">
-    <InputPane onchange={handleInputChange} onZip={handleZipUpload} />
+    {#if zipResult}
+      <!-- Original (ZIP): every file listed, clickable → original preview -->
+      <div class="pane">
+        <div class="pane-head">
+          <span class="pane-title">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"
+              />
+            </svg>
+            {t('ws_original')} · {t('ws_zip_count', { n: zipResult.files.length })}
+          </span>
+          <button class="btn-ghost" onclick={clearZipResult}>✕ {t('ws_new_input')}</button>
+        </div>
+        <div class="ziplist">
+          {#each zipResult.files as f, i (f.path)}
+            <button
+              class="zipitem"
+              class:active={i === zipSelected}
+              onclick={() => (zipSelected = i)}
+            >
+              <span class="zipname" title={f.path}>{baseName(f.path)}</span>
+              <span class="zipbadge {f.action}">{t(`ws_act_${f.action}` as never)}</span>
+            </button>
+          {/each}
+        </div>
+        <div class="zippreview">
+          {#if selectedZipFile?.originalText}
+            <pre>{selectedZipFile.originalText}</pre>
+          {:else}
+            <span class="zipnote">{t('ws_zip_nopreview')}</span>
+          {/if}
+        </div>
+      </div>
+    {:else}
+      <InputPane onchange={handleInputChange} onZip={handleZipUpload} />
+    {/if}
 
     <!-- Bridge: switches between masked output and restore -->
     <div class="pane">
@@ -324,7 +412,39 @@
       </div>
 
       {#if uiStore.mode === 'redact'}
-        {#if isAnalyzing}
+        {#if zipResult}
+          <div class="flex min-h-0 flex-1 flex-col">
+            <div class="zip-toolbar">
+              <span class="zipname truncate" title={selectedZipFile?.path}>
+                {selectedZipFile ? baseName(selectedZipFile.path) : ''}
+              </span>
+              <div class="flex flex-shrink-0 items-center gap-2">
+                <button
+                  class="btn-ghost"
+                  disabled={!selectedZipFile?.bytes}
+                  onclick={() => selectedZipFile && downloadZipFile(selectedZipFile)}
+                  title={t('ws_zip_dl_file')}
+                >
+                  ↓ {t('btn_download')}
+                </button>
+                <button class="btn-ghost" onclick={downloadAllZip}>↓ {t('ws_zip_all')}</button>
+              </div>
+            </div>
+            <div class="zippreview">
+              {#if selectedZipFile?.maskedText}
+                <pre data-testid="masked-output">{selectedZipFile.maskedText}</pre>
+              {:else if selectedZipFile?.action === 'kept'}
+                <span class="zipnote">{t('ws_zip_kept_note')}</span>
+              {:else if selectedZipFile?.action === 'skipped'}
+                <span class="zipnote">{t('ws_zip_skipped_note')}</span>
+              {:else if selectedZipFile?.action === 'failed'}
+                <span class="zipnote">{t('ws_zip_failed_note')}</span>
+              {:else}
+                <span class="zipnote">{t('ws_zip_nopreview')}</span>
+              {/if}
+            </div>
+          </div>
+        {:else if isAnalyzing}
           <div class="analysis" data-testid="analysis-status">
             <svg
               class="h-7 w-7 animate-spin text-[color:var(--color-accent)]"
@@ -374,84 +494,105 @@
 
   <!-- Action bar -->
   <div class="actionbar">
-    <span class="stat">
-      {t('ws_status')}:
-      <b>{hasMasked ? t('ws_state_masked') : t('ws_state_original')}</b>
-    </span>
-    {#if detectionStore.entities.length > 0}
-      <span class="stat-sep">·</span>
+    {#if zipResult}
       <span class="stat">
-        {detectionStore.activeEntities.length}/{detectionStore.entities.length}
+        ZIP: <b>{t('ws_zip_count', { n: zipResult.files.length })}</b>
       </span>
-    {/if}
-
-    <div class="flex-1"></div>
-
-    <button
-      class="actionbtn restore"
-      disabled={restoreDisabled}
-      onclick={() => uiStore.setMode('restore')}
-    >
-      <span>↺</span>
-      {t('ws_btn_restore')}
-    </button>
-    <button
-      class="actionbtn mask"
-      data-testid="mask-button"
-      disabled={!canMask}
-      onclick={doMask}
-      title={detectorLoading
-        ? t('btn_mask_waiting_for', { detector: detectorLoading })
-        : 'Erkennt PII und maskiert (⌘↵)'}
-    >
-      {#if detectorLoading}
-        <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <circle
-            cx="8"
-            cy="8"
-            r="6"
-            stroke="currentColor"
-            stroke-opacity="0.35"
-            stroke-width="2"
-          />
-          <path
-            d="M14 8a6 6 0 00-6-6"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-          />
-        </svg>
-        {t('btn_mask_loading', { detector: detectorLoading })}
-      {:else if isAnalyzing}
-        <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <circle
-            cx="8"
-            cy="8"
-            r="6"
-            stroke="currentColor"
-            stroke-opacity="0.35"
-            stroke-width="2"
-          />
-          <path
-            d="M14 8a6 6 0 00-6-6"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-          />
-        </svg>
-        {#if engineStore.webllmDetect.total > 0}
-          {t('btn_mask_llm_chunk', {
-            current: engineStore.webllmDetect.current,
-            total: engineStore.webllmDetect.total,
-          })}
-        {:else}
-          {t('btn_mask_analyzing')}
-        {/if}
-      {:else}
-        <span>▮</span>
-        {t('ws_btn_mask')}
+      {#if detectionStore.entities.length > 0}
+        <span class="stat-sep">·</span>
+        <span class="stat">{detectionStore.entities.length} PII</span>
       {/if}
-    </button>
+      <div class="flex-1"></div>
+      <button class="actionbtn" onclick={clearZipResult}>✕ {t('ws_new_input')}</button>
+      <button
+        class="actionbtn restore"
+        disabled={restoreDisabled}
+        onclick={() => uiStore.setMode('restore')}
+      >
+        <span>↺</span>
+        {t('ws_btn_restore')}
+      </button>
+      <button class="actionbtn mask" onclick={downloadAllZip}>↓ {t('ws_zip_all')}</button>
+    {:else}
+      <span class="stat">
+        {t('ws_status')}:
+        <b>{hasMasked ? t('ws_state_masked') : t('ws_state_original')}</b>
+      </span>
+      {#if detectionStore.entities.length > 0}
+        <span class="stat-sep">·</span>
+        <span class="stat">
+          {detectionStore.activeEntities.length}/{detectionStore.entities.length}
+        </span>
+      {/if}
+
+      <div class="flex-1"></div>
+
+      <button
+        class="actionbtn restore"
+        disabled={restoreDisabled}
+        onclick={() => uiStore.setMode('restore')}
+      >
+        <span>↺</span>
+        {t('ws_btn_restore')}
+      </button>
+      <button
+        class="actionbtn mask"
+        data-testid="mask-button"
+        disabled={!canMask}
+        onclick={doMask}
+        title={detectorLoading
+          ? t('btn_mask_waiting_for', { detector: detectorLoading })
+          : 'Erkennt PII und maskiert (⌘↵)'}
+      >
+        {#if detectorLoading}
+          <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle
+              cx="8"
+              cy="8"
+              r="6"
+              stroke="currentColor"
+              stroke-opacity="0.35"
+              stroke-width="2"
+            />
+            <path
+              d="M14 8a6 6 0 00-6-6"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+          {t('btn_mask_loading', { detector: detectorLoading })}
+        {:else if isAnalyzing}
+          <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle
+              cx="8"
+              cy="8"
+              r="6"
+              stroke="currentColor"
+              stroke-opacity="0.35"
+              stroke-width="2"
+            />
+            <path
+              d="M14 8a6 6 0 00-6-6"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+          {#if engineStore.webllmDetect.total > 0}
+            {t('btn_mask_llm_chunk', {
+              current: engineStore.webllmDetect.current,
+              total: engineStore.webllmDetect.total,
+            })}
+          {:else}
+            {t('btn_mask_analyzing')}
+          {/if}
+        {:else}
+          <span>▮</span>
+          {t('ws_btn_mask')}
+        {/if}
+      </button>
+    {/if}
   </div>
 </div>
 
@@ -608,5 +749,100 @@
     100% {
       transform: translateX(320%);
     }
+  }
+
+  /* ZIP result view — file list + per-file preview */
+  .ziplist {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: auto;
+    padding: 8px;
+    max-height: 40%;
+    border-bottom: 1px solid var(--color-rule);
+  }
+  .zipitem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-ink-soft);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    transition: background 0.12s;
+  }
+  .zipitem:hover {
+    background: var(--color-bg-sunk);
+    color: var(--color-ink);
+  }
+  .zipitem.active {
+    background: var(--color-accent-soft);
+    color: var(--color-ink);
+    box-shadow: inset 0 0 0 1px rgba(242, 150, 12, 0.32);
+  }
+  .zipname {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .zipbadge {
+    flex-shrink: 0;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--color-rule-strong);
+    color: var(--color-ink-mute);
+  }
+  .zipbadge.masked {
+    color: var(--color-accent);
+    border-color: rgba(242, 150, 12, 0.4);
+  }
+  .zipbadge.failed {
+    color: var(--color-danger);
+    border-color: rgba(248, 113, 113, 0.4);
+  }
+  .zippreview {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 14px 16px;
+  }
+  .zippreview pre {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--color-ink);
+  }
+  .zipnote {
+    display: block;
+    padding: 20px 4px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-ink-mute);
+  }
+  .zip-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-rule);
+  }
+  .zip-toolbar .zipname {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--color-ink-soft);
   }
 </style>

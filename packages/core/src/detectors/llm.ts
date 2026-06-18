@@ -26,6 +26,14 @@ export interface WebLlmModelInfo {
   description: string;
   /** Tier recommendation */
   recommendedFor: 'fast' | 'balanced' | 'best';
+  /**
+   * Per-model masking tuning. Larger, more capable models handle bigger
+   * chunks (fewer round-trips, fewer entities split across boundaries) and
+   * need a larger output-token budget so the JSON answer isn't truncated.
+   * The detector falls back to its own defaults (1500 / 800) when unset.
+   */
+  chunkSize?: number;
+  maxTokens?: number;
 }
 
 export const SUPPORTED_WEBLLM_MODELS: WebLlmModelInfo[] = [
@@ -37,6 +45,8 @@ export const SUPPORTED_WEBLLM_MODELS: WebLlmModelInfo[] = [
     description:
       'Standardwahl. Guter Trade-off zwischen Genauigkeit und Geschwindigkeit. Läuft auf modernen Laptops mit 8+ GB RAM, typische Antwort 15-45 Sek.',
     recommendedFor: 'balanced',
+    chunkSize: 2400,
+    maxTokens: 1408,
   },
   {
     id: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
@@ -46,6 +56,8 @@ export const SUPPORTED_WEBLLM_MODELS: WebLlmModelInfo[] = [
     description:
       'Microsofts Modell, besonders stark bei strukturierten Aufgaben wie Entitäts-Extraktion. Langsamer als Llama 3B, aber präziser bei seltenen PII-Mustern.',
     recommendedFor: 'best',
+    chunkSize: 2400,
+    maxTokens: 1408,
   },
   {
     id: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
@@ -55,6 +67,8 @@ export const SUPPORTED_WEBLLM_MODELS: WebLlmModelInfo[] = [
     description:
       'Schnell und kompakt, aber Recall fällt auf 60-70%. Nur empfohlen wenn 8+ GB RAM nicht verfügbar sind oder die Geschwindigkeit kritisch ist.',
     recommendedFor: 'fast',
+    chunkSize: 1500,
+    maxTokens: 1024,
   },
 ];
 

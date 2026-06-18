@@ -58,6 +58,29 @@ export interface ZipMaskResult {
    * masked' after a ZIP run, rather than being empty.
    */
   entities: Entity[];
+  /**
+   * Per-file outputs so the workspace can list every file, preview its
+   * original + masked text, and offer an individual download — in addition
+   * to the combined `blob`.
+   */
+  perFileOutputs: ZipFileOutput[];
+}
+
+/** One file's result, surfaced to the UI for preview + individual download. */
+export interface ZipFileOutput {
+  path: string;
+  mimeType: string;
+  format: SupportedFormat | null;
+  /** What actually happened to the file in the output. */
+  action: 'masked' | 'kept' | 'skipped' | 'failed';
+  /** Extracted original text, when the file was parseable. */
+  originalText?: string;
+  /** Masked text, present only for `masked` files. */
+  maskedText?: string;
+  /** Output bytes for an individual download (masked bytes, or the original
+   * for kept/failed files). Absent for skipped files. */
+  bytes?: Uint8Array;
+  error?: string;
 }
 
 export type PerFileResult = {
@@ -83,6 +106,29 @@ export class ZipAbortError extends Error {
     this.name = 'ZipAbortError';
   }
 }
+
+/**
+ * Background-safe cooperative yield.
+ *
+ * We must hand control back to the browser between files so the UI paints and
+ * the Cancel button stays responsive. `requestAnimationFrame` is the obvious
+ * choice but it is PAUSED in background tabs, and `setTimeout` is throttled to
+ * ~1/min there — either one stalls a ZIP run the moment the user switches away.
+ * A `MessageChannel` round-trip schedules a macrotask that keeps firing at full
+ * speed in hidden tabs, so processing continues uninterrupted in the background.
+ */
+const yieldToBrowser: () => Promise<void> =
+  typeof MessageChannel !== 'undefined'
+    ? () =>
+        new Promise<void>((resolve) => {
+          const ch = new MessageChannel();
+          ch.port1.onmessage = () => {
+            ch.port1.close();
+            resolve();
+          };
+          ch.port2.postMessage(0);
+        })
+    : () => new Promise<void>((r) => setTimeout(r, 0));
 
 function toManifestEntries(manifest: ZipManifest): ManifestEntryForLlm[] {
   return manifest.entries
@@ -190,10 +236,10 @@ export async function analyzeFiles(
     const tick = (step: ProgressStep | null) =>
       onProgress?.({ done, total: toProcess.length, currentPath: entry.path, step });
     tick(null);
-    // Yield to the browser after every file so the UI paints + Cancel
-    // button stays clickable. Brave's coarsened performance.now() made
-    // the time-throttled version unreliable for small batches.
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+    // Yield after every file so the UI paints + Cancel stays clickable.
+    // Uses a background-safe macrotask (see yieldToBrowser) so the run does
+    // NOT stall when the tab is switched away or minimised.
+    await yieldToBrowser();
 
     const planEntry = planByPath.get(entry.path);
     const action: FileAction = planEntry?.action ?? 'review';
@@ -313,20 +359,30 @@ export async function packZipFromAnalysis(
   const { createMapping } = await import('@redactly/core/masker');
   const outputEntries: ZipPackEntry[] = [];
   const perFile: ZipMaskResult['perFile'] = [];
+  const perFileOutputs: ZipFileOutput[] = [];
   // Rebuild mapping from scratch so it only contains entities the user
   // ACTUALLY masked — the Restore tab + DetectionReview reflect what's
   // really in the output, not what the analyser found.
   let runningMapping: Mapping = createMapping();
 
   for (const file of analysis.files) {
+    const base = {
+      path: file.path,
+      mimeType: file.mimeType,
+      format: file.format,
+      originalText: file.parsedText,
+    };
+
     if (file.action === 'skip') {
       perFile.push({ path: file.path, action: 'skipped' });
+      perFileOutputs.push({ ...base, action: 'skipped' });
       continue;
     }
 
     if (file.action !== 'mask') {
       outputEntries.push({ path: file.path, bytes: file.originalBytes });
       perFile.push({ path: file.path, action: 'kept' });
+      perFileOutputs.push({ ...base, action: 'kept', bytes: file.originalBytes });
       continue;
     }
 
@@ -336,6 +392,12 @@ export async function packZipFromAnalysis(
       perFile.push({
         path: file.path,
         action: 'kept',
+        error: file.error ?? 'No parsed text',
+      });
+      perFileOutputs.push({
+        ...base,
+        action: 'kept',
+        bytes: file.originalBytes,
         error: file.error ?? 'No parsed text',
       });
       continue;
@@ -349,6 +411,7 @@ export async function packZipFromAnalysis(
       // All entities were unchecked → keep file as-is, no placeholder noise
       outputEntries.push({ path: file.path, bytes: file.originalBytes });
       perFile.push({ path: file.path, action: 'kept' });
+      perFileOutputs.push({ ...base, action: 'kept', bytes: file.originalBytes });
       continue;
     }
 
@@ -364,19 +427,23 @@ export async function packZipFromAnalysis(
         action: 'masked',
         entityCount: enabledEntities.length,
       });
-    } catch (err) {
-      outputEntries.push({ path: file.path, bytes: file.originalBytes });
-      perFile.push({
-        path: file.path,
-        action: 'failed',
-        error: err instanceof Error ? err.message : String(err),
+      perFileOutputs.push({
+        ...base,
+        action: 'masked',
+        maskedText: masked.maskedText,
+        bytes: writtenBytes,
       });
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      outputEntries.push({ path: file.path, bytes: file.originalBytes });
+      perFile.push({ path: file.path, action: 'failed', error: errMsg });
+      perFileOutputs.push({ ...base, action: 'failed', bytes: file.originalBytes, error: errMsg });
     }
   }
 
   const { blob, filename } = await packZip(outputEntries, outputName);
   const entities = mappingToSyntheticEntities(runningMapping);
-  return { blob, filename, perFile, mapping: runningMapping, entities };
+  return { blob, filename, perFile, mapping: runningMapping, entities, perFileOutputs };
 }
 
 /**
