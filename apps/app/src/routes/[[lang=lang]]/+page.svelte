@@ -231,9 +231,13 @@
       mappingStore.set(result.mapping);
       detectionStore.setEntities(result.entities);
 
-      // Open the result in the workspace: every file stays visible, clickable
-      // (preview original + masked) and individually downloadable — plus the
-      // combined ZIP. No forced auto-download.
+      // The modal's "ZIP herunterladen" button must actually download the
+      // combined ZIP right away.
+      triggerDownload(result.blob, result.filename);
+
+      // …and also open the result in the workspace: every file stays visible,
+      // clickable (preview original + masked) and individually downloadable,
+      // plus the combined ZIP.
       zipResult = {
         files: result.perFileOutputs,
         blob: result.blob,
