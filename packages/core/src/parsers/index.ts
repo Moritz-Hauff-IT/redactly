@@ -18,7 +18,12 @@ export {
   type OcrResult,
   type OcrWord,
 } from './image.js';
-export { writeAsFormat, writeAsRedactedFormat, type WriteResult } from './writers.js';
+export {
+  writeAsFormat,
+  writeAsRedactedFormat,
+  writeImageBlocked,
+  type WriteResult,
+} from './writers.js';
 export { extractZip, packZip, type ZipManifest, type ZipEntry, type ZipPackEntry } from './zip.js';
 export type { SupportedFormat } from './formats.js';
 export { FORMAT_META } from './formats.js';

@@ -2,6 +2,8 @@
   import { inputStore } from '../stores/inputStore.svelte.js';
   import { mappingStore } from '../stores/mappingStore.svelte.js';
   import { errorStore } from '../stores/errorStore.svelte.js';
+  import { detectionStore } from '../stores/detectionStore.svelte.js';
+  import { settingsStore } from '../stores/settingsStore.svelte.js';
   import { t } from '$lib/i18n/locale.svelte.js';
 
   interface Props {
@@ -49,26 +51,33 @@
     const rawBytes = inputStore.rawBytes;
     const mapping = mappingStore.get();
 
+    const isImage = fmt === 'png' || fmt === 'jpg' || fmt === 'webp';
+
     try {
-      const { writeAsFormat, writeAsRedactedFormat } = await import('@redactly/core/parsers');
+      const { writeAsFormat, writeAsRedactedFormat, writeImageBlocked } =
+        await import('@redactly/core/parsers');
 
-      // Layout-preserving path: we have the original file bytes AND a mapping
-      // of detected entities → placeholders. Overlay redactions onto the
-      // original document instead of producing a plain-text dump.
-      const canRedact =
-        rawBytes &&
-        mapping &&
-        (fmt === 'pdf' ||
-          fmt === 'docx' ||
-          fmt === 'xlsx' ||
-          fmt === 'pptx' ||
-          fmt === 'png' ||
-          fmt === 'jpg' ||
-          fmt === 'webp');
+      let blob: Blob;
+      let filename: string;
 
-      const { blob, filename } = canRedact
-        ? await writeAsRedactedFormat(rawBytes, maskedText, mapping, fmt, baseName)
-        : await writeAsFormat(maskedText, fmt, baseName);
+      if (settingsStore.redactMode && isImage && rawBytes) {
+        // Redact mode + image: paint solid black bars over the detected PII
+        // (no mapping in redact mode — drive it from the active entity texts).
+        const terms = detectionStore.activeEntities.map((e) => e.text);
+        ({ blob, filename } = await writeImageBlocked(rawBytes, terms, baseName, fmt));
+      } else {
+        // Layout-preserving path: we have the original file bytes AND a mapping
+        // of detected entities → placeholders. Overlay redactions onto the
+        // original document instead of producing a plain-text dump.
+        const canRedact =
+          rawBytes &&
+          mapping &&
+          (fmt === 'pdf' || fmt === 'docx' || fmt === 'xlsx' || fmt === 'pptx' || isImage);
+
+        ({ blob, filename } = canRedact
+          ? await writeAsRedactedFormat(rawBytes, maskedText, mapping, fmt, baseName)
+          : await writeAsFormat(maskedText, fmt, baseName));
+      }
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
