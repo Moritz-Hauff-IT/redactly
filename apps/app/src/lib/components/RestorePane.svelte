@@ -2,13 +2,33 @@
   import { restore } from '@redactly/core/restorer';
   import { mappingStore } from '../stores/mappingStore.svelte.js';
   import { restoreStore } from '../stores/restoreStore.svelte.js';
-  import { loc } from '$lib/i18n/locale.svelte.js';
+  import { errorStore } from '../stores/errorStore.svelte.js';
+  import { deserializeMapping } from '@redactly/core/masker';
+  import { loc, t } from '$lib/i18n/locale.svelte.js';
 
   interface Props {
     /** Render bare (no outer card / header) to sit flush in the workspace bridge. */
     embedded?: boolean;
   }
   const { embedded = false }: Props = $props();
+
+  // Load a previously-saved mapping so you can restore in a fresh session.
+  let mapInputEl = $state<HTMLInputElement | null>(null);
+  async function handleMapFile(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      const m = deserializeMapping(await file.text());
+      mappingStore.set(m);
+      errorStore.show(t('map_import_ok', { n: m.forward.size }));
+    } catch (err) {
+      errorStore.show(
+        t('map_import_err', { message: err instanceof Error ? err.message : 'unbekannt' })
+      );
+    }
+  }
 
   let tolerant = $state(true);
   let copied = $state(false);
@@ -116,6 +136,20 @@
     />
     {loc(s.tolerantLabel)}
   </label>
+{/snippet}
+
+{#snippet mapImport()}
+  <input
+    bind:this={mapInputEl}
+    type="file"
+    accept="application/json,.json"
+    class="sr-only"
+    onchange={handleMapFile}
+    aria-label={t('map_import')}
+  />
+  <button class="btn-ghost" onclick={() => mapInputEl?.click()} title={t('map_import')}>
+    ↑ {t('map_import')}
+  </button>
 {/snippet}
 
 {#snippet body()}
@@ -241,7 +275,10 @@
       class="flex items-center justify-between gap-3 border-b border-[color:var(--color-rule)] px-4 py-2.5"
     >
       <span class="label">{loc(s.heading)}</span>
-      {@render tolerantToggle()}
+      <div class="flex items-center gap-3">
+        {@render mapImport()}
+        {@render tolerantToggle()}
+      </div>
     </div>
     {@render body()}
   </div>
@@ -255,7 +292,10 @@
       >
         {loc(s.heading)}
       </h2>
-      {@render tolerantToggle()}
+      <div class="flex items-center gap-3">
+        {@render mapImport()}
+        {@render tolerantToggle()}
+      </div>
     </header>
     {@render body()}
   </div>

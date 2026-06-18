@@ -19,7 +19,7 @@ export type { WebLlmModelInfo, WebLlmOptions, WebLlmProgressEvent } from './dete
 export { luhn, ibanMod97, shannonEntropy } from './detectors/validators.js';
 
 // Masker
-export { mask, createMapping } from './masker.js';
+export { mask, createMapping, serializeMapping, deserializeMapping } from './masker.js';
 export type { Mapping, MaskOptions, MaskResult } from './masker.js';
 
 // Restorer
