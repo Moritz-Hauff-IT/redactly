@@ -17,6 +17,16 @@ export const messages = {
   btn_copied: { de: 'kopiert ✓', en: 'copied ✓' },
   btn_download: { de: 'download', en: 'download' },
   btn_mask: { de: 'Maskieren', en: 'Mask' },
+  // Copy masked text and open an LLM in a new tab (cross-origin paste isn't
+  // possible, so the text is placed on the clipboard for the user to paste).
+  copy_and_open: {
+    de: 'Maskiert kopieren & {provider} öffnen',
+    en: 'Copy masked & open {provider}',
+  },
+  copy_open_toast: {
+    de: 'Maskierter Text kopiert — füge die KI-Antwort danach im Tab „KI-Antwort → zurück" ein.',
+    en: 'Masked text copied — paste the AI reply afterwards in the “AI reply → back” tab.',
+  },
   btn_mask_analyzing: { de: 'Analysiere …', en: 'Analysing…' },
   btn_mask_llm_chunk: {
     de: 'LLM-Analyse {current}/{total} …',
