@@ -44,6 +44,20 @@
     }, 2000);
   }
 
+  // Copy the masked text, then open the chosen LLM in a new tab. Cross-origin
+  // auto-paste is impossible, so we put the text on the clipboard and remind
+  // the user (toast) to paste it — and to bring the reply back to Restore.
+  const LLM_TARGETS = {
+    ChatGPT: 'https://chatgpt.com/',
+    Claude: 'https://claude.ai/new',
+  } as const;
+  async function copyAndOpen(provider: keyof typeof LLM_TARGETS) {
+    if (!maskedText) return;
+    await copyToClipboard();
+    errorStore.show(t('copy_open_toast'));
+    window.open(LLM_TARGETS[provider], '_blank', 'noopener,noreferrer');
+  }
+
   async function downloadMasked() {
     if (!maskedText) return;
     const fmt = inputStore.format ?? 'txt';
@@ -113,6 +127,22 @@
         {t('btn_copy')}
       {/if}
     </button>
+    <button
+      class="btn-ghost"
+      disabled={!maskedText}
+      onclick={() => copyAndOpen('ChatGPT')}
+      title={t('copy_and_open', { provider: 'ChatGPT' })}
+    >
+      ↗ ChatGPT
+    </button>
+    <button
+      class="btn-ghost"
+      disabled={!maskedText}
+      onclick={() => copyAndOpen('Claude')}
+      title={t('copy_and_open', { provider: 'Claude' })}
+    >
+      ↗ Claude
+    </button>
   {/if}
 {/snippet}
 
@@ -151,9 +181,23 @@
           </p>
         </div>
         <button class="btn-primary mt-2" onclick={downloadMasked}>↓ {t('btn_download')}</button>
-        <div class="mt-2 flex items-center gap-2">
+        <div class="mt-2 flex flex-wrap items-center justify-center gap-2">
           <button class="btn-ghost" onclick={copyToClipboard}>
             {copied ? t('file_text_copied') : t('file_text_copy')}
+          </button>
+          <button
+            class="btn-ghost"
+            onclick={() => copyAndOpen('ChatGPT')}
+            title={t('copy_and_open', { provider: 'ChatGPT' })}
+          >
+            ↗ ChatGPT
+          </button>
+          <button
+            class="btn-ghost"
+            onclick={() => copyAndOpen('Claude')}
+            title={t('copy_and_open', { provider: 'Claude' })}
+          >
+            ↗ Claude
           </button>
           <button class="btn-ghost" onclick={() => (textPreviewOpen = !textPreviewOpen)}>
             {textPreviewOpen ? t('file_preview_hide') : t('file_preview_show')}
