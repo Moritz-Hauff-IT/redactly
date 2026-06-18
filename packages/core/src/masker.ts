@@ -17,6 +17,11 @@
 
 import type { Entity, EntityType } from './types.js';
 
+// Re-exported here so consumers can import it from the same '@redactly/core/masker'
+// entry point as mask() (irreversible sibling — see redactor.ts).
+export { redact } from './redactor.js';
+export type { RedactOptions, RedactResult } from './redactor.js';
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------

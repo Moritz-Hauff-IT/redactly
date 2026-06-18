@@ -26,6 +26,10 @@ export type { Mapping, MaskOptions, MaskResult } from './masker.js';
 export { restore } from './restorer.js';
 export type { RestoreOptions, RestoreResult } from './restorer.js';
 
+// Redactor (irreversible — no mapping)
+export { redact } from './redactor.js';
+export type { RedactOptions, RedactResult } from './redactor.js';
+
 // Pipeline orchestrator
 export { Pipeline } from './pipeline.js';
 export type { PipelineOptions, PipelineResult } from './pipeline.js';

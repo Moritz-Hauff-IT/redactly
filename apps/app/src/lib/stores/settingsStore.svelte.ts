@@ -18,6 +18,7 @@ const LS_WEBLLM_MODEL_KEY = 'de-pii:settings:webllm-model';
 const LS_WEBLLM_TEXT_PII_KEY = 'de-pii:settings:webllm-text-pii';
 const LS_ALWAYS_MASK_KEY = 'de-pii:settings:always-mask';
 const LS_NEVER_MASK_KEY = 'de-pii:settings:never-mask';
+const LS_REDACT_MODE_KEY = 'de-pii:settings:redact-mode';
 
 const DEFAULT_WEBLLM_MODEL = 'Llama-3.2-3B-Instruct-q4f16_1-MLC';
 
@@ -107,6 +108,9 @@ function createSettingsStore() {
   let webllmTextPii = $state<boolean>(loadWebllmTextPii());
   let alwaysMask = $state<string[]>(loadTermList(LS_ALWAYS_MASK_KEY));
   let neverMask = $state<string[]>(loadTermList(LS_NEVER_MASK_KEY));
+  // Output mode: false = pseudonymize (reversible placeholders + mapping),
+  // true = redact (opaque ████ blocks, irreversible, no mapping).
+  let redactMode = $state<boolean>(safeLocalStorageGet(LS_REDACT_MODE_KEY) === 'true');
 
   function addTerm(list: string[], term: string): string[] {
     const t = term.trim();
@@ -208,6 +212,16 @@ function createSettingsStore() {
     removeNeverMask(term: string): void {
       neverMask = removeTerm(neverMask, term);
       safeLocalStorageSet(LS_NEVER_MASK_KEY, JSON.stringify(neverMask));
+    },
+
+    // ── Output mode ────────────────────────────────────────────────────────
+    /** true = irreversible redaction (████, no mapping); false = pseudonymize. */
+    get redactMode() {
+      return redactMode;
+    },
+    setRedactMode(b: boolean): void {
+      redactMode = b;
+      safeLocalStorageSet(LS_REDACT_MODE_KEY, b ? 'true' : 'false');
     },
   };
 }
