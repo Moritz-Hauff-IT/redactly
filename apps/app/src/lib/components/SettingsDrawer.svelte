@@ -88,6 +88,16 @@
       de: 'Was soll erkannt werden? Deaktivierte Kategorien werden im Detection-Review nicht angezeigt.',
       en: "What should be detected? Disabled categories don't appear in the detection review.",
     },
+    customLabel: { de: 'Eigene Begriffe', en: 'Custom terms' },
+    customIntro: {
+      de: 'Eigene Wörter, die die Erkennung nicht kennt — z. B. Projektnamen oder Kunden. Wird lokal gespeichert.',
+      en: "Your own words the detectors can't know — e.g. project or client names. Stored locally.",
+    },
+    alwaysLabel: { de: 'Immer maskieren', en: 'Always mask' },
+    neverLabel: { de: 'Nie maskieren', en: 'Never mask' },
+    termPlaceholder: { de: 'Begriff + Enter', en: 'Term + Enter' },
+    termAdd: { de: 'Hinzufügen', en: 'Add' },
+    termRemove: { de: '{term} entfernen', en: 'Remove {term}' },
     nerLabel: {
       de: 'NER · Named Entity Recognition',
       en: 'NER · Named entity recognition',
@@ -173,6 +183,18 @@
   function toggleCat(cat: EntityCategory): void {
     settingsStore.toggleCategory(cat);
     applyCategoryFilter([...settingsStore.enabledCategories] as EntityCategory[]);
+  }
+
+  // Custom term lists — changes take effect on the next "Maskieren".
+  let alwaysInput = $state('');
+  let neverInput = $state('');
+  function addAlways(): void {
+    settingsStore.addAlwaysMask(alwaysInput);
+    alwaysInput = '';
+  }
+  function addNever(): void {
+    settingsStore.addNeverMask(neverInput);
+    neverInput = '';
   }
 
   const webgpuSupported = $derived(typeof navigator !== 'undefined' && 'gpu' in navigator);
@@ -308,6 +330,79 @@
             </li>
           {/each}
         </ul>
+      </section>
+
+      <hr class="my-7 border-[color:var(--color-rule)]" />
+
+      <!-- Custom term lists -->
+      <section>
+        <span class="label">{loc(s.customLabel)}</span>
+        <p class="mt-1 text-[12.5px] leading-snug text-[color:var(--color-ink-soft)]">
+          {loc(s.customIntro)}
+        </p>
+
+        {#snippet termList(
+          title: string,
+          terms: string[],
+          value: string,
+          setValue: (v: string) => void,
+          add: () => void,
+          remove: (t: string) => void
+        )}
+          <div class="mt-3">
+            <span class="text-[11.5px] font-medium text-[color:var(--color-ink)]">{title}</span>
+            <div class="mt-1.5 flex gap-2">
+              <input
+                class="flex-1 rounded-md border border-[color:var(--color-rule)] bg-[color:var(--color-bg)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--color-ink)] placeholder-[color:var(--color-ink-mute)] focus:border-[color:var(--color-accent)] focus:outline-none"
+                placeholder={loc(s.termPlaceholder)}
+                {value}
+                oninput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
+                onkeydown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    add();
+                  }
+                }}
+              />
+              <button class="btn-ghost" onclick={add}>{loc(s.termAdd)}</button>
+            </div>
+            {#if terms.length > 0}
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                {#each terms as term (term)}
+                  <span
+                    class="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--color-rule-strong)] bg-[color:var(--color-bg-elev)] px-2.5 py-1 text-[11.5px] text-[color:var(--color-ink-soft)]"
+                  >
+                    {term}
+                    <button
+                      class="text-[color:var(--color-ink-mute)] transition-colors hover:text-[color:var(--color-danger)]"
+                      onclick={() => remove(term)}
+                      aria-label={loc(s.termRemove).replace('{term}', term)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/snippet}
+
+        {@render termList(
+          loc(s.alwaysLabel),
+          settingsStore.alwaysMask,
+          alwaysInput,
+          (v) => (alwaysInput = v),
+          addAlways,
+          (t) => settingsStore.removeAlwaysMask(t)
+        )}
+        {@render termList(
+          loc(s.neverLabel),
+          settingsStore.neverMask,
+          neverInput,
+          (v) => (neverInput = v),
+          addNever,
+          (t) => settingsStore.removeNeverMask(t)
+        )}
       </section>
 
       <hr class="my-7 border-[color:var(--color-rule)]" />

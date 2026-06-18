@@ -46,6 +46,58 @@ export function getPipeline(): Pipeline {
 }
 
 /**
+ * Apply the user's custom term lists on top of detector output:
+ * - drop any entity whose text matches a "never mask" term (false positives);
+ * - add a manual entity for every occurrence of an "always mask" term that
+ *   isn't already covered, so domain-specific words (codenames, client
+ *   names, …) the detectors can't know about still get masked.
+ * Added spans never overlap existing or each other (the masker requires it).
+ */
+function applyCustomTerms(text: string, entities: Entity[]): Entity[] {
+  const never = new Set(settingsStore.neverMask.map((t) => t.trim().toLowerCase()));
+  let result =
+    never.size > 0 ? entities.filter((e) => !never.has(e.text.trim().toLowerCase())) : entities;
+
+  const always = settingsStore.alwaysMask;
+  if (always.length === 0) return result;
+
+  const spans: Array<[number, number]> = result.map((e) => [e.start, e.end]);
+  const overlaps = (s: number, en: number) => spans.some(([a, b]) => s < b && a < en);
+  const lower = text.toLowerCase();
+  const additions: Entity[] = [];
+
+  for (const raw of always) {
+    const term = raw.trim();
+    if (!term) continue;
+    const needle = term.toLowerCase();
+    let from = 0;
+    for (;;) {
+      const idx = lower.indexOf(needle, from);
+      if (idx === -1) break;
+      const end = idx + term.length;
+      if (!overlaps(idx, end)) {
+        additions.push({
+          start: idx,
+          end,
+          type: 'OTHER_PII',
+          category: 'other',
+          text: text.slice(idx, end),
+          confidence: 1,
+          source: 'manual',
+        });
+        spans.push([idx, end]);
+      }
+      from = idx + term.length;
+    }
+  }
+
+  if (additions.length === 0) return result;
+  result = [...result, ...additions];
+  result.sort((a, b) => a.start - b.start || b.end - a.end);
+  return result;
+}
+
+/**
  * Analyze text for PII entities using the current pipeline configuration.
  */
 export async function analyze(text: string): Promise<Entity[]> {
@@ -56,9 +108,10 @@ export async function analyze(text: string): Promise<Entity[]> {
   });
 
   const result = await getPipeline().analyze(text);
+  const entities = applyCustomTerms(text, result.entities);
 
-  console.log('[pipeline.analyze] returned', { entityCount: result.entities.length });
-  return result.entities;
+  console.log('[pipeline.analyze] returned', { entityCount: entities.length });
+  return entities;
 }
 
 /**

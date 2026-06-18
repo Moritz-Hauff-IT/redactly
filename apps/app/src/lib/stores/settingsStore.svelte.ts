@@ -16,8 +16,24 @@ const LS_NER_KEY = 'de-pii:settings:ner-enabled';
 const LS_WEBLLM_KEY = 'de-pii:settings:webllm-enabled';
 const LS_WEBLLM_MODEL_KEY = 'de-pii:settings:webllm-model';
 const LS_WEBLLM_TEXT_PII_KEY = 'de-pii:settings:webllm-text-pii';
+const LS_ALWAYS_MASK_KEY = 'de-pii:settings:always-mask';
+const LS_NEVER_MASK_KEY = 'de-pii:settings:never-mask';
 
 const DEFAULT_WEBLLM_MODEL = 'Llama-3.2-3B-Instruct-q4f16_1-MLC';
+
+function loadTermList(key: string): string[] {
+  const raw = safeLocalStorageGet(key);
+  if (raw === null) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      return parsed.filter((t): t is string => typeof t === 'string' && t.trim().length > 0);
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
 
 function safeLocalStorageGet(key: string): string | null {
   try {
@@ -89,6 +105,18 @@ function createSettingsStore() {
   let webllmEnabled = $state<boolean>(loadWebllmEnabled());
   let webllmModelId = $state<string>(loadWebllmModelId());
   let webllmTextPii = $state<boolean>(loadWebllmTextPii());
+  let alwaysMask = $state<string[]>(loadTermList(LS_ALWAYS_MASK_KEY));
+  let neverMask = $state<string[]>(loadTermList(LS_NEVER_MASK_KEY));
+
+  function addTerm(list: string[], term: string): string[] {
+    const t = term.trim();
+    if (!t) return list;
+    if (list.some((x) => x.toLowerCase() === t.toLowerCase())) return list;
+    return [...list, t];
+  }
+  function removeTerm(list: string[], term: string): string[] {
+    return list.filter((x) => x !== term);
+  }
 
   return {
     get enabledCategories() {
@@ -154,6 +182,32 @@ function createSettingsStore() {
     setWebllmTextPii(b: boolean): void {
       webllmTextPii = b;
       safeLocalStorageSet(LS_WEBLLM_TEXT_PII_KEY, b ? 'true' : 'false');
+    },
+
+    // ── Custom term lists ──────────────────────────────────────────────────
+    /** Terms that should ALWAYS be masked, even if no detector finds them. */
+    get alwaysMask() {
+      return alwaysMask;
+    },
+    /** Terms that should NEVER be masked (suppress false positives). */
+    get neverMask() {
+      return neverMask;
+    },
+    addAlwaysMask(term: string): void {
+      alwaysMask = addTerm(alwaysMask, term);
+      safeLocalStorageSet(LS_ALWAYS_MASK_KEY, JSON.stringify(alwaysMask));
+    },
+    removeAlwaysMask(term: string): void {
+      alwaysMask = removeTerm(alwaysMask, term);
+      safeLocalStorageSet(LS_ALWAYS_MASK_KEY, JSON.stringify(alwaysMask));
+    },
+    addNeverMask(term: string): void {
+      neverMask = addTerm(neverMask, term);
+      safeLocalStorageSet(LS_NEVER_MASK_KEY, JSON.stringify(neverMask));
+    },
+    removeNeverMask(term: string): void {
+      neverMask = removeTerm(neverMask, term);
+      safeLocalStorageSet(LS_NEVER_MASK_KEY, JSON.stringify(neverMask));
     },
   };
 }
