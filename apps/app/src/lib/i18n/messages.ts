@@ -107,6 +107,29 @@ export const messages = {
     en: 'running locally in your browser — nothing is uploaded',
   },
 
+  // ---- ZIP result view (files listed in the panes) ----
+  ws_zip_count: { de: '{n} Dateien', en: '{n} files' },
+  ws_new_input: { de: 'Neue Eingabe', en: 'New input' },
+  ws_zip_all: { de: 'Alle als ZIP', en: 'All as ZIP' },
+  ws_zip_dl_file: { de: 'Diese Datei herunterladen', en: 'Download this file' },
+  ws_zip_nopreview: {
+    de: 'Keine Textvorschau für diese Datei.',
+    en: 'No text preview for this file.',
+  },
+  ws_zip_kept_note: {
+    de: 'Unverändert übernommen — keine Maskierung.',
+    en: 'Kept unchanged — not masked.',
+  },
+  ws_zip_skipped_note: { de: 'Aus dem Archiv weggelassen.', en: 'Left out of the archive.' },
+  ws_zip_failed_note: {
+    de: 'Verarbeitung fehlgeschlagen — Original übernommen.',
+    en: 'Processing failed — original kept.',
+  },
+  ws_act_masked: { de: 'maskiert', en: 'masked' },
+  ws_act_kept: { de: 'behalten', en: 'kept' },
+  ws_act_skipped: { de: 'übersprungen', en: 'skipped' },
+  ws_act_failed: { de: 'Fehler', en: 'failed' },
+
   // ---- Caution banner ----
   caution_lead: { de: 'Bitte selbst gegenprüfen.', en: 'Always double-check yourself.' },
   caution_body: {
