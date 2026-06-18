@@ -130,6 +130,22 @@ export const messages = {
   ws_act_skipped: { de: 'übersprungen', en: 'skipped' },
   ws_act_failed: { de: 'Fehler', en: 'failed' },
 
+  // ---- Mapping save / load ----
+  map_export: { de: 'Mapping sichern', en: 'Save mapping' },
+  map_import: { de: 'Mapping laden', en: 'Load mapping' },
+  map_export_warn: {
+    de: 'Achtung: diese Datei enthält die Original-Daten im Klartext — sicher aufbewahren, nur zum Wiederherstellen verwenden.',
+    en: 'Heads up: this file holds the original data in clear text — keep it safe, use it only to restore.',
+  },
+  map_import_ok: {
+    de: '{n} Zuordnungen geladen — du kannst jetzt wiederherstellen.',
+    en: '{n} mappings loaded — you can restore now.',
+  },
+  map_import_err: {
+    de: 'Mapping konnte nicht geladen werden: {message}',
+    en: 'Could not load mapping: {message}',
+  },
+
   // ---- Caution banner ----
   caution_lead: { de: 'Bitte selbst gegenprüfen.', en: 'Always double-check yourself.' },
   caution_body: {

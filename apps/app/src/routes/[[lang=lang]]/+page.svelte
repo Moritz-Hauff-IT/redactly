@@ -15,6 +15,7 @@
   import { engineStore } from '$lib/stores/engineStore.svelte.js';
   import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
   import { uiStore } from '$lib/stores/uiStore.svelte.js';
+  import { serializeMapping } from '@redactly/core/masker';
   import { t } from '$lib/i18n/locale.svelte.js';
   import type { ZipManifest } from '@redactly/core/parsers';
   import type { FilePlan } from '@redactly/core/orchestrator';
@@ -107,6 +108,19 @@
 
   function downloadAllZip() {
     if (zipResult) triggerDownload(zipResult.blob, zipResult.filename);
+  }
+
+  // Save the current mask→original mapping so it can be reloaded later (even
+  // in a fresh session) to restore. The file holds the originals → we warn.
+  const hasMapping = $derived((mappingStore.current?.forward.size ?? 0) > 0);
+  function exportMapping() {
+    const m = mappingStore.current;
+    if (!m || m.forward.size === 0) return;
+    triggerDownload(
+      new Blob([serializeMapping(m)], { type: 'application/json' }),
+      'redactly-mapping.json'
+    );
+    errorStore.show(t('map_export_warn'));
   }
 
   function clearZipResult() {
@@ -516,6 +530,9 @@
         <span>↺</span>
         {t('ws_btn_restore')}
       </button>
+      {#if hasMapping}
+        <button class="actionbtn" onclick={exportMapping}>↓ {t('map_export')}</button>
+      {/if}
       <button class="actionbtn mask" onclick={downloadAllZip}>↓ {t('ws_zip_all')}</button>
     {:else}
       <span class="stat">
@@ -539,6 +556,9 @@
         <span>↺</span>
         {t('ws_btn_restore')}
       </button>
+      {#if hasMapping}
+        <button class="actionbtn" onclick={exportMapping}>↓ {t('map_export')}</button>
+      {/if}
       <button
         class="actionbtn mask"
         data-testid="mask-button"

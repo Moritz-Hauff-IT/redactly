@@ -251,3 +251,56 @@ export function mask(text: string, entities: Entity[], options?: MaskOptions): M
 
   return { maskedText: result, mapping };
 }
+
+// ---------------------------------------------------------------------------
+// Mapping serialization (save / load so mask + restore can happen at
+// different times). The serialized form contains the ORIGINAL values in clear
+// text — it is the key that un-masks placeholders — so callers must treat the
+// exported data as sensitive and never persist it without the user's intent.
+// ---------------------------------------------------------------------------
+
+const MAPPING_FORMAT = 'redactly-mapping' as const;
+
+interface SerializedMapping {
+  format: typeof MAPPING_FORMAT;
+  version: 1;
+  /** [placeholder, original] pairs from mapping.forward. */
+  entries: [string, string][];
+}
+
+/** Serialize a mapping to pretty JSON. */
+export function serializeMapping(mapping: Mapping): string {
+  const payload: SerializedMapping = {
+    format: MAPPING_FORMAT,
+    version: 1,
+    entries: [...mapping.forward.entries()],
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
+/** Rebuild a Mapping from previously-serialized JSON. Throws on bad input. */
+export function deserializeMapping(json: string): Mapping {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    throw new Error('Datei ist kein gültiges JSON');
+  }
+  const obj = parsed as Partial<SerializedMapping> | null;
+  if (!obj || obj.format !== MAPPING_FORMAT || !Array.isArray(obj.entries)) {
+    throw new Error('Kein gültiges Redactly-Mapping');
+  }
+  const mapping = createMapping();
+  for (const pair of obj.entries) {
+    if (!Array.isArray(pair) || pair.length !== 2) continue;
+    const [placeholder, original] = pair;
+    if (typeof placeholder !== 'string' || typeof original !== 'string') continue;
+    mapping.forward.set(placeholder, original);
+    // First original→placeholder wins, matching mask()'s reverse map.
+    if (!mapping.reverse.has(original)) mapping.reverse.set(original, placeholder);
+  }
+  if (mapping.forward.size === 0) {
+    throw new Error('Mapping ist leer');
+  }
+  return mapping;
+}
