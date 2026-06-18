@@ -856,6 +856,121 @@ async function writeImageRedacted(
 }
 
 /**
+ * Irreversibly black out PII regions in an image (no placeholder text, no
+ * mapping). Re-runs OCR, finds word boxes whose text matches any of `terms`
+ * (the original PII values), and paints solid black rectangles over them.
+ * Used by the app's redact mode for image downloads.
+ */
+export async function writeImageBlocked(
+  originalBytes: Uint8Array,
+  terms: string[],
+  baseName: string,
+  format: 'png' | 'jpg' | 'webp'
+): Promise<WriteResult> {
+  const meta = FORMAT_META[format];
+  // Longest-first so multi-word terms win over their prefixes.
+  const cleanTerms = [...new Set(terms.map((t) => t.trim()).filter(Boolean))].sort(
+    (a, b) => b.length - a.length
+  );
+
+  if (cleanTerms.length === 0) {
+    const blob = new Blob([new Uint8Array(originalBytes)], { type: meta.mime });
+    return { blob, filename: `${baseName}-masked.${meta.extension}`, mimeType: meta.mime };
+  }
+
+  const ocr = await runOcr(originalBytes);
+  const srcBlob = new Blob([new Uint8Array(originalBytes)], { type: meta.mime });
+  const bitmap = await createImageBitmap(srcBlob);
+
+  const canvas =
+    typeof OffscreenCanvas !== 'undefined'
+      ? new OffscreenCanvas(bitmap.width, bitmap.height)
+      : (() => {
+          const c = document.createElement('canvas');
+          c.width = bitmap.width;
+          c.height = bitmap.height;
+          return c;
+        })();
+
+  const ctx = (canvas as OffscreenCanvas).getContext('2d') as
+    | OffscreenCanvasRenderingContext2D
+    | CanvasRenderingContext2D
+    | null;
+  if (!ctx) {
+    throw new Error('2D canvas context unavailable — cannot redact image');
+  }
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close?.();
+
+  const lines = groupWordsIntoLines(ocr.words);
+  for (const line of lines) {
+    if (line.length === 0) continue;
+    const { text, origin } = buildOcrLineText(line);
+
+    const hits: { start: number; end: number }[] = [];
+    for (const term of cleanTerms) {
+      let from = 0;
+      while (from <= text.length - term.length) {
+        const idx = text.indexOf(term, from);
+        if (idx < 0) break;
+        const end = idx + term.length;
+        const overlaps = hits.some((h) => !(end <= h.start || idx >= h.end));
+        if (!overlaps) hits.push({ start: idx, end });
+        from = idx + 1;
+      }
+    }
+    if (hits.length === 0) continue;
+
+    for (const hit of hits) {
+      const touched = new Set<number>();
+      for (let i = hit.start; i < hit.end; i++) {
+        const o = origin[i];
+        if (o !== null && o !== undefined) touched.add(o);
+      }
+      if (touched.size === 0) continue;
+
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      for (const i of touched) {
+        const w = line[i]!;
+        if (w.bbox.x0 < minX) minX = w.bbox.x0;
+        if (w.bbox.x1 > maxX) maxX = w.bbox.x1;
+        if (w.bbox.y0 < minY) minY = w.bbox.y0;
+        if (w.bbox.y1 > maxY) maxY = w.bbox.y1;
+      }
+      if (!isFinite(minX)) continue;
+
+      const padX = 2;
+      const padY = 2;
+      ctx.fillStyle = 'black';
+      ctx.fillRect(
+        Math.max(0, minX - padX),
+        Math.max(0, minY - padY),
+        maxX - minX + padX * 2,
+        maxY - minY + padY * 2
+      );
+    }
+  }
+
+  const exportMime = meta.mime;
+  let outBlob: Blob;
+  if ('convertToBlob' in canvas) {
+    outBlob = await (canvas as OffscreenCanvas).convertToBlob({ type: exportMime });
+  } else {
+    outBlob = await new Promise<Blob>((resolve, reject) => {
+      (canvas as HTMLCanvasElement).toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('canvas.toBlob returned null'))),
+        exportMime
+      );
+    });
+  }
+
+  return { blob: outBlob, filename: `${baseName}-masked.${meta.extension}`, mimeType: exportMime };
+}
+
+/**
  * Group OCR words into lines by Y-midpoint proximity (within half a box
  * height of the previous word's midpoint). Within each line, sort by X.
  */
