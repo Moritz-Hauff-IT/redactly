@@ -101,7 +101,9 @@ export const messages = {
   ws_state_original: { de: 'original', en: 'original' },
   ws_state_masked: { de: 'maskiert', en: 'masked' },
   ws_btn_mask: { de: 'Maskieren', en: 'Mask' },
+  ws_btn_redact: { de: 'Schwärzen', en: 'Redact' },
   ws_btn_restore: { de: 'Wiederherstellen', en: 'Restore' },
+  ws_state_redacted: { de: 'geschwärzt', en: 'redacted' },
   ws_analysis_hint: {
     de: 'läuft lokal in deinem Browser — nichts wird hochgeladen',
     en: 'running locally in your browser — nothing is uploaded',

@@ -88,6 +88,15 @@
       de: 'Was soll erkannt werden? Deaktivierte Kategorien werden im Detection-Review nicht angezeigt.',
       en: "What should be detected? Disabled categories don't appear in the detection review.",
     },
+    modeLabel: { de: 'Modus', en: 'Mode' },
+    redactTitle: {
+      de: 'Schwärzen statt maskieren (nicht umkehrbar)',
+      en: 'Redact instead of mask (irreversible)',
+    },
+    redactBody: {
+      de: 'Ersetzt PII durch ████-Blöcke ohne Mapping — nicht wiederherstellbar. Gut für externe Weitergabe. Sonst bleibt alles umkehrbar maskiert.',
+      en: 'Replaces PII with ████ blocks and no mapping — not restorable. Good for sharing externally. Otherwise everything stays reversibly masked.',
+    },
     customLabel: { de: 'Eigene Begriffe', en: 'Custom terms' },
     customIntro: {
       de: 'Eigene Wörter, die die Erkennung nicht kennt — z. B. Projektnamen oder Kunden. Wird lokal gespeichert.',
@@ -287,6 +296,45 @@
     </header>
 
     <div class="flex-1 overflow-y-auto px-7 py-6">
+      <!-- Output mode: pseudonymize (reversible) vs redact (irreversible) -->
+      <section>
+        <span class="label">{loc(s.modeLabel)}</span>
+        <div
+          class="mt-3 rounded-md border border-[color:var(--color-rule)] bg-[color:var(--color-bg-elev)] p-3.5"
+        >
+          <button
+            type="button"
+            class="flex w-full items-start justify-between gap-3 text-left"
+            onclick={() => settingsStore.setRedactMode(!settingsStore.redactMode)}
+            aria-pressed={settingsStore.redactMode}
+          >
+            <span class="flex-1">
+              <span class="block text-[13px] font-medium text-[color:var(--color-ink)]">
+                {loc(s.redactTitle)}
+              </span>
+              <span
+                class="mt-0.5 block font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
+              >
+                {loc(s.redactBody)}
+              </span>
+            </span>
+            <span
+              class="mt-0.5 inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full p-0.5 transition-colors {settingsStore.redactMode
+                ? 'bg-[color:var(--color-accent)]'
+                : 'bg-[color:var(--color-rule-strong)]'}"
+            >
+              <span
+                class="h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform {settingsStore.redactMode
+                  ? 'translate-x-4'
+                  : 'translate-x-0'}"
+              ></span>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <hr class="my-7 border-[color:var(--color-rule)]" />
+
       <!-- Detection categories -->
       <section>
         <span class="label">{loc(s.categoriesLabel)}</span>

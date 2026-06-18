@@ -7,7 +7,7 @@
   import CautionBanner from '$lib/components/CautionBanner.svelte';
   import ZipReview from '$lib/components/ZipReview.svelte';
   import { analyze } from '$lib/core/pipeline.js';
-  import { maskText } from '$lib/core/maskingService.js';
+  import { maskText, redactText } from '$lib/core/maskingService.js';
   import { inputStore } from '$lib/stores/inputStore.svelte.js';
   import { detectionStore } from '$lib/stores/detectionStore.svelte.js';
   import { errorStore } from '$lib/stores/errorStore.svelte.js';
@@ -322,14 +322,15 @@
 
   $effect(() => {
     const active = detectionStore.activeEntities;
+    // Track the output mode so toggling it re-renders the output.
+    const redactMode = settingsStore.redactMode;
     if (active.length === 0 && !hasMasked) return;
     const text = untrack(() => inputStore.text);
     if (!text.trim()) {
       maskedText = '';
       return;
     }
-    const result = maskText(text);
-    maskedText = result.maskedText;
+    maskedText = redactMode ? redactText(text) : maskText(text).maskedText;
   });
 
   /** Mask + ensure the bridge shows the masked result. */
@@ -537,7 +538,13 @@
     {:else}
       <span class="stat">
         {t('ws_status')}:
-        <b>{hasMasked ? t('ws_state_masked') : t('ws_state_original')}</b>
+        <b>
+          {hasMasked
+            ? settingsStore.redactMode
+              ? t('ws_state_redacted')
+              : t('ws_state_masked')
+            : t('ws_state_original')}
+        </b>
       </span>
       {#if detectionStore.entities.length > 0}
         <span class="stat-sep">·</span>
@@ -613,7 +620,7 @@
           {/if}
         {:else}
           <span>▮</span>
-          {t('ws_btn_mask')}
+          {settingsStore.redactMode ? t('ws_btn_redact') : t('ws_btn_mask')}
         {/if}
       </button>
     {/if}

@@ -1,5 +1,5 @@
 import { untrack } from 'svelte';
-import { mask } from '@redactly/core/masker';
+import { mask, redact } from '@redactly/core/masker';
 import { restore } from '@redactly/core/restorer';
 import type { MaskResult } from '@redactly/core/masker';
 import type { RestoreResult } from '@redactly/core/restorer';
@@ -24,6 +24,18 @@ export function maskText(text: string): MaskResult {
   const result = mask(text, activeEntities, { existing });
   mappingStore.set(result.mapping);
   return result;
+}
+
+/**
+ * Irreversibly redact text (opaque ████ blocks) using the active entities.
+ * Produces NO mapping — the result can't be restored. Clears any existing
+ * mapping so the Restore tab is correctly unavailable in redact mode.
+ */
+export function redactText(text: string): string {
+  const activeEntities = detectionStore.activeEntities;
+  const { redactedText } = redact(text, activeEntities);
+  if (untrack(() => mappingStore.current) !== null) mappingStore.clear();
+  return redactedText;
 }
 
 /**
