@@ -2,6 +2,7 @@ import { Pipeline } from '@redactly/core/pipeline';
 import { RegexDetector } from '@redactly/core/regex';
 import type { Entity, EntityCategory } from '@redactly/core/types';
 import type { Detector } from '@redactly/core/types';
+import { findStructuralSpans } from '@redactly/core/structural';
 import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
 
 /** Minimal public interface we need from NerDetector — avoids importing the class directly. */
@@ -98,6 +99,46 @@ function applyCustomTerms(text: string, entities: Entity[]): Entity[] {
 }
 
 /**
+ * Apply structural always-mask rules (CSV/TSV columns, JSON keys, custom
+ * regex) on top of detector + custom-term output. Resolved spans become
+ * manual entities wherever they don't overlap something already detected.
+ */
+function applyStructuralRules(text: string, entities: Entity[]): Entity[] {
+  const rules = {
+    columns: settingsStore.columnRules,
+    jsonKeys: settingsStore.jsonKeyRules,
+    regexes: settingsStore.regexRules,
+  };
+  if (rules.columns.length === 0 && rules.jsonKeys.length === 0 && rules.regexes.length === 0) {
+    return entities;
+  }
+
+  const spans = findStructuralSpans(text, rules);
+  if (spans.length === 0) return entities;
+
+  const taken: Array<[number, number]> = entities.map((e) => [e.start, e.end]);
+  const overlaps = (s: number, en: number) => taken.some(([a, b]) => s < b && a < en);
+  const additions: Entity[] = [];
+  for (const sp of spans) {
+    if (overlaps(sp.start, sp.end)) continue;
+    additions.push({
+      start: sp.start,
+      end: sp.end,
+      type: 'OTHER_PII',
+      category: 'other',
+      text: sp.text,
+      confidence: 1,
+      source: 'manual',
+    });
+    taken.push([sp.start, sp.end]);
+  }
+  if (additions.length === 0) return entities;
+  const result = [...entities, ...additions];
+  result.sort((a, b) => a.start - b.start || b.end - a.end);
+  return result;
+}
+
+/**
  * Analyze text for PII entities using the current pipeline configuration.
  */
 export async function analyze(text: string): Promise<Entity[]> {
@@ -113,7 +154,7 @@ export async function analyze(text: string): Promise<Entity[]> {
   const minConf = settingsStore.minConfidence;
   const filtered =
     minConf > 0 ? result.entities.filter((e) => e.confidence >= minConf) : result.entities;
-  const entities = applyCustomTerms(text, filtered);
+  const entities = applyStructuralRules(text, applyCustomTerms(text, filtered));
 
   console.log('[pipeline.analyze] returned', { entityCount: entities.length });
   return entities;

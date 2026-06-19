@@ -114,6 +114,29 @@
     termPlaceholder: { de: 'Begriff + Enter', en: 'Term + Enter' },
     termAdd: { de: 'Hinzufügen', en: 'Add' },
     termRemove: { de: '{term} entfernen', en: 'Remove {term}' },
+    structLabel: { de: 'Strukturregeln', en: 'Structural rules' },
+    structIntro: {
+      de: 'Maskiere ganze Spalten, JSON-Werte oder alles was zu einem Muster passt — egal ob die Erkennung es findet. Greift bei Text/CSV/JSON-Eingaben.',
+      en: 'Mask whole columns, JSON values, or anything matching a pattern — regardless of detection. Applies to text/CSV/JSON input.',
+    },
+    colLabel: { de: 'CSV-Spalten', en: 'CSV columns' },
+    colPlaceholder: { de: 'Spaltenname, A oder 2', en: 'Header name, A or 2' },
+    colHint: {
+      de: 'Spaltenüberschrift, Excel-Buchstabe (A, B …) oder 1-basierter Index.',
+      en: 'Header name, spreadsheet letter (A, B …) or 1-based index.',
+    },
+    jsonKeyLabel: { de: 'JSON-Schlüssel', en: 'JSON keys' },
+    jsonKeyPlaceholder: { de: 'z. B. email', en: 'e.g. email' },
+    jsonKeyHint: {
+      de: 'Skalare Werte unter passenden Schlüsseln (jede Tiefe) werden maskiert.',
+      en: 'Scalar values under matching keys (any depth) get masked.',
+    },
+    regexLabel: { de: 'Regex-Muster', en: 'Regex patterns' },
+    regexPlaceholder: { de: 'z. B. KND-\\d+', en: 'e.g. CUST-\\d+' },
+    regexHint: {
+      de: 'Ganzer Treffer wird maskiert — oder Gruppe 1, falls vorhanden. Ungültige Muster werden ignoriert.',
+      en: 'Whole match is masked — or group 1 if present. Invalid patterns are ignored.',
+    },
     nerLabel: {
       de: 'NER · Named Entity Recognition',
       en: 'NER · Named entity recognition',
@@ -213,6 +236,23 @@
     neverInput = '';
   }
 
+  // Structural rules — also take effect on the next "Maskieren".
+  let columnInput = $state('');
+  let jsonKeyInput = $state('');
+  let regexInput = $state('');
+  function addColumn(): void {
+    settingsStore.addColumnRule(columnInput);
+    columnInput = '';
+  }
+  function addJsonKey(): void {
+    settingsStore.addJsonKeyRule(jsonKeyInput);
+    jsonKeyInput = '';
+  }
+  function addRegex(): void {
+    settingsStore.addRegexRule(regexInput);
+    regexInput = '';
+  }
+
   const webgpuSupported = $derived(typeof navigator !== 'undefined' && 'gpu' in navigator);
 
   async function handleNerToggle(): Promise<void> {
@@ -303,6 +343,58 @@
     </header>
 
     <div class="flex-1 overflow-y-auto px-7 py-6">
+      <!-- Reusable term-list editor (custom terms + structural rules). -->
+      {#snippet termList(
+        title: string,
+        terms: string[],
+        value: string,
+        setValue: (v: string) => void,
+        add: () => void,
+        remove: (t: string) => void,
+        placeholder: string = loc(s.termPlaceholder),
+        hint: string = ''
+      )}
+        <div class="mt-3">
+          <span class="text-[11.5px] font-medium text-[color:var(--color-ink)]">{title}</span>
+          <div class="mt-1.5 flex gap-2">
+            <input
+              class="flex-1 rounded-md border border-[color:var(--color-rule)] bg-[color:var(--color-bg)] px-2.5 py-1.5 font-[family-name:var(--font-mono)] text-[12.5px] text-[color:var(--color-ink)] placeholder-[color:var(--color-ink-mute)] focus:border-[color:var(--color-accent)] focus:outline-none"
+              {placeholder}
+              {value}
+              oninput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
+              onkeydown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  add();
+                }
+              }}
+            />
+            <button class="btn-ghost" onclick={add}>{loc(s.termAdd)}</button>
+          </div>
+          {#if hint}
+            <p class="mt-1 text-[10.5px] leading-snug text-[color:var(--color-ink-mute)]">{hint}</p>
+          {/if}
+          {#if terms.length > 0}
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              {#each terms as term (term)}
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--color-rule-strong)] bg-[color:var(--color-bg-elev)] px-2.5 py-1 font-[family-name:var(--font-mono)] text-[11.5px] text-[color:var(--color-ink-soft)]"
+                >
+                  {term}
+                  <button
+                    class="text-[color:var(--color-ink-mute)] transition-colors hover:text-[color:var(--color-danger)]"
+                    onclick={() => remove(term)}
+                    aria-label={loc(s.termRemove).replace('{term}', term)}
+                  >
+                    ×
+                  </button>
+                </span>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/snippet}
+
       <!-- Output mode: pseudonymize (reversible) vs redact (irreversible) -->
       <section>
         <span class="label">{loc(s.modeLabel)}</span>
@@ -431,52 +523,6 @@
           {loc(s.customIntro)}
         </p>
 
-        {#snippet termList(
-          title: string,
-          terms: string[],
-          value: string,
-          setValue: (v: string) => void,
-          add: () => void,
-          remove: (t: string) => void
-        )}
-          <div class="mt-3">
-            <span class="text-[11.5px] font-medium text-[color:var(--color-ink)]">{title}</span>
-            <div class="mt-1.5 flex gap-2">
-              <input
-                class="flex-1 rounded-md border border-[color:var(--color-rule)] bg-[color:var(--color-bg)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--color-ink)] placeholder-[color:var(--color-ink-mute)] focus:border-[color:var(--color-accent)] focus:outline-none"
-                placeholder={loc(s.termPlaceholder)}
-                {value}
-                oninput={(e) => setValue((e.currentTarget as HTMLInputElement).value)}
-                onkeydown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    add();
-                  }
-                }}
-              />
-              <button class="btn-ghost" onclick={add}>{loc(s.termAdd)}</button>
-            </div>
-            {#if terms.length > 0}
-              <div class="mt-2 flex flex-wrap gap-1.5">
-                {#each terms as term (term)}
-                  <span
-                    class="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--color-rule-strong)] bg-[color:var(--color-bg-elev)] px-2.5 py-1 text-[11.5px] text-[color:var(--color-ink-soft)]"
-                  >
-                    {term}
-                    <button
-                      class="text-[color:var(--color-ink-mute)] transition-colors hover:text-[color:var(--color-danger)]"
-                      onclick={() => remove(term)}
-                      aria-label={loc(s.termRemove).replace('{term}', term)}
-                    >
-                      ×
-                    </button>
-                  </span>
-                {/each}
-              </div>
-            {/if}
-          </div>
-        {/snippet}
-
         {@render termList(
           loc(s.alwaysLabel),
           settingsStore.alwaysMask,
@@ -492,6 +538,47 @@
           (v) => (neverInput = v),
           addNever,
           (t) => settingsStore.removeNeverMask(t)
+        )}
+      </section>
+
+      <hr class="my-7 border-[color:var(--color-rule)]" />
+
+      <!-- Structural rules: columns / JSON keys / regex -->
+      <section>
+        <span class="label">{loc(s.structLabel)}</span>
+        <p class="mt-1 text-[12.5px] leading-snug text-[color:var(--color-ink-soft)]">
+          {loc(s.structIntro)}
+        </p>
+
+        {@render termList(
+          loc(s.colLabel),
+          settingsStore.columnRules,
+          columnInput,
+          (v) => (columnInput = v),
+          addColumn,
+          (t) => settingsStore.removeColumnRule(t),
+          loc(s.colPlaceholder),
+          loc(s.colHint)
+        )}
+        {@render termList(
+          loc(s.jsonKeyLabel),
+          settingsStore.jsonKeyRules,
+          jsonKeyInput,
+          (v) => (jsonKeyInput = v),
+          addJsonKey,
+          (t) => settingsStore.removeJsonKeyRule(t),
+          loc(s.jsonKeyPlaceholder),
+          loc(s.jsonKeyHint)
+        )}
+        {@render termList(
+          loc(s.regexLabel),
+          settingsStore.regexRules,
+          regexInput,
+          (v) => (regexInput = v),
+          addRegex,
+          (t) => settingsStore.removeRegexRule(t),
+          loc(s.regexPlaceholder),
+          loc(s.regexHint)
         )}
       </section>
 
