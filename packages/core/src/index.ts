@@ -38,8 +38,8 @@ export { buildAuditReport, formatAuditReport } from './audit.js';
 export type { AuditReport } from './audit.js';
 
 // Structural always-mask rules (columns / JSON keys / regex)
-export { findStructuralSpans } from './structural.js';
-export type { StructuralRules, StructuralSpan } from './structural.js';
+export { findStructuralSpans, extractDelimitedColumns } from './structural.js';
+export type { StructuralRules, StructuralSpan, TableColumn } from './structural.js';
 
 // Settings profiles (named, portable configuration snapshots)
 export { serializeProfile, parseProfile, normalizeSettings } from './profiles.js';

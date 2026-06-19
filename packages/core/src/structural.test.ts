@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { findStructuralSpans, type StructuralRules } from './structural.js';
+import {
+  extractDelimitedColumns,
+  findStructuralSpans,
+  type StructuralRules,
+} from './structural.js';
 
 const EMPTY: StructuralRules = { columns: [], jsonKeys: [], regexes: [] };
 
@@ -98,5 +102,27 @@ describe('findStructuralSpans — combination & overlap', () => {
 
   it('empty rules produce no spans', () => {
     expect(findStructuralSpans('anything', EMPTY)).toEqual([]);
+  });
+});
+
+describe('extractDelimitedColumns', () => {
+  const csv = ['name,email,city', 'Anna,anna@x.com,Bern', 'Beat,beat@y.com,Zürich'].join('\n');
+
+  it('returns one column per header with refs, names and values', () => {
+    const cols = extractDelimitedColumns(csv);
+    expect(cols).not.toBeNull();
+    expect(cols!.map((c) => c.ref)).toEqual(['A', 'B', 'C']);
+    expect(cols!.map((c) => c.name)).toEqual(['name', 'email', 'city']);
+    expect(cols![1]!.values).toEqual(['anna@x.com', 'beat@y.com']);
+  });
+
+  it('handles semicolon delimiter and quoted fields', () => {
+    const semi = ['name;note', '"Doe, John";ok', 'Eva;fine'].join('\n');
+    const cols = extractDelimitedColumns(semi);
+    expect(cols![0]!.values).toEqual(['Doe, John', 'Eva']);
+  });
+
+  it('returns null for non-tabular prose', () => {
+    expect(extractDelimitedColumns('just a sentence, with commas, but no table')).toBeNull();
   });
 });

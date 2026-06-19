@@ -117,14 +117,8 @@
     termRemove: { de: '{term} entfernen', en: 'Remove {term}' },
     structLabel: { de: 'Strukturregeln', en: 'Structural rules' },
     structIntro: {
-      de: 'Maskiere ganze Spalten, JSON-Werte oder alles was zu einem Muster passt — egal ob die Erkennung es findet. Greift bei Text/CSV/JSON-Eingaben.',
-      en: 'Mask whole columns, JSON values, or anything matching a pattern — regardless of detection. Applies to text/CSV/JSON input.',
-    },
-    colLabel: { de: 'CSV-Spalten', en: 'CSV columns' },
-    colPlaceholder: { de: 'Spaltenname, A oder 2', en: 'Header name, A or 2' },
-    colHint: {
-      de: 'Spaltenüberschrift, Excel-Buchstabe (A, B …) oder 1-basierter Index.',
-      en: 'Header name, spreadsheet letter (A, B …) or 1-based index.',
+      de: 'Maskiere JSON-Werte oder alles was zu einem Muster passt — egal ob die Erkennung es findet. Tabellen-Spalten wählst du direkt beim Hochladen einer CSV/Excel.',
+      en: 'Mask JSON values or anything matching a pattern — regardless of detection. Table columns are picked directly when you upload a CSV/Excel file.',
     },
     jsonKeyLabel: { de: 'JSON-Schlüssel', en: 'JSON keys' },
     jsonKeyPlaceholder: { de: 'z. B. email', en: 'e.g. email' },
@@ -238,13 +232,9 @@
   }
 
   // Structural rules — also take effect on the next "Maskieren".
-  let columnInput = $state('');
+  // (CSV/Excel column masking is picked dynamically at upload, not here.)
   let jsonKeyInput = $state('');
   let regexInput = $state('');
-  function addColumn(): void {
-    settingsStore.addColumnRule(columnInput);
-    columnInput = '';
-  }
   function addJsonKey(): void {
     settingsStore.addJsonKeyRule(jsonKeyInput);
     jsonKeyInput = '';
@@ -676,16 +666,6 @@
           {loc(s.structIntro)}
         </p>
 
-        {@render termList(
-          loc(s.colLabel),
-          settingsStore.columnRules,
-          columnInput,
-          (v) => (columnInput = v),
-          addColumn,
-          (t) => settingsStore.removeColumnRule(t),
-          loc(s.colPlaceholder),
-          loc(s.colHint)
-        )}
         {@render termList(
           loc(s.jsonKeyLabel),
           settingsStore.jsonKeyRules,

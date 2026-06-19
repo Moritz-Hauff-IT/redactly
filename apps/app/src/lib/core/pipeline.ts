@@ -4,6 +4,7 @@ import type { Entity, EntityCategory } from '@redactly/core/types';
 import type { Detector } from '@redactly/core/types';
 import { findStructuralSpans } from '@redactly/core/structural';
 import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
+import { tableMaskStore } from '$lib/stores/tableMaskStore.svelte.js';
 
 /** Minimal public interface we need from NerDetector — avoids importing the class directly. */
 export interface NerDetectorLike extends Detector {
@@ -52,6 +53,8 @@ export function getPipeline(): Pipeline {
  * - add a manual entity for every occurrence of an "always mask" term that
  *   isn't already covered, so domain-specific words (codenames, client
  *   names, …) the detectors can't know about still get masked.
+ * The always-mask list combines the user's settings terms with the values of
+ * any columns picked at upload time (CSV/Excel column masking).
  * Added spans never overlap existing or each other (the masker requires it).
  */
 function applyCustomTerms(text: string, entities: Entity[]): Entity[] {
@@ -59,7 +62,7 @@ function applyCustomTerms(text: string, entities: Entity[]): Entity[] {
   let result =
     never.size > 0 ? entities.filter((e) => !never.has(e.text.trim().toLowerCase())) : entities;
 
-  const always = settingsStore.alwaysMask;
+  const always = [...settingsStore.alwaysMask, ...tableMaskStore.maskValues];
   if (always.length === 0) return result;
 
   const spans: Array<[number, number]> = result.map((e) => [e.start, e.end]);
