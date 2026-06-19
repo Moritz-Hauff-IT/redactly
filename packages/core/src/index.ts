@@ -41,6 +41,10 @@ export type { AuditReport } from './audit.js';
 export { findStructuralSpans } from './structural.js';
 export type { StructuralRules, StructuralSpan } from './structural.js';
 
+// Settings profiles (named, portable configuration snapshots)
+export { serializeProfile, parseProfile, normalizeSettings } from './profiles.js';
+export type { RedactlyProfile, ProfileSettings } from './profiles.js';
+
 // Pipeline orchestrator
 export { Pipeline } from './pipeline.js';
 export type { PipelineOptions, PipelineResult } from './pipeline.js';

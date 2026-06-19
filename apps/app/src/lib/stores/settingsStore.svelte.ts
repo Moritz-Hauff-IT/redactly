@@ -1,4 +1,5 @@
 import type { EntityCategory } from '@redactly/core/types';
+import { normalizeSettings, type ProfileSettings } from '@redactly/core/profiles';
 
 const ALL_CATEGORIES: EntityCategory[] = [
   'person',
@@ -23,6 +24,25 @@ const LS_MIN_CONFIDENCE_KEY = 'de-pii:settings:min-confidence';
 const LS_COLUMN_RULES_KEY = 'de-pii:settings:column-rules';
 const LS_JSON_KEY_RULES_KEY = 'de-pii:settings:json-key-rules';
 const LS_REGEX_RULES_KEY = 'de-pii:settings:regex-rules';
+const LS_PROFILES_KEY = 'de-pii:settings:profiles';
+
+function loadProfiles(): Record<string, ProfileSettings> {
+  const raw = safeLocalStorageGet(LS_PROFILES_KEY);
+  if (raw === null) return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const out: Record<string, ProfileSettings> = {};
+      for (const [name, val] of Object.entries(parsed as Record<string, unknown>)) {
+        out[name] = normalizeSettings(val);
+      }
+      return out;
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
 
 function loadMinConfidence(): number {
   const raw = safeLocalStorageGet(LS_MIN_CONFIDENCE_KEY);
@@ -130,6 +150,68 @@ function createSettingsStore() {
   // false positives, lower recall. Manual / custom-term hits (confidence 1)
   // always pass.
   let minConfidence = $state<number>(loadMinConfidence());
+  // Named configuration snapshots (profiles), persisted as name → settings.
+  let profiles = $state<Record<string, ProfileSettings>>(loadProfiles());
+
+  function persistProfiles(): void {
+    safeLocalStorageSet(LS_PROFILES_KEY, JSON.stringify(profiles));
+  }
+
+  /** Capture every masking-relevant setting as a portable snapshot. */
+  function snapshot(): ProfileSettings {
+    return {
+      categories: [...enabledCategories],
+      nerEnabled,
+      webllmEnabled,
+      webllmModelId,
+      webllmTextPii,
+      alwaysMask: [...alwaysMask],
+      neverMask: [...neverMask],
+      redactMode,
+      minConfidence,
+      columnRules: [...columnRules],
+      jsonKeyRules: [...jsonKeyRules],
+      regexRules: [...regexRules],
+    };
+  }
+
+  /** Apply a settings snapshot, persisting each field. Does NOT load models —
+   * engine preferences are restored, but a multi-GB download stays opt-in. */
+  function applySettings(input: ProfileSettings): void {
+    const s = normalizeSettings(input);
+    const validCats = s.categories.filter((c): c is EntityCategory =>
+      (ALL_CATEGORIES as string[]).includes(c)
+    );
+    enabledCategories = new Set(validCats.length > 0 ? validCats : ALL_CATEGORIES);
+    safeLocalStorageSet(LS_CATEGORIES_KEY, JSON.stringify([...enabledCategories]));
+
+    nerEnabled = s.nerEnabled;
+    safeLocalStorageSet(LS_NER_KEY, nerEnabled ? 'true' : 'false');
+    webllmEnabled = s.webllmEnabled;
+    safeLocalStorageSet(LS_WEBLLM_KEY, webllmEnabled ? 'true' : 'false');
+    if (s.webllmModelId) {
+      webllmModelId = s.webllmModelId;
+      safeLocalStorageSet(LS_WEBLLM_MODEL_KEY, webllmModelId);
+    }
+    webllmTextPii = s.webllmTextPii;
+    safeLocalStorageSet(LS_WEBLLM_TEXT_PII_KEY, webllmTextPii ? 'true' : 'false');
+
+    alwaysMask = [...s.alwaysMask];
+    safeLocalStorageSet(LS_ALWAYS_MASK_KEY, JSON.stringify(alwaysMask));
+    neverMask = [...s.neverMask];
+    safeLocalStorageSet(LS_NEVER_MASK_KEY, JSON.stringify(neverMask));
+    columnRules = [...s.columnRules];
+    safeLocalStorageSet(LS_COLUMN_RULES_KEY, JSON.stringify(columnRules));
+    jsonKeyRules = [...s.jsonKeyRules];
+    safeLocalStorageSet(LS_JSON_KEY_RULES_KEY, JSON.stringify(jsonKeyRules));
+    regexRules = [...s.regexRules];
+    safeLocalStorageSet(LS_REGEX_RULES_KEY, JSON.stringify(regexRules));
+
+    redactMode = s.redactMode;
+    safeLocalStorageSet(LS_REDACT_MODE_KEY, redactMode ? 'true' : 'false');
+    minConfidence = s.minConfidence;
+    safeLocalStorageSet(LS_MIN_CONFIDENCE_KEY, String(minConfidence));
+  }
 
   function addTerm(list: string[], term: string): string[] {
     const t = term.trim();
@@ -289,6 +371,40 @@ function createSettingsStore() {
     setMinConfidence(n: number): void {
       minConfidence = Math.min(0.95, Math.max(0, Number.isFinite(n) ? n : 0));
       safeLocalStorageSet(LS_MIN_CONFIDENCE_KEY, String(minConfidence));
+    },
+
+    // ── Profiles ───────────────────────────────────────────────────────────
+    /** Names of all saved profiles, alphabetically sorted. */
+    get profileNames(): string[] {
+      return Object.keys(profiles).sort((a, b) => a.localeCompare(b));
+    },
+    /** Snapshot the current settings (for export / save). */
+    snapshotSettings(): ProfileSettings {
+      return snapshot();
+    },
+    /** Apply a settings snapshot (from a profile or an imported file). */
+    applySettings(s: ProfileSettings): void {
+      applySettings(s);
+    },
+    /** Save the current settings under `name` (overwrites an existing one). */
+    saveProfile(name: string): void {
+      const key = name.trim();
+      if (!key) return;
+      profiles = { ...profiles, [key]: snapshot() };
+      persistProfiles();
+    },
+    /** Apply the named profile, if it exists. */
+    loadProfile(name: string): void {
+      const s = profiles[name];
+      if (s) applySettings(s);
+    },
+    /** Delete the named profile. */
+    deleteProfile(name: string): void {
+      if (!(name in profiles)) return;
+      const next = { ...profiles };
+      delete next[name];
+      profiles = next;
+      persistProfiles();
     },
   };
 }

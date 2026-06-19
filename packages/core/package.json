@@ -54,6 +54,10 @@
     "./mappingCrypto": {
       "import": "./dist/mappingCrypto.js",
       "types": "./dist/mappingCrypto.d.ts"
+    },
+    "./profiles": {
+      "import": "./dist/profiles.js",
+      "types": "./dist/profiles.d.ts"
     }
   },
   "main": "./dist/index.js",

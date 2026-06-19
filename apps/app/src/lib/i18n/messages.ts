@@ -178,6 +178,30 @@ export const messages = {
   pw_submit: { de: 'Bestätigen', en: 'Confirm' },
   pw_cancel: { de: 'Abbrechen', en: 'Cancel' },
 
+  // ---- Settings profiles ----
+  prof_label: { de: 'Profile', en: 'Profiles' },
+  prof_intro: {
+    de: 'Speichere alle Einstellungen (Kategorien, Begriffe, Strukturregeln, Modus, Empfindlichkeit) als benanntes Profil und wechsle mit einem Klick. Lokal gespeichert.',
+    en: 'Save all settings (categories, terms, structural rules, mode, sensitivity) as a named profile and switch in one click. Stored locally.',
+  },
+  prof_name_placeholder: { de: 'Profilname', en: 'Profile name' },
+  prof_save: { de: 'Speichern', en: 'Save' },
+  prof_load: { de: 'Laden', en: 'Load' },
+  prof_delete: { de: '{name} löschen', en: 'Delete {name}' },
+  prof_loaded: { de: 'Profil „{name}" geladen', en: 'Profile “{name}” loaded' },
+  prof_saved: { de: 'Profil „{name}" gespeichert', en: 'Profile “{name}” saved' },
+  prof_none: { de: 'Noch keine Profile gespeichert.', en: 'No profiles saved yet.' },
+  prof_export: { de: 'Profil exportieren', en: 'Export profile' },
+  prof_import: { de: 'Profil importieren', en: 'Import profile' },
+  prof_import_ok: {
+    de: 'Profil „{name}" importiert & angewendet',
+    en: 'Profile “{name}” imported & applied',
+  },
+  prof_import_err: {
+    de: 'Profil-Import fehlgeschlagen: {message}',
+    en: 'Profile import failed: {message}',
+  },
+
   // ---- Caution banner ----
   caution_lead: { de: 'Bitte selbst gegenprüfen.', en: 'Always double-check yourself.' },
   caution_body: {
