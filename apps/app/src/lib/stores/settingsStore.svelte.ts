@@ -20,6 +20,9 @@ const LS_ALWAYS_MASK_KEY = 'de-pii:settings:always-mask';
 const LS_NEVER_MASK_KEY = 'de-pii:settings:never-mask';
 const LS_REDACT_MODE_KEY = 'de-pii:settings:redact-mode';
 const LS_MIN_CONFIDENCE_KEY = 'de-pii:settings:min-confidence';
+const LS_COLUMN_RULES_KEY = 'de-pii:settings:column-rules';
+const LS_JSON_KEY_RULES_KEY = 'de-pii:settings:json-key-rules';
+const LS_REGEX_RULES_KEY = 'de-pii:settings:regex-rules';
 
 function loadMinConfidence(): number {
   const raw = safeLocalStorageGet(LS_MIN_CONFIDENCE_KEY);
@@ -116,6 +119,10 @@ function createSettingsStore() {
   let webllmTextPii = $state<boolean>(loadWebllmTextPii());
   let alwaysMask = $state<string[]>(loadTermList(LS_ALWAYS_MASK_KEY));
   let neverMask = $state<string[]>(loadTermList(LS_NEVER_MASK_KEY));
+  // Structural always-mask rules — see @redactly/core/structural.
+  let columnRules = $state<string[]>(loadTermList(LS_COLUMN_RULES_KEY));
+  let jsonKeyRules = $state<string[]>(loadTermList(LS_JSON_KEY_RULES_KEY));
+  let regexRules = $state<string[]>(loadTermList(LS_REGEX_RULES_KEY));
   // Output mode: false = pseudonymize (reversible placeholders + mapping),
   // true = redact (opaque ████ blocks, irreversible, no mapping).
   let redactMode = $state<boolean>(safeLocalStorageGet(LS_REDACT_MODE_KEY) === 'true');
@@ -224,6 +231,44 @@ function createSettingsStore() {
     removeNeverMask(term: string): void {
       neverMask = removeTerm(neverMask, term);
       safeLocalStorageSet(LS_NEVER_MASK_KEY, JSON.stringify(neverMask));
+    },
+
+    // ── Structural rules ───────────────────────────────────────────────────
+    /** CSV/TSV columns to always mask (header name, letter, or 1-based index). */
+    get columnRules() {
+      return columnRules;
+    },
+    /** JSON object keys whose scalar values should always be masked. */
+    get jsonKeyRules() {
+      return jsonKeyRules;
+    },
+    /** Raw regex patterns to always mask (group 1 if present, else whole match). */
+    get regexRules() {
+      return regexRules;
+    },
+    addColumnRule(rule: string): void {
+      columnRules = addTerm(columnRules, rule);
+      safeLocalStorageSet(LS_COLUMN_RULES_KEY, JSON.stringify(columnRules));
+    },
+    removeColumnRule(rule: string): void {
+      columnRules = removeTerm(columnRules, rule);
+      safeLocalStorageSet(LS_COLUMN_RULES_KEY, JSON.stringify(columnRules));
+    },
+    addJsonKeyRule(rule: string): void {
+      jsonKeyRules = addTerm(jsonKeyRules, rule);
+      safeLocalStorageSet(LS_JSON_KEY_RULES_KEY, JSON.stringify(jsonKeyRules));
+    },
+    removeJsonKeyRule(rule: string): void {
+      jsonKeyRules = removeTerm(jsonKeyRules, rule);
+      safeLocalStorageSet(LS_JSON_KEY_RULES_KEY, JSON.stringify(jsonKeyRules));
+    },
+    addRegexRule(rule: string): void {
+      regexRules = addTerm(regexRules, rule);
+      safeLocalStorageSet(LS_REGEX_RULES_KEY, JSON.stringify(regexRules));
+    },
+    removeRegexRule(rule: string): void {
+      regexRules = removeTerm(regexRules, rule);
+      safeLocalStorageSet(LS_REGEX_RULES_KEY, JSON.stringify(regexRules));
     },
 
     // ── Output mode ────────────────────────────────────────────────────────

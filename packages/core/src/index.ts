@@ -34,6 +34,10 @@ export type { RedactOptions, RedactResult } from './redactor.js';
 export { buildAuditReport, formatAuditReport } from './audit.js';
 export type { AuditReport } from './audit.js';
 
+// Structural always-mask rules (columns / JSON keys / regex)
+export { findStructuralSpans } from './structural.js';
+export type { StructuralRules, StructuralSpan } from './structural.js';
+
 // Pipeline orchestrator
 export { Pipeline } from './pipeline.js';
 export type { PipelineOptions, PipelineResult } from './pipeline.js';

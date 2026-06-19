@@ -46,6 +46,10 @@
     "./audit": {
       "import": "./dist/audit.js",
       "types": "./dist/audit.d.ts"
+    },
+    "./structural": {
+      "import": "./dist/structural.js",
+      "types": "./dist/structural.d.ts"
     }
   },
   "main": "./dist/index.js",
