@@ -14,6 +14,7 @@
   setupNer();
   import Toast from '$lib/components/Toast.svelte';
   import SettingsDrawer from '$lib/components/SettingsDrawer.svelte';
+  import OnboardingHint from '$lib/components/OnboardingHint.svelte';
   import LanguageToggle from '$lib/components/LanguageToggle.svelte';
   import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
   import { onMount } from 'svelte';
@@ -174,6 +175,7 @@
   </header>
 
   <main class="mx-auto w-full max-w-[1320px] flex-1 px-9 pt-6 pb-16">
+    <OnboardingHint onOpenSettings={() => (drawerOpen = true)} />
     {@render children()}
   </main>
 
