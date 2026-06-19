@@ -50,6 +50,10 @@
     "./structural": {
       "import": "./dist/structural.js",
       "types": "./dist/structural.d.ts"
+    },
+    "./mappingCrypto": {
+      "import": "./dist/mappingCrypto.js",
+      "types": "./dist/mappingCrypto.d.ts"
     }
   },
   "main": "./dist/index.js",

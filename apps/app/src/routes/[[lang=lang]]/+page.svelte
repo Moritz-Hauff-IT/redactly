@@ -6,6 +6,7 @@
   import RestorePane from '$lib/components/RestorePane.svelte';
   import CautionBanner from '$lib/components/CautionBanner.svelte';
   import ZipReview from '$lib/components/ZipReview.svelte';
+  import PasswordDialog from '$lib/components/PasswordDialog.svelte';
   import { analyze } from '$lib/core/pipeline.js';
   import { maskText, redactText } from '$lib/core/maskingService.js';
   import { inputStore } from '$lib/stores/inputStore.svelte.js';
@@ -121,6 +122,31 @@
       'redactly-mapping.json'
     );
     errorStore.show(t('map_export_warn'));
+  }
+
+  // Encrypted export — passphrase via dialog, AES-GCM envelope, never persisted.
+  let pwDialogOpen = $state(false);
+  function openEncryptedExport() {
+    if (!hasMapping) return;
+    pwDialogOpen = true;
+  }
+  async function exportMappingEncrypted(password: string) {
+    const m = mappingStore.current;
+    if (!m || m.forward.size === 0) return;
+    pwDialogOpen = false;
+    try {
+      const { encryptMapping } = await import('@redactly/core/mappingCrypto');
+      const envelope = await encryptMapping(m, password);
+      triggerDownload(
+        new Blob([envelope], { type: 'application/json' }),
+        'redactly-mapping.enc.json'
+      );
+      errorStore.show(t('map_export_enc_ok'));
+    } catch (err) {
+      errorStore.show(
+        t('map_import_err', { message: err instanceof Error ? err.message : 'unbekannt' })
+      );
+    }
   }
 
   function clearZipResult() {
@@ -533,6 +559,9 @@
       </button>
       {#if hasMapping}
         <button class="actionbtn" onclick={exportMapping}>↓ {t('map_export')}</button>
+        <button class="actionbtn" onclick={openEncryptedExport} title={t('pw_export_body')}>
+          🔒 {t('map_export_enc')}
+        </button>
       {/if}
       <button class="actionbtn mask" onclick={downloadAllZip}>↓ {t('ws_zip_all')}</button>
     {:else}
@@ -565,6 +594,9 @@
       </button>
       {#if hasMapping}
         <button class="actionbtn" onclick={exportMapping}>↓ {t('map_export')}</button>
+        <button class="actionbtn" onclick={openEncryptedExport} title={t('pw_export_body')}>
+          🔒 {t('map_export_enc')}
+        </button>
       {/if}
       <button
         class="actionbtn mask"
@@ -646,6 +678,15 @@
     onDownload={downloadZipFromReview}
   />
 {/if}
+
+<PasswordDialog
+  open={pwDialogOpen}
+  title={t('pw_export_title')}
+  body={t('pw_export_body')}
+  confirm
+  onsubmit={exportMappingEncrypted}
+  oncancel={() => (pwDialogOpen = false)}
+/>
 
 <style>
   .work-grid {
