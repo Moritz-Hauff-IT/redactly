@@ -4,6 +4,8 @@
   import { restoreStore } from '../stores/restoreStore.svelte.js';
   import { errorStore } from '../stores/errorStore.svelte.js';
   import { deserializeMapping } from '@redactly/core/masker';
+  import { isEncryptedMapping } from '@redactly/core/mappingCrypto';
+  import PasswordDialog from './PasswordDialog.svelte';
   import { loc, t } from '$lib/i18n/locale.svelte.js';
 
   interface Props {
@@ -14,19 +16,47 @@
 
   // Load a previously-saved mapping so you can restore in a fresh session.
   let mapInputEl = $state<HTMLInputElement | null>(null);
+  // Encrypted-import state: hold the envelope text until a password is given.
+  let pendingEnvelope = $state<string | null>(null);
+  let decryptError = $state<string | null>(null);
+
+  function applyMapping(m: ReturnType<typeof deserializeMapping>) {
+    mappingStore.set(m);
+    errorStore.show(t('map_import_ok', { n: m.forward.size }));
+  }
+
   async function handleMapFile(e: Event) {
     const input = e.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
+    const text = await file.text();
+    if (isEncryptedMapping(text)) {
+      // Encrypted file → ask for the password before we can read it.
+      decryptError = null;
+      pendingEnvelope = text;
+      return;
+    }
     try {
-      const m = deserializeMapping(await file.text());
-      mappingStore.set(m);
-      errorStore.show(t('map_import_ok', { n: m.forward.size }));
+      applyMapping(deserializeMapping(text));
     } catch (err) {
       errorStore.show(
         t('map_import_err', { message: err instanceof Error ? err.message : 'unbekannt' })
       );
+    }
+  }
+
+  async function decryptPending(password: string) {
+    if (!pendingEnvelope) return;
+    try {
+      const { decryptMapping } = await import('@redactly/core/mappingCrypto');
+      const m = await decryptMapping(pendingEnvelope, password);
+      pendingEnvelope = null;
+      decryptError = null;
+      applyMapping(m);
+    } catch (err) {
+      // Keep the dialog open and surface the error inline (wrong password).
+      decryptError = err instanceof Error ? err.message : 'unbekannt';
     }
   }
 
@@ -300,3 +330,15 @@
     {@render body()}
   </div>
 {/if}
+
+<PasswordDialog
+  open={pendingEnvelope !== null}
+  title={t('pw_import_title')}
+  body={t('pw_import_body')}
+  error={decryptError}
+  onsubmit={decryptPending}
+  oncancel={() => {
+    pendingEnvelope = null;
+    decryptError = null;
+  }}
+/>

@@ -157,6 +157,26 @@ export const messages = {
     de: 'Mapping konnte nicht geladen werden: {message}',
     en: 'Could not load mapping: {message}',
   },
+  map_export_enc: { de: 'Verschlüsselt sichern', en: 'Save encrypted' },
+  map_export_enc_ok: {
+    de: 'Verschlüsseltes Mapping gespeichert — Passwort gut merken, ohne ist es nicht wiederherstellbar.',
+    en: 'Encrypted mapping saved — remember the password, without it the data is unrecoverable.',
+  },
+  pw_export_title: { de: 'Mapping verschlüsseln', en: 'Encrypt mapping' },
+  pw_export_body: {
+    de: 'Wähle ein Passwort. Die Datei wird lokal mit AES-256-GCM verschlüsselt — ohne Passwort gibt es keine Wiederherstellung.',
+    en: 'Choose a password. The file is encrypted locally with AES-256-GCM — there is no recovery without it.',
+  },
+  pw_import_title: { de: 'Mapping entschlüsseln', en: 'Decrypt mapping' },
+  pw_import_body: {
+    de: 'Diese Mapping-Datei ist verschlüsselt. Gib das Passwort ein, um sie zu laden.',
+    en: 'This mapping file is encrypted. Enter the password to load it.',
+  },
+  pw_placeholder: { de: 'Passwort', en: 'Password' },
+  pw_confirm_placeholder: { de: 'Passwort wiederholen', en: 'Repeat password' },
+  pw_mismatch: { de: 'Passwörter stimmen nicht überein', en: 'Passwords do not match' },
+  pw_submit: { de: 'Bestätigen', en: 'Confirm' },
+  pw_cancel: { de: 'Abbrechen', en: 'Cancel' },
 
   // ---- Caution banner ----
   caution_lead: { de: 'Bitte selbst gegenprüfen.', en: 'Always double-check yourself.' },

@@ -26,6 +26,9 @@ export type { Mapping, MaskOptions, MaskResult } from './masker.js';
 export { restore } from './restorer.js';
 export type { RestoreOptions, RestoreResult } from './restorer.js';
 
+// Mapping encryption (password-based AES-GCM envelope)
+export { encryptMapping, decryptMapping, isEncryptedMapping } from './mappingCrypto.js';
+
 // Redactor (irreversible — no mapping)
 export { redact } from './redactor.js';
 export type { RedactOptions, RedactResult } from './redactor.js';
