@@ -7,7 +7,8 @@
   import { clearModelCaches } from '$lib/core/modelCacheCleanup.js';
   import { SUPPORTED_WEBLLM_MODELS } from '@redactly/core';
   import type { EntityCategory } from '@redactly/core/types';
-  import { loc } from '$lib/i18n/locale.svelte.js';
+  import { errorStore } from '$lib/stores/errorStore.svelte.js';
+  import { loc, t } from '$lib/i18n/locale.svelte.js';
 
   interface BL {
     de: string;
@@ -253,6 +254,61 @@
     regexInput = '';
   }
 
+  // Profiles — named snapshots of all settings.
+  let profileNameInput = $state('');
+  let selectedProfile = $state('');
+  let profileFileEl = $state<HTMLInputElement | null>(null);
+
+  function saveProfile(): void {
+    const name = profileNameInput.trim();
+    if (!name) return;
+    settingsStore.saveProfile(name);
+    profileNameInput = '';
+    selectedProfile = name;
+    errorStore.show(t('prof_saved', { name }));
+  }
+  function loadSelectedProfile(): void {
+    if (!selectedProfile) return;
+    settingsStore.loadProfile(selectedProfile);
+    applyCategoryFilter([...settingsStore.enabledCategories] as EntityCategory[]);
+    errorStore.show(t('prof_loaded', { name: selectedProfile }));
+  }
+  function deleteSelectedProfile(): void {
+    if (!selectedProfile) return;
+    settingsStore.deleteProfile(selectedProfile);
+    selectedProfile = '';
+  }
+  async function exportProfile(): Promise<void> {
+    const name = (selectedProfile || profileNameInput.trim() || 'profil').trim();
+    const { serializeProfile } = await import('@redactly/core/profiles');
+    const json = serializeProfile(name, settingsStore.snapshotSettings());
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `redactly-profile-${name.replace(/[^\w.-]+/g, '_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  async function importProfile(e: Event): Promise<void> {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      const { parseProfile } = await import('@redactly/core/profiles');
+      const profile = parseProfile(await file.text());
+      settingsStore.saveProfile(profile.name);
+      settingsStore.applySettings(profile.settings);
+      applyCategoryFilter([...settingsStore.enabledCategories] as EntityCategory[]);
+      selectedProfile = profile.name;
+      errorStore.show(t('prof_import_ok', { name: profile.name }));
+    } catch (err) {
+      errorStore.show(
+        t('prof_import_err', { message: err instanceof Error ? err.message : 'unbekannt' })
+      );
+    }
+  }
+
   const webgpuSupported = $derived(typeof navigator !== 'undefined' && 'gpu' in navigator);
 
   async function handleNerToggle(): Promise<void> {
@@ -394,6 +450,76 @@
           {/if}
         </div>
       {/snippet}
+
+      <!-- Profiles — named snapshots of all settings -->
+      <section>
+        <span class="label">{t('prof_label')}</span>
+        <p class="mt-1 text-[12.5px] leading-snug text-[color:var(--color-ink-soft)]">
+          {t('prof_intro')}
+        </p>
+
+        {#if settingsStore.profileNames.length > 0}
+          <div class="mt-3 flex gap-2">
+            <select
+              class="flex-1 rounded-md border border-[color:var(--color-rule)] bg-[color:var(--color-bg)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--color-ink)] focus:border-[color:var(--color-accent)] focus:outline-none"
+              bind:value={selectedProfile}
+              aria-label={t('prof_label')}
+            >
+              <option value="" disabled>—</option>
+              {#each settingsStore.profileNames as name (name)}
+                <option value={name}>{name}</option>
+              {/each}
+            </select>
+            <button class="btn-ghost" disabled={!selectedProfile} onclick={loadSelectedProfile}>
+              {t('prof_load')}
+            </button>
+            <button
+              class="btn-ghost text-[color:var(--color-ink-mute)] hover:text-[color:var(--color-danger)]"
+              disabled={!selectedProfile}
+              onclick={deleteSelectedProfile}
+              aria-label={selectedProfile ? t('prof_delete', { name: selectedProfile }) : ''}
+            >
+              ✕
+            </button>
+          </div>
+        {:else}
+          <p class="mt-2 text-[11px] text-[color:var(--color-ink-mute)]">{t('prof_none')}</p>
+        {/if}
+
+        <div class="mt-2 flex gap-2">
+          <input
+            class="flex-1 rounded-md border border-[color:var(--color-rule)] bg-[color:var(--color-bg)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--color-ink)] placeholder-[color:var(--color-ink-mute)] focus:border-[color:var(--color-accent)] focus:outline-none"
+            placeholder={t('prof_name_placeholder')}
+            bind:value={profileNameInput}
+            onkeydown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                saveProfile();
+              }
+            }}
+          />
+          <button class="btn-ghost" disabled={!profileNameInput.trim()} onclick={saveProfile}>
+            {t('prof_save')}
+          </button>
+        </div>
+
+        <div class="mt-2 flex flex-wrap gap-2">
+          <button class="btn-ghost" onclick={exportProfile}>↓ {t('prof_export')}</button>
+          <input
+            bind:this={profileFileEl}
+            type="file"
+            accept="application/json,.json"
+            class="sr-only"
+            onchange={importProfile}
+            aria-label={t('prof_import')}
+          />
+          <button class="btn-ghost" onclick={() => profileFileEl?.click()}>
+            ↑ {t('prof_import')}
+          </button>
+        </div>
+      </section>
+
+      <hr class="my-7 border-[color:var(--color-rule)]" />
 
       <!-- Output mode: pseudonymize (reversible) vs redact (irreversible) -->
       <section>
