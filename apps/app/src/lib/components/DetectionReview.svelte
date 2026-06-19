@@ -10,6 +10,30 @@
   }
   const { inspector = false }: Props = $props();
 
+  // Which detector found an entity — shown per row for transparency ("why?").
+  const SOURCE_LABELS: Record<string, { de: string; en: string }> = {
+    regex: { de: 'Regex', en: 'Regex' },
+    ner: { de: 'NER', en: 'NER' },
+    llm: { de: 'KI', en: 'AI' },
+    manual: { de: 'eigen', en: 'custom' },
+  };
+
+  async function downloadAuditReport() {
+    const { buildAuditReport, formatAuditReport } = await import('@redactly/core/audit');
+    const report = buildAuditReport(detectionStore.activeEntities);
+    const text = formatAuditReport(report, {
+      title: 'Redactly — Audit-Report',
+      timestamp: new Date().toISOString(),
+    });
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'redactly-audit.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const CATEGORY_LABELS: Record<EntityCategory, { de: string; en: string }> = {
     person: { de: 'Person', en: 'Person' },
     contact: { de: 'Kontakt', en: 'Contact' },
@@ -93,11 +117,25 @@
   <div class="pane">
     <div class="pane-head">
       <span class="pane-title">{loc({ de: 'Erkannte Daten', en: 'Detected data' })}</span>
-      <span
-        class="font-[family-name:var(--font-mono)] text-[10.5px] text-[color:var(--color-ink-mute)]"
-      >
-        🔒 {loc({ de: 'lokal', en: 'local' })}
-      </span>
+      <div class="flex items-center gap-2">
+        {#if totalEntities > 0}
+          <button
+            class="btn-ghost text-[10.5px]"
+            onclick={downloadAuditReport}
+            title={loc({
+              de: 'Audit-Report herunterladen (ohne Originalwerte)',
+              en: 'Download audit report (no original values)',
+            })}
+          >
+            ↓ {loc({ de: 'Bericht', en: 'Report' })}
+          </button>
+        {/if}
+        <span
+          class="font-[family-name:var(--font-mono)] text-[10.5px] text-[color:var(--color-ink-mute)]"
+        >
+          🔒 {loc({ de: 'lokal', en: 'local' })}
+        </span>
+      </div>
     </div>
 
     {#if totalEntities === 0}
@@ -149,6 +187,12 @@
               </span>
             {/if}
             <div class="flex items-center gap-2 justify-self-end">
+              <span
+                class="rounded bg-[color:var(--color-bg-sunk)] px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-[9.5px] text-[color:var(--color-ink-mute)]"
+                title={loc({ de: 'Gefunden durch', en: 'Detected by' })}
+              >
+                {loc(SOURCE_LABELS[entity.source] ?? { de: entity.source, en: entity.source })}
+              </span>
               <span
                 class="font-[family-name:var(--font-mono)] text-[10px] text-[color:var(--color-ink-mute)]"
               >
@@ -209,6 +253,16 @@
           <button class="chip" class:active={filter === 'off'} onclick={() => (filter = 'off')}
             >{loc(s.filterOff)}</button
           >
+          <button
+            class="btn-ghost text-[11px]"
+            onclick={downloadAuditReport}
+            title={loc({
+              de: 'Audit-Report herunterladen (ohne Originalwerte)',
+              en: 'Download audit report (no original values)',
+            })}
+          >
+            ↓ {loc({ de: 'Bericht', en: 'Report' })}
+          </button>
         </div>
       {/if}
     </header>
@@ -305,6 +359,12 @@
                 <td class="px-3 py-2">
                   <span class="ent" data-cat={entity.category}>
                     {loc(CATEGORY_LABELS[entity.category])}
+                  </span>
+                  <span
+                    class="ml-1.5 font-[family-name:var(--font-mono)] text-[9.5px] text-[color:var(--color-ink-mute)]"
+                    title={loc({ de: 'Gefunden durch', en: 'Detected by' })}
+                  >
+                    {loc(SOURCE_LABELS[entity.source] ?? { de: entity.source, en: entity.source })}
                   </span>
                 </td>
                 <td

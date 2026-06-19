@@ -43,6 +43,10 @@ export default defineConfig({
         find: '@redactly/core/types',
         replacement: path.join(coreRoot, 'types.ts'),
       },
+      {
+        find: '@redactly/core/audit',
+        replacement: path.join(coreRoot, 'audit.ts'),
+      },
       // Root alias must come after sub-paths — use regex to avoid matching sub-paths
       {
         find: /^@redactly\/core$/,

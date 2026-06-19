@@ -42,6 +42,10 @@
     "./orchestrator": {
       "import": "./dist/orchestrator.js",
       "types": "./dist/orchestrator.d.ts"
+    },
+    "./audit": {
+      "import": "./dist/audit.js",
+      "types": "./dist/audit.d.ts"
     }
   },
   "main": "./dist/index.js",
