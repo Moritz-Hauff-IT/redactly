@@ -210,6 +210,29 @@ export const messages = {
   },
   caution_dismiss: { de: 'Hinweis ausblenden', en: 'Dismiss notice' },
 
+  // ---- First-visit onboarding (enable NER / WebLLM) ----
+  onb_lead: { de: 'Bessere Erkennung freischalten', en: 'Unlock better detection' },
+  onb_body: {
+    de: 'Standardmäßig läuft nur die schnelle Regex-Erkennung. Für Namen, Organisationen & Orte aktiviere NER — und, falls dein Browser WebGPU unterstützt, zusätzlich WebLLM für nahezu vollständige Treffer. Beides lädt einmalig und läuft danach 100 % lokal.',
+    en: 'By default only the fast regex detection runs. For names, organisations & places enable NER — and, if your browser supports WebGPU, add WebLLM for near-complete coverage. Both download once and then run 100 % locally.',
+  },
+  onb_open: { de: 'In den Einstellungen aktivieren', en: 'Enable in settings' },
+  onb_dismiss: { de: 'Später', en: 'Later' },
+
+  // ---- Dynamic column picker (CSV / Excel upload) ----
+  col_title: { de: 'Spalten immer maskieren?', en: 'Always mask columns?' },
+  col_intro: {
+    de: 'In „{file}" wurden Tabellen-Spalten erkannt. Wähle die Spalten, die immer sensible Daten enthalten — alle Werte darin werden maskiert.',
+    en: 'Detected table columns in “{file}”. Pick the columns that always hold sensitive data — every value in them gets masked.',
+  },
+  col_rows: { de: '{n} Werte', en: '{n} values' },
+  col_apply: { de: 'Übernehmen', en: 'Apply' },
+  col_skip: { de: 'Überspringen', en: 'Skip' },
+  col_none: { de: 'keine Werte', en: 'no values' },
+  col_badge: { de: '{n} Spalte(n) maskiert', en: '{n} column(s) masked' },
+  col_edit: { de: 'Spalten wählen', en: 'Choose columns' },
+  col_applied: { de: '{cols} Spalte(n) werden maskiert', en: 'Masking {cols} column(s)' },
+
   // ---- Footer (legal) ----
   footer_imprint: { de: 'Impressum', en: 'Imprint' },
   footer_privacy: { de: 'Datenschutz', en: 'Privacy' },
