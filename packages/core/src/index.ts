@@ -30,6 +30,10 @@ export type { RestoreOptions, RestoreResult } from './restorer.js';
 export { redact } from './redactor.js';
 export type { RedactOptions, RedactResult } from './redactor.js';
 
+// Audit report (PII-free summary)
+export { buildAuditReport, formatAuditReport } from './audit.js';
+export type { AuditReport } from './audit.js';
+
 // Pipeline orchestrator
 export { Pipeline } from './pipeline.js';
 export type { PipelineOptions, PipelineResult } from './pipeline.js';

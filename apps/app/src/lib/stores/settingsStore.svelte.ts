@@ -19,6 +19,14 @@ const LS_WEBLLM_TEXT_PII_KEY = 'de-pii:settings:webllm-text-pii';
 const LS_ALWAYS_MASK_KEY = 'de-pii:settings:always-mask';
 const LS_NEVER_MASK_KEY = 'de-pii:settings:never-mask';
 const LS_REDACT_MODE_KEY = 'de-pii:settings:redact-mode';
+const LS_MIN_CONFIDENCE_KEY = 'de-pii:settings:min-confidence';
+
+function loadMinConfidence(): number {
+  const raw = safeLocalStorageGet(LS_MIN_CONFIDENCE_KEY);
+  const n = raw === null ? 0 : Number.parseFloat(raw);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(0.95, Math.max(0, n));
+}
 
 const DEFAULT_WEBLLM_MODEL = 'Llama-3.2-3B-Instruct-q4f16_1-MLC';
 
@@ -111,6 +119,10 @@ function createSettingsStore() {
   // Output mode: false = pseudonymize (reversible placeholders + mapping),
   // true = redact (opaque ████ blocks, irreversible, no mapping).
   let redactMode = $state<boolean>(safeLocalStorageGet(LS_REDACT_MODE_KEY) === 'true');
+  // Minimum detector confidence (0..0.95) to keep an entity. Higher = fewer
+  // false positives, lower recall. Manual / custom-term hits (confidence 1)
+  // always pass.
+  let minConfidence = $state<number>(loadMinConfidence());
 
   function addTerm(list: string[], term: string): string[] {
     const t = term.trim();
@@ -222,6 +234,16 @@ function createSettingsStore() {
     setRedactMode(b: boolean): void {
       redactMode = b;
       safeLocalStorageSet(LS_REDACT_MODE_KEY, b ? 'true' : 'false');
+    },
+
+    // ── Detection sensitivity ──────────────────────────────────────────────
+    /** Minimum detector confidence to keep an entity (0..0.95). */
+    get minConfidence() {
+      return minConfidence;
+    },
+    setMinConfidence(n: number): void {
+      minConfidence = Math.min(0.95, Math.max(0, Number.isFinite(n) ? n : 0));
+      safeLocalStorageSet(LS_MIN_CONFIDENCE_KEY, String(minConfidence));
     },
   };
 }

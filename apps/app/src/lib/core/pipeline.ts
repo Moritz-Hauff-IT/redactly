@@ -108,7 +108,12 @@ export async function analyze(text: string): Promise<Entity[]> {
   });
 
   const result = await getPipeline().analyze(text);
-  const entities = applyCustomTerms(text, result.entities);
+  // Sensitivity threshold: drop low-confidence detector hits. Manual / custom
+  // entities (confidence 1) always pass; applyCustomTerms adds them afterwards.
+  const minConf = settingsStore.minConfidence;
+  const filtered =
+    minConf > 0 ? result.entities.filter((e) => e.confidence >= minConf) : result.entities;
+  const entities = applyCustomTerms(text, filtered);
 
   console.log('[pipeline.analyze] returned', { entityCount: entities.length });
   return entities;

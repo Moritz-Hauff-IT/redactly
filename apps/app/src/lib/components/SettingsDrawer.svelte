@@ -88,6 +88,13 @@
       de: 'Was soll erkannt werden? Deaktivierte Kategorien werden im Detection-Review nicht angezeigt.',
       en: "What should be detected? Disabled categories don't appear in the detection review.",
     },
+    sensLabel: { de: 'Empfindlichkeit', en: 'Sensitivity' },
+    sensIntro: {
+      de: 'Mindest-Konfidenz für Treffer. Höher = weniger Fehlalarme, aber evtl. übersehene PII. Eigene Begriffe sind immer dabei.',
+      en: 'Minimum confidence to keep a hit. Higher = fewer false positives but maybe missed PII. Custom terms always apply.',
+    },
+    sensOff: { de: 'aus — alle Treffer', en: 'off — keep all hits' },
+    sensFrom: { de: 'ab {pct}%', en: 'from {pct}%' },
     modeLabel: { de: 'Modus', en: 'Mode' },
     redactTitle: {
       de: 'Schwärzen statt maskieren (nicht umkehrbar)',
@@ -330,6 +337,41 @@
               ></span>
             </span>
           </button>
+        </div>
+      </section>
+
+      <hr class="my-7 border-[color:var(--color-rule)]" />
+
+      <!-- Detection sensitivity -->
+      <section>
+        <span class="label">{loc(s.sensLabel)}</span>
+        <p class="mt-1 text-[12.5px] leading-snug text-[color:var(--color-ink-soft)]">
+          {loc(s.sensIntro)}
+        </p>
+        <div class="mt-3 flex items-center gap-3">
+          <input
+            type="range"
+            min="0"
+            max="0.9"
+            step="0.05"
+            value={settingsStore.minConfidence}
+            oninput={(e) =>
+              settingsStore.setMinConfidence(
+                Number.parseFloat((e.currentTarget as HTMLInputElement).value)
+              )}
+            class="flex-1 accent-[color:var(--color-accent)]"
+            aria-label={loc(s.sensLabel)}
+          />
+          <span
+            class="w-28 flex-shrink-0 text-right font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-soft)]"
+          >
+            {settingsStore.minConfidence <= 0
+              ? loc(s.sensOff)
+              : loc(s.sensFrom).replace(
+                  '{pct}',
+                  String(Math.round(settingsStore.minConfidence * 100))
+                )}
+          </span>
         </div>
       </section>
 
