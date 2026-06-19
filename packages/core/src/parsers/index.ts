@@ -10,6 +10,7 @@ export { parseEmlBlob } from './eml.js';
 export { parsePdfBlob, PdfWorkerNotConfiguredError } from './pdf.js';
 export { parseDocxBlob } from './docx.js';
 export { parseXlsxBlob } from './xlsx.js';
+export { extractXlsxColumns, parseXlsxGrid } from './xlsxGrid.js';
 export { parsePptxBlob } from './pptx.js';
 export {
   parseImageBlob,

@@ -35,6 +35,28 @@ export interface StructuralSpan {
   text: string;
 }
 
+/** A column detected in a table, for the dynamic upload-time picker. */
+export interface TableColumn {
+  /** Spreadsheet-style column ref: A, B, C, … */
+  ref: string;
+  /** Header-cell text (may be empty). */
+  name: string;
+  /** Non-empty data-cell values, in row order. */
+  values: string[];
+}
+
+/** 0-based column index → spreadsheet ref (0→A, 25→Z, 26→AA). */
+function indexToRef(i: number): string {
+  let n = i + 1;
+  let s = '';
+  while (n > 0) {
+    const r = (n - 1) % 26;
+    s = String.fromCharCode(65 + r) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
 const CANDIDATE_DELIMITERS = [',', ';', '\t'] as const;
 const MAX_REGEX_MATCHES = 10000;
 
@@ -351,4 +373,42 @@ export function findStructuralSpans(text: string, rules: StructuralRules): Struc
     ...findRegexSpans(text, rules.regexes),
   ];
   return dedupeSpans(all);
+}
+
+/**
+ * Detect the columns of a delimited (CSV/TSV) table for the upload-time
+ * column picker. Returns one entry per column with its header and the list of
+ * data-cell values, or `null` when the text isn't a rectangular table.
+ */
+export function extractDelimitedColumns(text: string): TableColumn[] | null {
+  const delim = detectDelimiter(text);
+  if (delim === null) return null;
+  const rows = parseDelimited(text, delim);
+  if (rows.length < 2) return null;
+  const headerSpans = rows[0];
+  if (!headerSpans || headerSpans.length < 2) return null;
+
+  const width = headerSpans.length;
+  const consistent = rows.slice(1).filter((r) => r.length === width).length;
+  if (consistent < (rows.length - 1) / 2) return null;
+
+  const slice = (span: [number, number]): string => {
+    const [s, e] = tightenSpan(text, span[0], span[1]);
+    return text.slice(s, e);
+  };
+
+  const cols: TableColumn[] = [];
+  for (let c = 0; c < width; c++) {
+    const headerSpan = headerSpans[c];
+    const name = headerSpan ? slice(headerSpan) : '';
+    const values: string[] = [];
+    for (let r = 1; r < rows.length; r++) {
+      const cell = rows[r]?.[c];
+      if (!cell) continue;
+      const v = slice(cell);
+      if (v) values.push(v);
+    }
+    cols.push({ ref: indexToRef(c), name, values });
+  }
+  return cols;
 }

@@ -8,8 +8,11 @@
   import { inputStore } from '../stores/inputStore.svelte.js';
   import { detectionStore } from '../stores/detectionStore.svelte.js';
   import { errorStore } from '../stores/errorStore.svelte.js';
+  import { tableMaskStore } from '../stores/tableMaskStore.svelte.js';
+  import { detectColumns } from '$lib/core/columnDetect.js';
   import { t } from '$lib/i18n/locale.svelte.js';
   import HighlightedInput from './HighlightedInput.svelte';
+  import ColumnPicker from './ColumnPicker.svelte';
 
   interface Props {
     onchange?: () => void;
@@ -20,6 +23,7 @@
 
   let fileInputEl = $state<HTMLInputElement | null>(null);
   let isDragOver = $state(false);
+  let pickerOpen = $state(false);
 
   function formatBytes(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
@@ -51,6 +55,20 @@
         rawBytes,
       });
       onchange?.();
+
+      // Tabular upload → offer dynamic column masking. Detection failures are
+      // non-fatal: the file still masks normally, just without the picker.
+      try {
+        const cols = await detectColumns(result.meta.format, result.text, rawBytes);
+        if (cols && cols.length > 0) {
+          tableMaskStore.setColumns(cols, file.name);
+          pickerOpen = true;
+        } else {
+          tableMaskStore.clear();
+        }
+      } catch {
+        tableMaskStore.clear();
+      }
     } catch (err) {
       if (err instanceof UnsupportedFormatError) {
         errorStore.show(
@@ -100,7 +118,13 @@
   function clearInput() {
     inputStore.reset();
     detectionStore.clear();
+    tableMaskStore.clear();
     onchange?.();
+  }
+
+  function applyColumns(refs: string[]) {
+    tableMaskStore.setSelected(refs);
+    pickerOpen = false;
   }
 
   function loadSample() {
@@ -121,6 +145,7 @@ Buchhaltung, Müller GmbH
       format: 'txt',
       bytes: 0,
     });
+    tableMaskStore.clear();
     onchange?.();
   }
 
@@ -254,6 +279,27 @@ Buchhaltung, Müller GmbH
         <p class="max-w-xs text-[12px] text-[color:var(--color-ink-soft)]">
           {t('file_mask_hint')}
         </p>
+        {#if tableMaskStore.hasColumns}
+          <button class="col-badge mt-1" onclick={() => (pickerOpen = true)} type="button">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="9" y1="3" x2="9" y2="21" />
+            </svg>
+            {tableMaskStore.selectedCount > 0
+              ? t('col_badge', { n: tableMaskStore.selectedCount })
+              : t('col_edit')}
+          </button>
+        {/if}
         <button class="btn-ghost mt-1" onclick={() => (textPreviewOpen = !textPreviewOpen)}>
           {textPreviewOpen ? t('file_preview_hide') : t('file_preview_show')}
         </button>
@@ -278,3 +324,32 @@ Buchhaltung, Müller GmbH
     {/if}
   </div>
 </div>
+
+<ColumnPicker
+  open={pickerOpen}
+  filename={tableMaskStore.filename ?? ''}
+  columns={tableMaskStore.columns}
+  initial={[...tableMaskStore.selected]}
+  onapply={applyColumns}
+  oncancel={() => (pickerOpen = false)}
+/>
+
+<style>
+  .col-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 11px;
+    border: 1px solid var(--color-accent);
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter 0.14s;
+  }
+  .col-badge:hover {
+    filter: brightness(1.06);
+  }
+</style>
