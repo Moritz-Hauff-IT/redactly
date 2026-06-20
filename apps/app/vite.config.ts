@@ -71,6 +71,10 @@ export default defineConfig({
         find: '@redactly/core/fakeValues',
         replacement: path.join(coreRoot, 'fakeValues.ts'),
       },
+      {
+        find: '@redactly/core/diff',
+        replacement: path.join(coreRoot, 'diff.ts'),
+      },
       // Root alias must come after sub-paths — use regex to avoid matching sub-paths
       {
         find: /^@redactly\/core$/,

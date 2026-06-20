@@ -4,6 +4,8 @@
   import { errorStore } from '../stores/errorStore.svelte.js';
   import { detectionStore } from '../stores/detectionStore.svelte.js';
   import { settingsStore } from '../stores/settingsStore.svelte.js';
+  import DiffView from './DiffView.svelte';
+  import type { DiffChange } from '@redactly/core/diff';
   import { t } from '$lib/i18n/locale.svelte.js';
 
   interface Props {
@@ -17,8 +19,20 @@
 
   let copied = $state(false);
   let textPreviewOpen = $state(false);
+  let showDiff = $state(false);
 
   const isFileMode = $derived(inputStore.filename !== null);
+
+  // Before/after diff: every active entity's span → its replacement
+  // (placeholder in mask mode, ████ in redact mode).
+  const diffChanges = $derived.by((): DiffChange[] => {
+    const mapping = mappingStore.current;
+    return detectionStore.activeEntities.map((e) => ({
+      start: e.start,
+      end: e.end,
+      replacement: settingsStore.redactMode ? '████' : (mapping?.reverse.get(e.text) ?? '[…]'),
+    }));
+  });
 
   const outputFilename = $derived.by(() => {
     const fmt = inputStore.format ?? 'txt';
@@ -110,6 +124,16 @@
 
 {#snippet controls()}
   {#if !isFileMode}
+    <button
+      class="btn-ghost"
+      class:text-[color:var(--color-accent)]={showDiff}
+      disabled={!maskedText}
+      onclick={() => (showDiff = !showDiff)}
+      aria-pressed={showDiff}
+      title={t('ws_diff_title')}
+    >
+      {t('ws_diff')}
+    </button>
     <button class="btn-ghost" disabled={!maskedText} onclick={downloadMasked}>
       {t('btn_download')}
     </button>
@@ -214,6 +238,8 @@
         <span class="text-[color:var(--color-ink-mute)] italic">{t('output_empty_file')}</span>
       </div>
     {/if}
+  {:else if showDiff && maskedText}
+    <DiffView original={inputStore.text} changes={diffChanges} />
   {:else}
     <div
       data-testid="masked-output"

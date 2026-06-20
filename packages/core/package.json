@@ -70,6 +70,10 @@
     "./fakeValues": {
       "import": "./dist/fakeValues.js",
       "types": "./dist/fakeValues.d.ts"
+    },
+    "./diff": {
+      "import": "./dist/diff.js",
+      "types": "./dist/diff.d.ts"
     }
   },
   "main": "./dist/index.js",
