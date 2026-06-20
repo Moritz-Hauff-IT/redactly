@@ -19,7 +19,32 @@
  */
 import { FORMAT_META, type SupportedFormat } from './formats.js';
 import { runOcr, type OcrWord } from './image.js';
+import { stripOoxmlAppXml, stripOoxmlCoreXml } from './metadata.js';
 import type { Mapping } from '../masker.js';
+import type JSZip from 'jszip';
+import type { PDFDocument } from 'pdf-lib';
+
+/** Clear the PDF Info-dictionary fields that can carry personal data. */
+function clearPdfMetadata(doc: PDFDocument): void {
+  doc.setAuthor('');
+  doc.setTitle('');
+  doc.setSubject('');
+  doc.setKeywords([]);
+  doc.setProducer('');
+  doc.setCreator('');
+}
+
+/**
+ * Blank personal-data fields in an OOXML container's docProps (author,
+ * lastModifiedBy, title, Company, Manager, …) so masked downloads don't leak
+ * authorship metadata the visible-text redaction never touches.
+ */
+async function stripZipDocProps(zip: JSZip): Promise<void> {
+  const core = zip.file('docProps/core.xml');
+  if (core) zip.file('docProps/core.xml', stripOoxmlCoreXml(await core.async('string')));
+  const app = zip.file('docProps/app.xml');
+  if (app) zip.file('docProps/app.xml', stripOoxmlAppXml(await app.async('string')));
+}
 
 export interface WriteResult {
   blob: Blob;
@@ -405,18 +430,24 @@ async function writePdfRedacted(
   baseName: string
 ): Promise<WriteResult> {
   const sortedKeys = sortedMappingKeys(mapping);
+  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+
   if (sortedKeys.length === 0) {
-    const blob = new Blob([new Uint8Array(originalBytes)], { type: 'application/pdf' });
+    // No PII text to overlay, but still scrub the Info-dict metadata.
+    const doc = await PDFDocument.load(originalBytes.slice());
+    clearPdfMetadata(doc);
+    const bytes = await doc.save();
+    const blob = new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
     return { blob, filename: `${baseName}-masked.pdf`, mimeType: 'application/pdf' };
   }
 
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
 
   const bytesForPdfjs = originalBytes.slice();
   const bytesForPdfLib = originalBytes.slice();
 
   const pdfDoc = await PDFDocument.load(bytesForPdfLib);
+  clearPdfMetadata(pdfDoc);
   const helv = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
   const pdfjsDoc = await pdfjsLib.getDocument({ data: bytesForPdfjs }).promise;
@@ -568,19 +599,17 @@ async function writeDocxRedacted(
   baseName: string
 ): Promise<WriteResult> {
   const sortedKeys = sortedMappingKeys(mapping);
-  if (sortedKeys.length === 0) {
-    const blob = new Blob([new Uint8Array(originalBytes)], {
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    });
-    return {
-      blob,
-      filename: `${baseName}-masked.docx`,
-      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    };
-  }
+  const docxMime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
   const JSZip = (await import('jszip')).default;
   const zip = await JSZip.loadAsync(originalBytes);
+  // Always scrub authorship metadata, even when no PII text was matched.
+  await stripZipDocProps(zip);
+
+  if (sortedKeys.length === 0) {
+    const blob = await zip.generateAsync({ type: 'blob', mimeType: docxMime });
+    return { blob, filename: `${baseName}-masked.docx`, mimeType: docxMime };
+  }
 
   // XML parts where w:t text appears
   const candidatePaths = Object.keys(zip.files).filter((path) =>
@@ -659,13 +688,16 @@ async function writeOoxmlRedacted(
 ): Promise<WriteResult> {
   const cfg = OOXML_REDACT_CONFIG[format];
   const sortedKeys = sortedMappingKeys(mapping);
-  if (sortedKeys.length === 0) {
-    const blob = new Blob([new Uint8Array(originalBytes)], { type: cfg.mime });
-    return { blob, filename: `${baseName}-masked.${cfg.extension}`, mimeType: cfg.mime };
-  }
 
   const JSZip = (await import('jszip')).default;
   const zip = await JSZip.loadAsync(originalBytes);
+  // Always scrub authorship metadata, even when no PII text was matched.
+  await stripZipDocProps(zip);
+
+  if (sortedKeys.length === 0) {
+    const blob = await zip.generateAsync({ type: 'blob', mimeType: cfg.mime });
+    return { blob, filename: `${baseName}-masked.${cfg.extension}`, mimeType: cfg.mime };
+  }
 
   const candidatePaths = Object.keys(zip.files).filter((path) => cfg.pathPattern.test(path));
 
