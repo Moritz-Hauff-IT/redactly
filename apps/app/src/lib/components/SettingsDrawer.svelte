@@ -96,6 +96,22 @@
     },
     sensOff: { de: 'aus — alle Treffer', en: 'off — keep all hits' },
     sensFrom: { de: 'ab {pct}%', en: 'from {pct}%' },
+    outLabel: { de: 'Platzhalter-Format', en: 'Placeholder format' },
+    outIntro: {
+      de: 'Wie maskierte Werte aussehen. Standard sind nummerierte Platzhalter — gut zum Wiederherstellen.',
+      en: 'How masked values look. The default is numbered placeholders — easy to restore.',
+    },
+    fmtBrackets: { de: 'Eckig  [PERSON_1]', en: 'Brackets  [PERSON_1]' },
+    fmtAngle: { de: 'Spitz  <PERSON_1>', en: 'Angle  <PERSON_1>' },
+    fmtCurly: { de: 'Geschweift  {{PERSON_1}}', en: 'Curly  {{PERSON_1}}' },
+    fakeTitle: {
+      de: 'Realistische Fake-Werte statt Platzhalter',
+      en: 'Realistic fake values instead of placeholders',
+    },
+    fakeBody: {
+      de: 'Ersetzt z. B. Namen durch „Max Mustermann", E-Mails durch fiktive Adressen — bleibt umkehrbar. Optional; standardmäßig aus. Secrets/IDs bleiben Platzhalter.',
+      en: 'Replaces e.g. names with “Max Mustermann”, emails with fictional addresses — stays reversible. Optional; off by default. Secrets/IDs stay placeholders.',
+    },
     modeLabel: { de: 'Modus', en: 'Mode' },
     redactTitle: {
       de: 'Schwärzen statt maskieren (nicht umkehrbar)',
@@ -580,6 +596,69 @@
                   String(Math.round(settingsStore.minConfidence * 100))
                 )}
           </span>
+        </div>
+      </section>
+
+      <hr class="my-7 border-[color:var(--color-rule)]" />
+
+      <!-- Output: placeholder format + realistic fake values (opt-in) -->
+      <section>
+        <span class="label">{loc(s.outLabel)}</span>
+        <p class="mt-1 text-[12.5px] leading-snug text-[color:var(--color-ink-soft)]">
+          {loc(s.outIntro)}
+        </p>
+        <div class="mt-3 flex flex-col gap-1.5">
+          {#each [{ id: 'brackets', label: s.fmtBrackets }, { id: 'angle', label: s.fmtAngle }, { id: 'curly', label: s.fmtCurly }] as opt}
+            <button
+              type="button"
+              class="flex items-center justify-between rounded-md border px-3.5 py-2 text-left transition-colors {settingsStore.placeholderFormat ===
+              opt.id
+                ? 'border-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]'
+                : 'border-[color:var(--color-rule)] bg-[color:var(--color-bg-elev)] hover:border-[color:var(--color-rule-strong)]'}"
+              onclick={() =>
+                settingsStore.setPlaceholderFormat(opt.id as 'brackets' | 'angle' | 'curly')}
+              aria-pressed={settingsStore.placeholderFormat === opt.id}
+            >
+              <span class="font-[family-name:var(--font-mono)] text-[12.5px]">{loc(opt.label)}</span
+              >
+              {#if settingsStore.placeholderFormat === opt.id}
+                <span class="text-[color:var(--color-accent)]">✓</span>
+              {/if}
+            </button>
+          {/each}
+        </div>
+
+        <div
+          class="mt-3 rounded-md border border-[color:var(--color-rule)] bg-[color:var(--color-bg-elev)] p-3.5"
+        >
+          <button
+            type="button"
+            class="flex w-full items-start justify-between gap-3 text-left"
+            onclick={() => settingsStore.setFakeValues(!settingsStore.fakeValues)}
+            aria-pressed={settingsStore.fakeValues}
+          >
+            <span class="flex-1">
+              <span class="block text-[13px] font-medium text-[color:var(--color-ink)]">
+                {loc(s.fakeTitle)}
+              </span>
+              <span
+                class="mt-0.5 block font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
+              >
+                {loc(s.fakeBody)}
+              </span>
+            </span>
+            <span
+              class="mt-0.5 inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full p-0.5 transition-colors {settingsStore.fakeValues
+                ? 'bg-[color:var(--color-accent)]'
+                : 'bg-[color:var(--color-rule-strong)]'}"
+            >
+              <span
+                class="h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform {settingsStore.fakeValues
+                  ? 'translate-x-4'
+                  : 'translate-x-0'}"
+              ></span>
+            </span>
+          </button>
         </div>
       </section>
 

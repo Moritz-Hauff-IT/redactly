@@ -29,6 +29,10 @@ export interface ProfileSettings {
   columnRules: string[];
   jsonKeyRules: string[];
   regexRules: string[];
+  /** Placeholder format preset: 'brackets' | 'angle' | 'curly'. */
+  placeholderFormat: string;
+  /** Opt-in realistic fake values instead of [PREFIX_N] placeholders. */
+  fakeValues: boolean;
 }
 
 export interface RedactlyProfile {
@@ -66,6 +70,11 @@ export function normalizeSettings(input: unknown): ProfileSettings {
     columnRules: asStringArray(o.columnRules),
     jsonKeyRules: asStringArray(o.jsonKeyRules),
     regexRules: asStringArray(o.regexRules),
+    placeholderFormat:
+      o.placeholderFormat === 'angle' || o.placeholderFormat === 'curly'
+        ? o.placeholderFormat
+        : 'brackets',
+    fakeValues: asBool(o.fakeValues, false),
   };
 }
 

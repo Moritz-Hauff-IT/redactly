@@ -62,6 +62,10 @@
     "./safety": {
       "import": "./dist/safety.js",
       "types": "./dist/safety.d.ts"
+    },
+    "./fakeValues": {
+      "import": "./dist/fakeValues.js",
+      "types": "./dist/fakeValues.d.ts"
     }
   },
   "main": "./dist/index.js",

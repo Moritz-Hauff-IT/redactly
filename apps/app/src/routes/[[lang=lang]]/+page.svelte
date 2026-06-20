@@ -364,7 +364,11 @@
   // lossy mapping is caught before the user sends the text anywhere.
   const residualPii = $derived.by(() => {
     if (!hasMasked || !maskedText.trim()) return [];
-    return findResidualPii(maskedText);
+    const found = findResidualPii(maskedText);
+    // In fake-value mode the output legitimately contains fake emails/IPs —
+    // those are mapping keys, not leaks, so don't flag them.
+    const fakes = mappingStore.current?.forward;
+    return fakes && fakes.size > 0 ? found.filter((e) => !fakes.has(e.text)) : found;
   });
   const roundTripOk = $derived.by(() => {
     if (!hasMasked || settingsStore.redactMode || !maskedText.trim()) return true;
