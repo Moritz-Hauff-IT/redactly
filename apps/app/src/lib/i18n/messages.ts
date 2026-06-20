@@ -210,6 +210,24 @@ export const messages = {
   },
   caution_dismiss: { de: 'Hinweis ausblenden', en: 'Dismiss notice' },
 
+  // ---- Output safety pass (residual leak + round-trip) ----
+  safety_residual_lead: {
+    de: '{n} mögliche(r) Treffer im maskierten Text',
+    en: '{n} possible match(es) left in the masked text',
+  },
+  safety_residual_body: {
+    de: 'Das sieht noch nach echten Daten aus (E-Mail, IBAN, Telefon, Secret). Bitte vor dem Senden prüfen und ggf. die Kategorie aktivieren oder als „immer maskieren" eintragen.',
+    en: 'This still looks like real data (email, IBAN, phone, secret). Please review before sending — enable the category or add it as an "always mask" term if needed.',
+  },
+  safety_roundtrip_lead: {
+    de: 'Wiederherstellung evtl. ungenau.',
+    en: 'Restore may be inaccurate.',
+  },
+  safety_roundtrip_body: {
+    de: 'Ein Platzhalter kollidiert mit echtem Text — das Zurückwandeln der KI-Antwort könnte nicht exakt sein.',
+    en: 'A placeholder collides with real text — restoring the AI reply may not be exact.',
+  },
+
   // ---- First-visit onboarding (enable NER / WebLLM) ----
   onb_lead: { de: 'Bessere Erkennung freischalten', en: 'Unlock better detection' },
   onb_body: {
