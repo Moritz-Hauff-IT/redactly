@@ -20,7 +20,10 @@ export { luhn, ibanMod97, shannonEntropy } from './detectors/validators.js';
 
 // Masker
 export { mask, createMapping, serializeMapping, deserializeMapping } from './masker.js';
-export type { Mapping, MaskOptions, MaskResult } from './masker.js';
+export type { Mapping, MaskOptions, MaskResult, ReplacementFn, ReplacementArgs } from './masker.js';
+
+// Realistic fake-value generator (opt-in replacement strategy)
+export { createFakeGenerator } from './fakeValues.js';
 
 // Restorer
 export { restore } from './restorer.js';

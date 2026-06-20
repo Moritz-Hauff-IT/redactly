@@ -79,6 +79,8 @@ function buildMatchRegex(placeholder: string, tolerant: boolean): RegExp {
   const escapedPrefix = escapeRegex(prefix);
 
   // Build alternatives:
+  // 0. the exact placeholder as inserted — guarantees any chosen format
+  //    (e.g. {{PERSON_1}}) round-trips even before the tolerant variants.
   // 1. [PREFIX_N]  — canonical square brackets, underscore
   // 2. [PREFIX N]  — square brackets, space instead of underscore
   // 3. <PREFIX_N>  — angle brackets
@@ -86,6 +88,7 @@ function buildMatchRegex(placeholder: string, tolerant: boolean): RegExp {
   // 5. PREFIX_N    — bare, surrounded by non-word chars (word-boundary-ish)
   //    We use (?<!\w) and (?!\w) to avoid matching inside longer identifiers.
   const alts = [
+    escapeRegex(placeholder),
     `\\[${escapedPrefix}_${n}\\]`,
     `\\[${escapedPrefix} ${n}\\]`,
     `<${escapedPrefix}_${n}>`,

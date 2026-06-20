@@ -33,6 +33,17 @@ export interface Mapping {
   reverse: Map<string, string>;
 }
 
+/** Arguments handed to a custom replacement generator (realistic fake values). */
+export interface ReplacementArgs {
+  type: EntityType;
+  prefix: string;
+  /** 1-based per-prefix counter for this allocation. */
+  n: number;
+}
+
+/** Produces the string that replaces an entity (e.g. a realistic fake value). */
+export type ReplacementFn = (args: ReplacementArgs) => string;
+
 export interface MaskOptions {
   /**
    * Map from EntityType to placeholder prefix. Defaults provided.
@@ -44,6 +55,13 @@ export interface MaskOptions {
    * MUST contain literal {PREFIX} and {N} tokens.
    */
   format?: string;
+  /**
+   * Custom replacement generator. When provided, the returned string is used
+   * verbatim as the replacement (and as the mapping key) instead of the
+   * `[PREFIX_N]` placeholder — this is how realistic fake-values are produced.
+   * Uniqueness is guaranteed by skipping any value already in the mapping.
+   */
+  replacement?: ReplacementFn;
   /**
    * If provided, the masker reuses its forward/reverse entries
    * (same original -> same placeholder) and extends it.
@@ -222,6 +240,11 @@ export function mask(text: string, entities: Entity[], options?: MaskOptions): M
     }
   }
 
+  const generate = options?.replacement;
+  // Per-prefix counter for the fake-value path (the placeholder path derives
+  // its counter from the forward map instead). Seeded lazily at 1.
+  const fakeCounters = new Map<string, number>();
+
   // Pass 1 (left-to-right): allocate placeholders in document order so that
   // the first entity gets _1, second gets _2, etc. This makes masked text
   // human-readable and predictable.
@@ -235,13 +258,25 @@ export function mask(text: string, entities: Entity[], options?: MaskOptions): M
       // placeholder still correctly masks the text regardless of entity type.
       placeholderFor.set(entity, mapping.reverse.get(original)!);
     } else {
-      // Allocate a new placeholder
+      // Allocate a new replacement.
       const prefix = prefixMap[entity.type] ?? entity.type;
-      const n = nextCounter(mapping.forward, prefix);
-      const placeholder = buildPlaceholder(format, prefix, n);
-      mapping.forward.set(placeholder, original);
-      mapping.reverse.set(original, placeholder);
-      placeholderFor.set(entity, placeholder);
+      let replacement: string;
+      if (generate) {
+        // Realistic fake value — skip any value already taken so the mapping
+        // stays bijective across incremental masks and prefixes.
+        let n = fakeCounters.get(prefix) ?? 1;
+        do {
+          replacement = generate({ type: entity.type, prefix, n });
+          n++;
+        } while (mapping.forward.has(replacement));
+        fakeCounters.set(prefix, n);
+      } else {
+        const n = nextCounter(mapping.forward, prefix);
+        replacement = buildPlaceholder(format, prefix, n);
+      }
+      mapping.forward.set(replacement, original);
+      mapping.reverse.set(original, replacement);
+      placeholderFor.set(entity, replacement);
     }
   }
 

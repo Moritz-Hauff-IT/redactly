@@ -19,6 +19,8 @@ const full: ProfileSettings = {
   columnRules: ['email'],
   jsonKeyRules: ['ssn'],
   regexRules: ['KND-\\d+'],
+  placeholderFormat: 'angle',
+  fakeValues: true,
 };
 
 describe('profiles', () => {
@@ -46,6 +48,12 @@ describe('profiles', () => {
     expect(s.webllmTextPii).toBe(true);
     expect(s.redactMode).toBe(false);
     expect(s.columnRules).toEqual([]);
+    expect(s.placeholderFormat).toBe('brackets');
+    expect(s.fakeValues).toBe(false);
+  });
+
+  it('rejects an unknown placeholderFormat, keeping the bracket default', () => {
+    expect(normalizeSettings({ placeholderFormat: 'weird' }).placeholderFormat).toBe('brackets');
   });
 
   it('rejects a file that is not a Redactly profile', () => {

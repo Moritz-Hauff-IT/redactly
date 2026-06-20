@@ -1,10 +1,12 @@
 import { untrack } from 'svelte';
 import { mask, redact } from '@redactly/core/masker';
 import { restore } from '@redactly/core/restorer';
+import { createFakeGenerator } from '@redactly/core/fakeValues';
 import type { MaskResult } from '@redactly/core/masker';
 import type { RestoreResult } from '@redactly/core/restorer';
 import { detectionStore } from '../stores/detectionStore.svelte.js';
 import { mappingStore } from '../stores/mappingStore.svelte.js';
+import { settingsStore } from '../stores/settingsStore.svelte.js';
 
 /**
  * Mask text using the currently active (enabled) entities from detectionStore.
@@ -21,7 +23,10 @@ import { mappingStore } from '../stores/mappingStore.svelte.js';
 export function maskText(text: string): MaskResult {
   const activeEntities = detectionStore.activeEntities;
   const existing = untrack(() => mappingStore.current) ?? undefined;
-  const result = mask(text, activeEntities, { existing });
+  const format = settingsStore.placeholderTemplate;
+  // Realistic fake values are opt-in; the default stays [PREFIX_N] placeholders.
+  const replacement = settingsStore.fakeValues ? createFakeGenerator(format) : undefined;
+  const result = mask(text, activeEntities, { existing, format, replacement });
   mappingStore.set(result.mapping);
   return result;
 }

@@ -24,7 +24,23 @@ const LS_MIN_CONFIDENCE_KEY = 'de-pii:settings:min-confidence';
 const LS_COLUMN_RULES_KEY = 'de-pii:settings:column-rules';
 const LS_JSON_KEY_RULES_KEY = 'de-pii:settings:json-key-rules';
 const LS_REGEX_RULES_KEY = 'de-pii:settings:regex-rules';
+const LS_PLACEHOLDER_FORMAT_KEY = 'de-pii:settings:placeholder-format';
+const LS_FAKE_VALUES_KEY = 'de-pii:settings:fake-values';
 const LS_PROFILES_KEY = 'de-pii:settings:profiles';
+
+type PlaceholderFormat = 'brackets' | 'angle' | 'curly';
+
+/** Preset id → masker format template. */
+export const PLACEHOLDER_FORMAT_TEMPLATES: Record<PlaceholderFormat, string> = {
+  brackets: '[{PREFIX}_{N}]',
+  angle: '<{PREFIX}_{N}>',
+  curly: '{{{PREFIX}_{N}}}',
+};
+
+function loadPlaceholderFormat(): PlaceholderFormat {
+  const raw = safeLocalStorageGet(LS_PLACEHOLDER_FORMAT_KEY);
+  return raw === 'angle' || raw === 'curly' ? raw : 'brackets';
+}
 
 function loadProfiles(): Record<string, ProfileSettings> {
   const raw = safeLocalStorageGet(LS_PROFILES_KEY);
@@ -150,6 +166,9 @@ function createSettingsStore() {
   // false positives, lower recall. Manual / custom-term hits (confidence 1)
   // always pass.
   let minConfidence = $state<number>(loadMinConfidence());
+  // Output customization: placeholder format + opt-in realistic fake values.
+  let placeholderFormat = $state<PlaceholderFormat>(loadPlaceholderFormat());
+  let fakeValues = $state<boolean>(safeLocalStorageGet(LS_FAKE_VALUES_KEY) === 'true');
   // Named configuration snapshots (profiles), persisted as name → settings.
   let profiles = $state<Record<string, ProfileSettings>>(loadProfiles());
 
@@ -172,6 +191,8 @@ function createSettingsStore() {
       columnRules: [...columnRules],
       jsonKeyRules: [...jsonKeyRules],
       regexRules: [...regexRules],
+      placeholderFormat,
+      fakeValues,
     };
   }
 
@@ -211,6 +232,14 @@ function createSettingsStore() {
     safeLocalStorageSet(LS_REDACT_MODE_KEY, redactMode ? 'true' : 'false');
     minConfidence = s.minConfidence;
     safeLocalStorageSet(LS_MIN_CONFIDENCE_KEY, String(minConfidence));
+
+    placeholderFormat =
+      s.placeholderFormat === 'angle' || s.placeholderFormat === 'curly'
+        ? s.placeholderFormat
+        : 'brackets';
+    safeLocalStorageSet(LS_PLACEHOLDER_FORMAT_KEY, placeholderFormat);
+    fakeValues = s.fakeValues;
+    safeLocalStorageSet(LS_FAKE_VALUES_KEY, fakeValues ? 'true' : 'false');
   }
 
   function addTerm(list: string[], term: string): string[] {
@@ -371,6 +400,28 @@ function createSettingsStore() {
     setMinConfidence(n: number): void {
       minConfidence = Math.min(0.95, Math.max(0, Number.isFinite(n) ? n : 0));
       safeLocalStorageSet(LS_MIN_CONFIDENCE_KEY, String(minConfidence));
+    },
+
+    // ── Output customization ───────────────────────────────────────────────
+    /** Placeholder shape preset. */
+    get placeholderFormat(): PlaceholderFormat {
+      return placeholderFormat;
+    },
+    /** masker `format` template for the current preset. */
+    get placeholderTemplate(): string {
+      return PLACEHOLDER_FORMAT_TEMPLATES[placeholderFormat];
+    },
+    setPlaceholderFormat(f: PlaceholderFormat): void {
+      placeholderFormat = f;
+      safeLocalStorageSet(LS_PLACEHOLDER_FORMAT_KEY, f);
+    },
+    /** When true, mask with realistic fake values instead of placeholders. */
+    get fakeValues(): boolean {
+      return fakeValues;
+    },
+    setFakeValues(b: boolean): void {
+      fakeValues = b;
+      safeLocalStorageSet(LS_FAKE_VALUES_KEY, b ? 'true' : 'false');
     },
 
     // ── Profiles ───────────────────────────────────────────────────────────
