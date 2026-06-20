@@ -114,6 +114,11 @@ export const messages = {
   ws_btn_redact: { de: 'Schwärzen', en: 'Redact' },
   ws_btn_restore: { de: 'Wiederherstellen', en: 'Restore' },
   ws_state_redacted: { de: 'geschwärzt', en: 'redacted' },
+  ws_diff: { de: 'Diff', en: 'Diff' },
+  ws_diff_title: {
+    de: 'Vorher/Nachher anzeigen — was wurde ersetzt?',
+    en: 'Show before/after — what was replaced?',
+  },
   ws_analysis_hint: {
     de: 'läuft lokal in deinem Browser — nichts wird hochgeladen',
     en: 'running locally in your browser — nothing is uploaded',

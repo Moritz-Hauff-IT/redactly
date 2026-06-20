@@ -38,6 +38,10 @@ export { encryptMapping, decryptMapping, isEncryptedMapping } from './mappingCry
 // Output safety checks (residual-PII scan + round-trip integrity)
 export { findResidualPii, verifyRoundTrip } from './safety.js';
 
+// Original ↔ masked diff segments
+export { computeDiff } from './diff.js';
+export type { DiffSegment, DiffChange } from './diff.js';
+
 // Redactor (irreversible — no mapping)
 export { redact } from './redactor.js';
 export type { RedactOptions, RedactResult } from './redactor.js';
