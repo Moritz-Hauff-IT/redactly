@@ -16,6 +16,10 @@ export default defineConfig({
         replacement: path.join(coreRoot, 'detectors/regex.ts'),
       },
       {
+        find: '@redactly/core/gazetteer',
+        replacement: path.join(coreRoot, 'detectors/gazetteer.ts'),
+      },
+      {
         find: '@redactly/core/ner',
         replacement: path.join(coreRoot, 'detectors/ner.ts'),
       },

@@ -54,6 +54,7 @@ const config = {
       // The '@redactly/core/*' entry below causes SvelteKit to wrap '@redactly/core'
       // with a strict regex (^@redactly/core$), preventing prefix match on sub-paths.
       '@redactly/core/regex': '../../packages/core/src/detectors/regex.ts',
+      '@redactly/core/gazetteer': '../../packages/core/src/detectors/gazetteer.ts',
       '@redactly/core/ner': '../../packages/core/src/detectors/ner.ts',
       '@redactly/core/llm': '../../packages/core/src/detectors/llm.ts',
       '@redactly/core/parsers': '../../packages/core/src/parsers/index.ts',

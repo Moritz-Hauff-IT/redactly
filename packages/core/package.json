@@ -11,6 +11,10 @@
       "import": "./dist/detectors/regex.js",
       "types": "./dist/detectors/regex.d.ts"
     },
+    "./gazetteer": {
+      "import": "./dist/detectors/gazetteer.js",
+      "types": "./dist/detectors/gazetteer.d.ts"
+    },
     "./ner": {
       "import": "./dist/detectors/ner.js",
       "types": "./dist/detectors/ner.d.ts"

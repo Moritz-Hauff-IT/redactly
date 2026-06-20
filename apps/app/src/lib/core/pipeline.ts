@@ -1,5 +1,6 @@
 import { Pipeline } from '@redactly/core/pipeline';
 import { RegexDetector } from '@redactly/core/regex';
+import { GazetteerNameDetector } from '@redactly/core/gazetteer';
 import type { Entity, EntityCategory } from '@redactly/core/types';
 import type { Detector } from '@redactly/core/types';
 import { findStructuralSpans } from '@redactly/core/structural';
@@ -22,7 +23,9 @@ let nerDetector: NerDetectorLike | null = null;
 let webllmDetector: WebLlmDetectorLike | null = null;
 
 function buildPipeline(): Pipeline {
-  const detectors: Detector[] = [new RegexDetector()];
+  // Regex + the model-free name gazetteer run by default so regex-only users
+  // (no NER download) still catch common DACH "First Last" names.
+  const detectors: Detector[] = [new RegexDetector(), new GazetteerNameDetector()];
   if (nerDetector !== null) {
     detectors.push(nerDetector);
   }

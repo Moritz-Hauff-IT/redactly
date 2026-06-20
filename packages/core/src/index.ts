@@ -6,6 +6,9 @@ export type { Entity, EntityCategory, EntityType, Detector } from './types.js';
 // Regex detector
 export { RegexDetector } from './detectors/regex.js';
 
+// Gazetteer name detector (model-free DACH person names)
+export { GazetteerNameDetector } from './detectors/gazetteer.js';
+
 // NER detector (lazy model load, browser + Node compatible)
 export { NerDetector } from './detectors/ner.js';
 export type { NerOptions, NerProgressEvent } from './detectors/ner.js';
