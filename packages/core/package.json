@@ -58,6 +58,10 @@
     "./profiles": {
       "import": "./dist/profiles.js",
       "types": "./dist/profiles.d.ts"
+    },
+    "./safety": {
+      "import": "./dist/safety.js",
+      "types": "./dist/safety.d.ts"
     }
   },
   "main": "./dist/index.js",

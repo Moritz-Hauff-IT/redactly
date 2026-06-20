@@ -17,6 +17,7 @@
   import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
   import { uiStore } from '$lib/stores/uiStore.svelte.js';
   import { serializeMapping } from '@redactly/core/masker';
+  import { findResidualPii, verifyRoundTrip } from '@redactly/core/safety';
   import { t } from '$lib/i18n/locale.svelte.js';
   import type { ZipManifest } from '@redactly/core/parsers';
   import type { FilePlan } from '@redactly/core/orchestrator';
@@ -359,6 +360,24 @@
     maskedText = redactMode ? redactText(text) : maskText(text).maskedText;
   });
 
+  // Output safety pass — runs on the masked result so a residual leak or a
+  // lossy mapping is caught before the user sends the text anywhere.
+  const residualPii = $derived.by(() => {
+    if (!hasMasked || !maskedText.trim()) return [];
+    return findResidualPii(maskedText);
+  });
+  const roundTripOk = $derived.by(() => {
+    if (!hasMasked || settingsStore.redactMode || !maskedText.trim()) return true;
+    const m = mappingStore.current;
+    if (!m || m.forward.size === 0) return true;
+    return verifyRoundTrip(
+      untrack(() => inputStore.text),
+      maskedText,
+      m
+    );
+  });
+  const residualSample = $derived(residualPii.slice(0, 6).map((e) => e.text));
+
   /** Mask + ensure the bridge shows the masked result. */
   function doMask() {
     uiStore.setMode('redact');
@@ -378,6 +397,61 @@
 
 <div class="flex flex-col gap-3.5">
   <CautionBanner />
+
+  {#if residualPii.length > 0 || !roundTripOk}
+    <div class="safety-warn" role="alert">
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+        class="mt-0.5 flex-shrink-0"
+      >
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+      <div class="flex-1">
+        {#if residualPii.length > 0}
+          <p class="text-[13px] font-medium text-[color:var(--color-ink)]">
+            {t('safety_residual_lead', { n: residualPii.length })}
+          </p>
+          <p class="mt-0.5 text-[12px] text-[color:var(--color-ink-soft)]">
+            {t('safety_residual_body')}
+          </p>
+          <div class="mt-1.5 flex flex-wrap gap-1.5">
+            {#each residualSample as val}
+              <span
+                class="token border-[color:var(--color-danger)] text-[color:var(--color-danger)]"
+                >{val}</span
+              >
+            {/each}
+            {#if residualPii.length > residualSample.length}
+              <span class="text-[11px] text-[color:var(--color-ink-mute)]"
+                >+{residualPii.length - residualSample.length}</span
+              >
+            {/if}
+          </div>
+        {/if}
+        {#if !roundTripOk}
+          <p
+            class="text-[12px] text-[color:var(--color-ink-soft)]"
+            class:mt-2={residualPii.length > 0}
+          >
+            <strong class="font-medium text-[color:var(--color-ink)]"
+              >{t('safety_roundtrip_lead')}</strong
+            >
+            {t('safety_roundtrip_body')}
+          </p>
+        {/if}
+      </div>
+    </div>
+  {/if}
 
   <!-- Three-column workspace: Original · Bridge (mask/restore) · Inspector -->
   <div class="work-grid">
@@ -689,6 +763,17 @@
 />
 
 <style>
+  .safety-warn {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    padding: 11px 14px;
+    border: 1px solid var(--color-danger);
+    border-left: 3px solid var(--color-danger);
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--color-danger) 8%, var(--color-bg-elev));
+    color: var(--color-danger);
+  }
   .work-grid {
     display: grid;
     grid-template-columns: 1fr;
