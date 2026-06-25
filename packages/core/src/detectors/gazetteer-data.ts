@@ -1,9 +1,10 @@
 /**
- * Curated DACH name gazetteer (lowercased) for GazetteerNameDetector.
+ * Curated multilingual name gazetteer (lowercased) for GazetteerNameDetector.
  *
- * Not exhaustive — a high-signal core of common German/Swiss/Austrian first
- * names and surnames. The detector only fires on "first + capitalized word",
- * so the first-name list drives recall while the surname list only raises
+ * Core is German/Swiss/Austrian, extended with French and Italian (the other
+ * Swiss national languages) and common English names. Not exhaustive — a
+ * high-signal set. The detector only fires on "first + capitalized word", so
+ * the first-name list drives recall while the surname list only raises
  * confidence. Kept deliberately free of words that double as common nouns.
  */
 
@@ -44,5 +45,55 @@ const LAST = [
   'gruber','wagner','pichler','steinberger','baumgartner','egger','fuchs','berger','lang','wimmer',
 ];
 
-export const FIRST_NAMES: ReadonlySet<string> = new Set(FIRST);
-export const SURNAMES: ReadonlySet<string> = new Set(LAST);
+// prettier-ignore
+const FIRST_FR = [
+  'jean','pierre','michel','andré','philippe','alain','jacques','bernard','daniel','marcel',
+  'claude','françois','olivier','laurent','nicolas','thierry','sébastien','julien','christophe','vincent',
+  'marie','jeanne','françoise','monique','catherine','nathalie','isabelle','sylvie','sophie','julie',
+  'camille','chloé','manon','léa','emma','sarah','aurélie','céline','émilie','margaux',
+];
+
+// prettier-ignore
+const FIRST_IT = [
+  'giuseppe','giovanni','antonio','marco','francesco','luca','matteo','andrea','alessandro','lorenzo',
+  'stefano','roberto','paolo','riccardo','davide','simone','fabio','giacomo','pietro','salvatore',
+  'maria','anna','giulia','francesca','chiara','sara','laura','elena','valentina','martina',
+  'alessia','federica','silvia','paola','roberta','elisa','gloria','beatrice','aurora',
+];
+
+// prettier-ignore
+const FIRST_EN = [
+  'james','john','robert','william','richard','joseph','thomas','charles','christopher','matthew',
+  'andrew','joshua','george','edward','brian','ronald','kevin','jason','jeffrey','gary',
+  'mary','patricia','jennifer','linda','elizabeth','barbara','susan','jessica','margaret','dorothy',
+  'emily','olivia','sophia','isabella','grace','hannah','samantha','rachel','victoria','natalie',
+];
+
+// prettier-ignore
+const LAST_FR = [
+  'martin','bernard','dubois','thomas','robert','petit','durand','leroy','moreau','simon',
+  'laurent','lefebvre','michel','garcia','david','bertrand','roux','vincent','fournier','morel',
+  'girard','andré','mercier','blanc','rousseau','lambert','bonnet','dumont','rey','perret',
+];
+
+// prettier-ignore
+const LAST_IT = [
+  'rossi','russo','ferrari','esposito','bianchi','romano','colombo','ricci','marino','greco',
+  'bruno','gallo','conti','deluca','costa','giordano','mancini','rizzo','lombardi','moretti',
+  'barbieri','fontana','santoro','marini','bianco','rinaldi','caruso','ferrara','galli','martini',
+];
+
+// prettier-ignore
+const LAST_EN = [
+  'smith','johnson','williams','brown','jones','garcia','miller','davis','wilson','anderson',
+  'taylor','thomas','moore','jackson','martin','thompson','white','harris','clark','lewis',
+  'robinson','walker','young','allen','king','wright','scott','green','baker','hill',
+];
+
+export const FIRST_NAMES: ReadonlySet<string> = new Set([
+  ...FIRST,
+  ...FIRST_FR,
+  ...FIRST_IT,
+  ...FIRST_EN,
+]);
+export const SURNAMES: ReadonlySet<string> = new Set([...LAST, ...LAST_FR, ...LAST_IT, ...LAST_EN]);
