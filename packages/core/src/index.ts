@@ -42,6 +42,9 @@ export { findResidualPii, verifyRoundTrip } from './safety.js';
 export { computeDiff } from './diff.js';
 export type { DiffSegment, DiffChange } from './diff.js';
 
+// Coreference linking (bare re-mentions of detected person names)
+export { linkCoreferences } from './coreference.js';
+
 // Redactor (irreversible — no mapping)
 export { redact } from './redactor.js';
 export type { RedactOptions, RedactResult } from './redactor.js';
