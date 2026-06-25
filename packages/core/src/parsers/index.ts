@@ -12,6 +12,8 @@ export { parseDocxBlob } from './docx.js';
 export { parseXlsxBlob } from './xlsx.js';
 export { extractXlsxColumns, parseXlsxGrid } from './xlsxGrid.js';
 export { parsePptxBlob } from './pptx.js';
+export { parseRtfBlob, rtfToText } from './rtf.js';
+export { parseOpenDocumentBlob, extractOdfText } from './opendocument.js';
 export {
   parseImageBlob,
   runOcr,
@@ -36,6 +38,8 @@ import { parsePdfBlob } from './pdf.js';
 import { parseDocxBlob } from './docx.js';
 import { parseXlsxBlob } from './xlsx.js';
 import { parsePptxBlob } from './pptx.js';
+import { parseRtfBlob } from './rtf.js';
+import { parseOpenDocumentBlob } from './opendocument.js';
 import { parseImageBlob } from './image.js';
 import { FORMAT_META, type SupportedFormat } from './formats.js';
 import type { ParseResult } from './txt.js';
@@ -73,6 +77,9 @@ const EXT_MAP: Record<string, SupportedFormat> = {
   html: 'html',
   htm: 'html',
   xml: 'xml',
+  rtf: 'rtf',
+  odt: 'odt',
+  ods: 'ods',
   eml: 'eml',
   pdf: 'pdf',
   docx: 'docx',
@@ -98,6 +105,10 @@ const MIME_MAP: Record<string, SupportedFormat> = {
   'application/xhtml+xml': 'html',
   'application/xml': 'xml',
   'text/xml': 'xml',
+  'application/rtf': 'rtf',
+  'text/rtf': 'rtf',
+  'application/vnd.oasis.opendocument.text': 'odt',
+  'application/vnd.oasis.opendocument.spreadsheet': 'ods',
   'message/rfc822': 'eml',
   'application/pdf': 'pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
@@ -192,6 +203,11 @@ export async function parseFile(file: File | FileInput): Promise<ParseResult> {
       return parseXlsxBlob(data as Blob | ArrayBuffer | Uint8Array);
     case 'pptx':
       return parsePptxBlob(data as Blob | ArrayBuffer | Uint8Array);
+    case 'rtf':
+      return parseRtfBlob(data as Blob | ArrayBuffer | Uint8Array | string);
+    case 'odt':
+    case 'ods':
+      return parseOpenDocumentBlob(data as Blob | ArrayBuffer | Uint8Array, format);
     case 'png':
     case 'jpg':
     case 'webp':
