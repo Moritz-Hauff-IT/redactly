@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Redactly</title>
+    <style>
+      :root {
+        --navy: #0f172a;
+        --orange: #f2960c;
+        --ink: #e2e8f0;
+        --mute: #94a3b8;
+      }
+      body {
+        margin: 0;
+        width: 280px;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: var(--navy);
+        color: var(--ink);
+        padding: 16px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .mark {
+        width: 20px;
+        height: 20px;
+        border-radius: 5px;
+        background: #1e293b;
+        position: relative;
+        flex: none;
+      }
+      .mark span {
+        position: absolute;
+        left: 4px;
+        height: 2.5px;
+        border-radius: 1px;
+        background: #3a475c;
+      }
+      .mark span:nth-child(1) {
+        top: 5px;
+        width: 9px;
+      }
+      .mark span:nth-child(2) {
+        top: 9px;
+        width: 12px;
+        background: var(--orange);
+      }
+      .mark span:nth-child(3) {
+        top: 13px;
+        width: 6px;
+      }
+      p {
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--mute);
+      }
+      ul {
+        font-size: 12.5px;
+        line-height: 1.6;
+        color: var(--mute);
+        padding-left: 18px;
+      }
+      a {
+        color: var(--orange);
+        text-decoration: none;
+        font-size: 12.5px;
+      }
+      kbd {
+        background: #1e293b;
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand">
+      <span class="mark"><span></span><span></span><span></span></span>
+      Redactly
+    </div>
+    <p>
+      Auf ChatGPT &amp; Claude erscheint unten rechts eine Leiste:
+      <kbd>🛡 Maskieren</kbd> ersetzt PII im Eingabefeld durch Platzhalter,
+      <kbd>↩︎ Wiederherstellen</kbd> setzt die echten Werte in der Antwort wieder ein.
+    </p>
+    <ul>
+      <li>100 % lokal — dein Text verlässt den Browser nicht.</li>
+      <li>Regex + Namens-Lexikon, kein Modell-Download.</li>
+      <li>Beta: je nach Seite ggf. noch nicht perfekt.</li>
+    </ul>
+    <p>
+      Mehr Funktionen in der Web-App:
+      <a href="https://redactly.app" target="_blank">redactly.app</a>
+    </p>
+  </body>
+</html>

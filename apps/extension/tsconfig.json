@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": [],
+    "paths": {
+      "@redactly/core/regex": ["../../packages/core/src/detectors/regex.ts"],
+      "@redactly/core/gazetteer": ["../../packages/core/src/detectors/gazetteer.ts"],
+      "@redactly/core/masker": ["../../packages/core/src/masker.ts"],
+      "@redactly/core/restorer": ["../../packages/core/src/restorer.ts"],
+      "@redactly/core/types": ["../../packages/core/src/types.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "vite.config.ts"]
+}

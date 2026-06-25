@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Redactly — PII Masking",
+  "version": "0.1.0",
+  "description": "Mask personal data locally before sending it to ChatGPT or Claude. 100% in your browser.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Redactly"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*", "https://claude.ai/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
