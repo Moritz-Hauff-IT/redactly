@@ -183,6 +183,34 @@ export const messages = {
   pw_submit: { de: 'Bestätigen', en: 'Confirm' },
   pw_cancel: { de: 'Abbrechen', en: 'Cancel' },
 
+  // ---- Encrypted session persistence ----
+  sess_label: { de: 'Verschlüsselte Sitzung', en: 'Encrypted session' },
+  sess_intro: {
+    de: 'Sichere die aktuelle Sitzung (Text, Treffer, Mapping) verschlüsselt im Browser, damit ein Neuladen sie nicht verliert. Passwort wird nicht gespeichert; standardmäßig wird nichts gesichert.',
+    en: 'Save the current session (text, hits, mapping) encrypted in the browser so a reload doesn’t lose it. The password is never stored; nothing is saved by default.',
+  },
+  sess_save: { de: 'Sitzung sichern', en: 'Save session' },
+  sess_saved: { de: 'Sitzung verschlüsselt gesichert.', en: 'Session saved (encrypted).' },
+  sess_delete: { de: 'Gespeicherte Sitzung löschen', en: 'Delete saved session' },
+  sess_deleted: { de: 'Gespeicherte Sitzung gelöscht.', en: 'Saved session deleted.' },
+  sess_save_title: { de: 'Sitzung verschlüsseln', en: 'Encrypt session' },
+  sess_save_body: {
+    de: 'Wähle ein Passwort. Ohne dieses Passwort ist die gespeicherte Sitzung nicht wiederherstellbar.',
+    en: 'Choose a password. Without it the saved session can’t be restored.',
+  },
+  sess_found: {
+    de: 'Verschlüsselte Sitzung gefunden — wiederherstellen?',
+    en: 'Encrypted session found — restore it?',
+  },
+  sess_restore: { de: 'Wiederherstellen', en: 'Restore' },
+  sess_restore_title: { de: 'Sitzung wiederherstellen', en: 'Restore session' },
+  sess_restore_body: {
+    de: 'Gib das Passwort ein, um die gespeicherte Sitzung zu entschlüsseln.',
+    en: 'Enter the password to decrypt the saved session.',
+  },
+  sess_restored: { de: 'Sitzung wiederhergestellt.', en: 'Session restored.' },
+  sess_dismiss: { de: 'Verwerfen', en: 'Dismiss' },
+
   // ---- Settings profiles ----
   prof_label: { de: 'Profile', en: 'Profiles' },
   prof_intro: {

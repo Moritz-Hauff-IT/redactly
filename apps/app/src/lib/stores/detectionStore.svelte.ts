@@ -99,6 +99,15 @@ function createDetectionStore() {
       entities = [];
       enabledIds = new Set();
     },
+
+    /** Replace the detection state wholesale (used by session restore). */
+    restore(restored: Entity[], enabled: string[]) {
+      const withIds: EntityWithId[] = restored
+        .map((e) => ({ ...e, id: entityId(e) }))
+        .sort((a, b) => a.start - b.start);
+      entities = withIds;
+      enabledIds = new Set(enabled.length > 0 ? enabled : withIds.map((e) => e.id));
+    },
   };
 }
 

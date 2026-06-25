@@ -35,6 +35,9 @@ export type { RestoreOptions, RestoreResult } from './restorer.js';
 // Mapping encryption (password-based AES-GCM envelope)
 export { encryptMapping, decryptMapping, isEncryptedMapping } from './mappingCrypto.js';
 
+// Generic password box (encrypted session persistence)
+export { sealBox, openBox } from './cryptoBox.js';
+
 // Output safety checks (residual-PII scan + round-trip integrity)
 export { findResidualPii, verifyRoundTrip } from './safety.js';
 

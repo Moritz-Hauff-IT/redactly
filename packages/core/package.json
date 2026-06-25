@@ -67,6 +67,10 @@
       "import": "./dist/safety.js",
       "types": "./dist/safety.d.ts"
     },
+    "./cryptoBox": {
+      "import": "./dist/cryptoBox.js",
+      "types": "./dist/cryptoBox.d.ts"
+    },
     "./fakeValues": {
       "import": "./dist/fakeValues.js",
       "types": "./dist/fakeValues.d.ts"
