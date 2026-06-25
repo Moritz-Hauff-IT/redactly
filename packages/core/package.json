@@ -74,6 +74,10 @@
     "./diff": {
       "import": "./dist/diff.js",
       "types": "./dist/diff.d.ts"
+    },
+    "./coreference": {
+      "import": "./dist/coreference.js",
+      "types": "./dist/coreference.d.ts"
     }
   },
   "main": "./dist/index.js",

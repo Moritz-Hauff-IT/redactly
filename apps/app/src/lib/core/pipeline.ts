@@ -4,6 +4,7 @@ import { GazetteerNameDetector } from '@redactly/core/gazetteer';
 import type { Entity, EntityCategory } from '@redactly/core/types';
 import type { Detector } from '@redactly/core/types';
 import { findStructuralSpans } from '@redactly/core/structural';
+import { linkCoreferences } from '@redactly/core/coreference';
 import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
 import { tableMaskStore } from '$lib/stores/tableMaskStore.svelte.js';
 
@@ -160,7 +161,15 @@ export async function analyze(text: string): Promise<Entity[]> {
   const minConf = settingsStore.minConfidence;
   const filtered =
     minConf > 0 ? result.entities.filter((e) => e.confidence >= minConf) : result.entities;
-  const entities = applyStructuralRules(text, applyCustomTerms(text, filtered));
+  let entities = applyStructuralRules(text, applyCustomTerms(text, filtered));
+
+  // Coreference: link bare re-mentions of detected full names ("Anna" after
+  // "Anna Schmidt"). Catches partial-name leaks and keeps the masked text
+  // consistent. Only links to names already found, so it can't invent people.
+  const coref = linkCoreferences(text, entities);
+  if (coref.length > 0) {
+    entities = [...entities, ...coref].sort((a, b) => a.start - b.start || b.end - a.end);
+  }
 
   console.log('[pipeline.analyze] returned', { entityCount: entities.length });
   return entities;

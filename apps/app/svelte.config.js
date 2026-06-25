@@ -69,6 +69,7 @@ const config = {
       '@redactly/core/safety': '../../packages/core/src/safety.ts',
       '@redactly/core/fakeValues': '../../packages/core/src/fakeValues.ts',
       '@redactly/core/diff': '../../packages/core/src/diff.ts',
+      '@redactly/core/coreference': '../../packages/core/src/coreference.ts',
       // The '/*' wildcard makes SvelteKit use a strict-match regex for the root.
       '@redactly/core/*': '../../packages/core/src/*',
       '@redactly/core': '../../packages/core/src/index.ts',

@@ -77,6 +77,14 @@ export interface Entity {
   /** Detection confidence in the range 0..1. */
   confidence: number;
   source: 'regex' | 'ner' | 'llm' | 'manual';
+  /**
+   * Coreference link: the original text of the primary entity this mention
+   * refers to (e.g. "Anna" → canonical "Anna Schmidt"). When set and the
+   * primary is masked, the masker gives this mention a placeholder that shares
+   * the primary's number (PERSON_1 → PERSON_1_1) so the masked text signals
+   * "same person" while still round-tripping exactly.
+   */
+  canonical?: string;
 }
 
 export interface DetectorHints {

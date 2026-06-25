@@ -258,12 +258,16 @@ export function mask(text: string, entities: Entity[], options?: MaskOptions): M
   // Per-prefix counter for the generator path (the plain placeholder path
   // derives its counter from the forward map instead). Seeded lazily at 1.
   const fakeCounters = new Map<string, number>();
+  // Coreference: per-primary-core counter for shared-number sub-placeholders.
+  const corefCounters = new Map<string, number>();
+  // Format wrappers, to recover a placeholder's "core" (e.g. "[PERSON_1]" →
+  // "PERSON_1") regardless of the chosen format.
+  const wrapPre = format.slice(0, format.indexOf('{PREFIX}'));
+  const wrapPost = format.slice(format.indexOf('{N}') + '{N}'.length);
+  const isSecondary = (e: Entity) => e.canonical !== undefined && e.canonical !== e.text;
 
-  // Pass 1 (left-to-right): allocate placeholders in document order so that
-  // the first entity gets _1, second gets _2, etc. This makes masked text
-  // human-readable and predictable.
   const placeholderFor = new Map<Entity, string>();
-  for (const entity of sorted) {
+  const allocate = (entity: Entity): void => {
     const original = entity.text;
     if (mapping.reverse.has(original)) {
       // Reuse existing placeholder for this original text.
@@ -271,28 +275,56 @@ export function mask(text: string, entities: Entity[], options?: MaskOptions): M
       // EntityTypes (e.g., a name that's also an organization name). The
       // placeholder still correctly masks the text regardless of entity type.
       placeholderFor.set(entity, mapping.reverse.get(original)!);
-    } else {
-      // Allocate a new replacement.
-      const prefix = prefixMap[entity.type] ?? entity.type;
-      let replacement: string;
-      if (generate) {
-        // Realistic fake value — skip any value already taken so the mapping
-        // stays bijective across incremental masks and prefixes.
-        let n = fakeCounters.get(prefix) ?? 1;
-        do {
-          replacement = generate({ type: entity.type, prefix, n });
-          n++;
-        } while (mapping.forward.has(replacement));
-        fakeCounters.set(prefix, n);
-      } else {
-        const n = nextCounter(mapping.forward, prefix);
-        replacement = buildPlaceholder(format, prefix, n);
-      }
-      mapping.forward.set(replacement, original);
-      mapping.reverse.set(original, replacement);
-      placeholderFor.set(entity, replacement);
+      return;
     }
-  }
+
+    // Coreference (default placeholder mode only): a linked mention shares the
+    // primary's number — "Anna Schmidt" → [PERSON_1], "Anna" → [PERSON_1_1] —
+    // so the masked text signals "same person" while round-tripping exactly.
+    if (!generate && isSecondary(entity)) {
+      const primaryPh = mapping.reverse.get(entity.canonical!);
+      if (primaryPh !== undefined) {
+        const core = primaryPh.slice(wrapPre.length, primaryPh.length - wrapPost.length);
+        let k = (corefCounters.get(core) ?? 0) + 1;
+        let replacement = buildPlaceholder(format, core, k);
+        while (mapping.forward.has(replacement)) {
+          k++;
+          replacement = buildPlaceholder(format, core, k);
+        }
+        corefCounters.set(core, k);
+        mapping.forward.set(replacement, original);
+        mapping.reverse.set(original, replacement);
+        placeholderFor.set(entity, replacement);
+        return;
+      }
+      // Primary wasn't masked (e.g. its category is disabled) → fall through
+      // and allocate a normal standalone placeholder for this mention.
+    }
+
+    const prefix = prefixMap[entity.type] ?? entity.type;
+    let replacement: string;
+    if (generate) {
+      // Realistic fake value — skip any value already taken so the mapping
+      // stays bijective across incremental masks and prefixes.
+      let n = fakeCounters.get(prefix) ?? 1;
+      do {
+        replacement = generate({ type: entity.type, prefix, n });
+        n++;
+      } while (mapping.forward.has(replacement));
+      fakeCounters.set(prefix, n);
+    } else {
+      const n = nextCounter(mapping.forward, prefix);
+      replacement = buildPlaceholder(format, prefix, n);
+    }
+    mapping.forward.set(replacement, original);
+    mapping.reverse.set(original, replacement);
+    placeholderFor.set(entity, replacement);
+  };
+
+  // Pass 1: allocate primaries first (in document order, so the first gets _1)
+  // so a linked mention can reference its primary's already-assigned number.
+  for (const entity of sorted) if (!isSecondary(entity)) allocate(entity);
+  for (const entity of sorted) if (isSecondary(entity)) allocate(entity);
 
   // Pass 2 (right-to-left): apply replacements from the end to preserve
   // character offsets of earlier entities.
