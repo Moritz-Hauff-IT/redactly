@@ -38,4 +38,10 @@ describe('GazetteerNameDetector', () => {
     // "Anna Maria" — both are first names; too ambiguous to claim as one person.
     expect(names('Anna Maria kommt später.')).toEqual([]);
   });
+
+  it('detects French, Italian and English names too', () => {
+    expect(names('Le contrat de Jean Dubois')).toContain('Jean Dubois');
+    expect(names('Firmato da Giuseppe Rossi')).toContain('Giuseppe Rossi');
+    expect(names('Signed by John Smith')).toContain('John Smith');
+  });
 });
