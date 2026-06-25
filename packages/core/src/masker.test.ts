@@ -224,6 +224,37 @@ describe('mask — custom format', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Collision-proofing nonce
+// ---------------------------------------------------------------------------
+
+describe('mask — nonce', () => {
+  it('appends the nonce to placeholders', () => {
+    const e = makeEntity('alice@example.com', 0, 'EMAIL');
+    const { maskedText } = mask('alice@example.com', [e], { nonce: 'k7a2' });
+    expect(maskedText).toBe('[EMAIL_1_k7a2]');
+  });
+
+  it('numbers nonced placeholders sequentially without collision', () => {
+    const text = 'a@x.com b@x.com';
+    const entities = [makeEntity('a@x.com', 0, 'EMAIL'), makeEntity('b@x.com', 8, 'EMAIL')];
+    const { mapping } = mask(text, entities, { nonce: 'z9' });
+    expect([...mapping.forward.keys()]).toEqual(['[EMAIL_1_z9]', '[EMAIL_2_z9]']);
+  });
+
+  it('stays collision-free when the input already contains a placeholder shape', () => {
+    // Input literally contains "[EMAIL_1]" — without a nonce this would clash.
+    const text = 'see [EMAIL_1] then mail a@x.com';
+    const e = makeEntity('a@x.com', 24, 'EMAIL');
+    expect(text.slice(e.start, e.end)).toBe('a@x.com');
+    const { maskedText, mapping } = mask(text, [e], { nonce: 'q4' });
+    expect(maskedText).toContain('[EMAIL_1_q4]');
+    // The pre-existing "[EMAIL_1]" literal is untouched and not a mapping key.
+    expect(mapping.forward.has('[EMAIL_1]')).toBe(false);
+    expect(maskedText).toContain('[EMAIL_1] then');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Empty entities short-circuits
 // ---------------------------------------------------------------------------
 
