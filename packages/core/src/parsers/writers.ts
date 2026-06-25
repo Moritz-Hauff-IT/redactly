@@ -71,14 +71,16 @@ export async function writeAsFormat(
       return writeDocx(text, baseName);
     case 'xlsx':
     case 'pptx':
+    case 'rtf':
+    case 'odt':
+    case 'ods':
     case 'png':
     case 'jpg':
     case 'webp':
-      // No standalone writer for binary formats — they require either a
-      // complex zip+xml scaffold (xlsx/pptx) or the original raster
-      // (png/jpg/webp). Fall back to a plain-text dump so the user still
-      // gets the masked content. The redacted-format path produces a
-      // real binary when original bytes ARE available.
+      // No standalone writer for these formats — they require either a
+      // complex zip+xml scaffold (xlsx/pptx/odt/ods), an RTF control stream,
+      // or the original raster (png/jpg/webp). Fall back to a plain-text dump
+      // so the user still gets the masked content.
       return writeText(text, baseName, 'txt');
     default: {
       // All text-like formats (txt/md/csv/tsv/json/yaml/etc) share the same

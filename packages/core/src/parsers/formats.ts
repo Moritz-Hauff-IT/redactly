@@ -36,6 +36,9 @@ export const FORMAT_META = {
   xml: { extension: 'xml', mime: 'application/xml', isText: true },
 
   // Structured formats — have dedicated parsers/writers in their own files
+  rtf: { extension: 'rtf', mime: 'application/rtf', isText: false },
+  odt: { extension: 'odt', mime: 'application/vnd.oasis.opendocument.text', isText: false },
+  ods: { extension: 'ods', mime: 'application/vnd.oasis.opendocument.spreadsheet', isText: false },
   eml: { extension: 'eml', mime: 'message/rfc822', isText: false },
   pdf: { extension: 'pdf', mime: 'application/pdf', isText: false },
   docx: {
