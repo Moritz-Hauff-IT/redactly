@@ -45,6 +45,10 @@ export type { DiffSegment, DiffChange } from './diff.js';
 // Coreference linking (bare re-mentions of detected person names)
 export { linkCoreferences } from './coreference.js';
 
+// User-defined custom entity types
+export { findCustomTypeMatches, labelToPrefix } from './customTypes.js';
+export type { CustomType, CustomMatch } from './customTypes.js';
+
 // Redactor (irreversible — no mapping)
 export { redact } from './redactor.js';
 export type { RedactOptions, RedactResult } from './redactor.js';

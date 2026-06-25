@@ -21,6 +21,7 @@ const full: ProfileSettings = {
   regexRules: ['KND-\\d+'],
   placeholderFormat: 'angle',
   fakeValues: true,
+  customTypes: [{ label: 'Kundennummer', pattern: 'KND-\\d+' }],
 };
 
 describe('profiles', () => {
@@ -50,6 +51,7 @@ describe('profiles', () => {
     expect(s.columnRules).toEqual([]);
     expect(s.placeholderFormat).toBe('brackets');
     expect(s.fakeValues).toBe(false);
+    expect(s.customTypes).toEqual([]);
   });
 
   it('rejects an unknown placeholderFormat, keeping the bracket default', () => {

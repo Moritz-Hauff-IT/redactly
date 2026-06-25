@@ -5,6 +5,7 @@ import type { Entity, EntityCategory } from '@redactly/core/types';
 import type { Detector } from '@redactly/core/types';
 import { findStructuralSpans } from '@redactly/core/structural';
 import { linkCoreferences } from '@redactly/core/coreference';
+import { findCustomTypeMatches } from '@redactly/core/customTypes';
 import { settingsStore } from '$lib/stores/settingsStore.svelte.js';
 import { tableMaskStore } from '$lib/stores/tableMaskStore.svelte.js';
 
@@ -146,6 +147,40 @@ function applyStructuralRules(text: string, entities: Entity[]): Entity[] {
 }
 
 /**
+ * Apply user-defined custom entity types. Each match becomes a manual entity
+ * carrying a `prefix` override, so it masks to e.g. [KUNDENNUMMER_1] and reads
+ * as its own labelled type. Non-overlapping with everything found so far.
+ */
+function applyCustomTypes(text: string, entities: Entity[]): Entity[] {
+  const types = settingsStore.customTypes;
+  if (types.length === 0) return entities;
+  const matches = findCustomTypeMatches(text, types);
+  if (matches.length === 0) return entities;
+
+  const taken: Array<[number, number]> = entities.map((e) => [e.start, e.end]);
+  const overlaps = (s: number, en: number) => taken.some(([a, b]) => s < b && a < en);
+  const additions: Entity[] = [];
+  for (const m of matches) {
+    if (overlaps(m.start, m.end)) continue;
+    additions.push({
+      start: m.start,
+      end: m.end,
+      type: 'OTHER_PII',
+      category: 'other',
+      text: m.text,
+      confidence: 1,
+      source: 'manual',
+      prefix: m.prefix,
+    });
+    taken.push([m.start, m.end]);
+  }
+  if (additions.length === 0) return entities;
+  const result = [...entities, ...additions];
+  result.sort((a, b) => a.start - b.start || b.end - a.end);
+  return result;
+}
+
+/**
  * Analyze text for PII entities using the current pipeline configuration.
  */
 export async function analyze(text: string): Promise<Entity[]> {
@@ -161,7 +196,10 @@ export async function analyze(text: string): Promise<Entity[]> {
   const minConf = settingsStore.minConfidence;
   const filtered =
     minConf > 0 ? result.entities.filter((e) => e.confidence >= minConf) : result.entities;
-  let entities = applyStructuralRules(text, applyCustomTerms(text, filtered));
+  let entities = applyCustomTypes(
+    text,
+    applyStructuralRules(text, applyCustomTerms(text, filtered))
+  );
 
   // Coreference: link bare re-mentions of detected full names ("Anna" after
   // "Anna Schmidt"). Catches partial-name leaks and keeps the masked text

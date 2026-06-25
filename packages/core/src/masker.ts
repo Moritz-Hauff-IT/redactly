@@ -301,7 +301,7 @@ export function mask(text: string, entities: Entity[], options?: MaskOptions): M
       // and allocate a normal standalone placeholder for this mention.
     }
 
-    const prefix = prefixMap[entity.type] ?? entity.type;
+    const prefix = entity.prefix ?? prefixMap[entity.type] ?? entity.type;
     let replacement: string;
     if (generate) {
       // Realistic fake value — skip any value already taken so the mapping
