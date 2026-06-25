@@ -101,6 +101,20 @@ export const messages = {
   chip_server: { de: 'kein Server', en: 'no server' },
   chip_telemetry: { de: 'keine Telemetrie', en: 'no telemetry' },
 
+  // ---- Network self-audit ----
+  net_title: { de: 'Netzwerk-Audit (dieser Tab)', en: 'Network audit (this tab)' },
+  net_safe: { de: 'Dein Text wird nicht hochgeladen', en: 'Your text is not uploaded' },
+  net_intro: {
+    de: 'Live-Mitschnitt aller ausgehenden Anfragen dieses Tabs. Redactly lädt nur Modelle/Assets — dein Text verlässt den Browser nie.',
+    en: 'Live log of every outgoing request from this tab. Redactly only downloads models/assets — your text never leaves the browser.',
+  },
+  net_uploads: { de: '{n} Daten-Uploads', en: '{n} data uploads' },
+  net_downloads: { de: '{n} Downloads', en: '{n} downloads' },
+  net_none: { de: 'Noch keine Netzwerkzugriffe.', en: 'No network requests yet.' },
+  net_kind_model: { de: 'Modell/Asset', en: 'model/asset' },
+  net_kind_other: { de: 'unbekannt', en: 'unknown' },
+  net_kind_same: { de: 'eigene Domain', en: 'same origin' },
+
   // ---- Workspace (mockup-style) ----
   ws_original: { de: 'Original', en: 'Original' },
   ws_tab_mask: { de: 'Maskiert → an die KI', en: 'Masked → to the AI' },

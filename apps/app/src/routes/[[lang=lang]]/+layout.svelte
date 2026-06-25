@@ -15,6 +15,8 @@
   import Toast from '$lib/components/Toast.svelte';
   import SettingsDrawer from '$lib/components/SettingsDrawer.svelte';
   import OnboardingHint from '$lib/components/OnboardingHint.svelte';
+  import NetworkAuditBadge from '$lib/components/NetworkAuditBadge.svelte';
+  import { networkAuditStore } from '$lib/stores/networkAuditStore.svelte.js';
   import LanguageToggle from '$lib/components/LanguageToggle.svelte';
   import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
   import { onMount } from 'svelte';
@@ -40,6 +42,9 @@
   let drawerOpen = $state(false);
 
   onMount(() => {
+    // Wrap fetch before any model auto-load so the self-audit captures them.
+    networkAuditStore.install();
+
     // Diagnostic dump on every mount so we can see WHY a detector is/isn't loading.
 
     console.log('[auto-load] mount', {
@@ -148,6 +153,7 @@
         <span class="dot {backendStatus.dot}"></span>
         <span class="hidden sm:inline">{backendStatus.label}</span>
       </span>
+      <NetworkAuditBadge />
       <LanguageToggle />
       <button
         class="btn-icon"

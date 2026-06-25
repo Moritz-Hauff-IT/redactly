@@ -72,6 +72,10 @@ export default defineConfig({
         replacement: path.join(coreRoot, 'cryptoBox.ts'),
       },
       {
+        find: '@redactly/core/networkClassify',
+        replacement: path.join(coreRoot, 'networkClassify.ts'),
+      },
+      {
         find: '@redactly/core/fakeValues',
         replacement: path.join(coreRoot, 'fakeValues.ts'),
       },
