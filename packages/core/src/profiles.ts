@@ -33,6 +33,8 @@ export interface ProfileSettings {
   placeholderFormat: string;
   /** Opt-in realistic fake values instead of [PREFIX_N] placeholders. */
   fakeValues: boolean;
+  /** User-defined custom entity types ({ label, pattern }). */
+  customTypes: Array<{ label: string; pattern: string }>;
 }
 
 export interface RedactlyProfile {
@@ -75,6 +77,17 @@ export function normalizeSettings(input: unknown): ProfileSettings {
         ? o.placeholderFormat
         : 'brackets',
     fakeValues: asBool(o.fakeValues, false),
+    customTypes: Array.isArray(o.customTypes)
+      ? (o.customTypes as unknown[])
+          .filter(
+            (t): t is { label: string; pattern: string } =>
+              !!t &&
+              typeof t === 'object' &&
+              typeof (t as { label?: unknown }).label === 'string' &&
+              typeof (t as { pattern?: unknown }).pattern === 'string'
+          )
+          .map((t) => ({ label: t.label, pattern: t.pattern }))
+      : [],
   };
 }
 

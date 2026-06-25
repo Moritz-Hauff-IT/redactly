@@ -148,6 +148,15 @@
       de: 'Ganzer Treffer wird maskiert — oder Gruppe 1, falls vorhanden. Ungültige Muster werden ignoriert.',
       en: 'Whole match is masked — or group 1 if present. Invalid patterns are ignored.',
     },
+    ctLabel: { de: 'Eigene Typen', en: 'Custom types' },
+    ctIntro: {
+      de: 'Eigene Entitätstypen mit Label + Muster. Treffer werden als eigener Platzhalter maskiert, z. B. „Kundennummer" → [KUNDENNUMMER_1].',
+      en: 'Your own entity types with a label + pattern. Matches mask to their own placeholder, e.g. "Kundennummer" → [KUNDENNUMMER_1].',
+    },
+    ctNamePlaceholder: { de: 'Label, z. B. Kundennummer', en: 'Label, e.g. Customer no.' },
+    ctPatternPlaceholder: { de: 'Regex, z. B. KND-\\d+', en: 'Regex, e.g. CUST-\\d+' },
+    ctAdd: { de: 'Typ hinzufügen', en: 'Add type' },
+    ctRemove: { de: '{label} entfernen', en: 'Remove {label}' },
     nerLabel: {
       de: 'NER · Named Entity Recognition',
       en: 'NER · Named entity recognition',
@@ -258,6 +267,15 @@
   function addRegex(): void {
     settingsStore.addRegexRule(regexInput);
     regexInput = '';
+  }
+
+  // Custom entity types — label + pattern.
+  let ctLabel = $state('');
+  let ctPattern = $state('');
+  function addCustomType(): void {
+    settingsStore.addCustomType(ctLabel, ctPattern);
+    ctLabel = '';
+    ctPattern = '';
   }
 
   // Profiles — named snapshots of all settings.
@@ -765,6 +783,69 @@
           loc(s.regexPlaceholder),
           loc(s.regexHint)
         )}
+      </section>
+
+      <hr class="my-7 border-[color:var(--color-rule)]" />
+
+      <!-- Custom entity types: label + pattern -->
+      <section>
+        <span class="label">{loc(s.ctLabel)}</span>
+        <p class="mt-1 text-[12.5px] leading-snug text-[color:var(--color-ink-soft)]">
+          {loc(s.ctIntro)}
+        </p>
+        <div class="mt-3 flex flex-col gap-2">
+          <input
+            class="rounded-md border border-[color:var(--color-rule)] bg-[color:var(--color-bg)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--color-ink)] placeholder-[color:var(--color-ink-mute)] focus:border-[color:var(--color-accent)] focus:outline-none"
+            placeholder={loc(s.ctNamePlaceholder)}
+            bind:value={ctLabel}
+          />
+          <div class="flex gap-2">
+            <input
+              class="flex-1 rounded-md border border-[color:var(--color-rule)] bg-[color:var(--color-bg)] px-2.5 py-1.5 font-[family-name:var(--font-mono)] text-[12.5px] text-[color:var(--color-ink)] placeholder-[color:var(--color-ink-mute)] focus:border-[color:var(--color-accent)] focus:outline-none"
+              placeholder={loc(s.ctPatternPlaceholder)}
+              bind:value={ctPattern}
+              onkeydown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addCustomType();
+                }
+              }}
+            />
+            <button
+              class="btn-ghost"
+              disabled={!ctLabel.trim() || !ctPattern.trim()}
+              onclick={addCustomType}
+            >
+              {loc(s.ctAdd)}
+            </button>
+          </div>
+        </div>
+        {#if settingsStore.customTypes.length > 0}
+          <ul class="mt-2.5 flex flex-col gap-1.5">
+            {#each settingsStore.customTypes as ct, i (i)}
+              <li
+                class="flex items-center justify-between gap-2 rounded-md border border-[color:var(--color-rule)] bg-[color:var(--color-bg-elev)] px-3 py-2"
+              >
+                <span class="min-w-0 flex-1">
+                  <span class="block text-[12.5px] font-medium text-[color:var(--color-ink)]"
+                    >{ct.label}</span
+                  >
+                  <span
+                    class="block truncate font-[family-name:var(--font-mono)] text-[11px] text-[color:var(--color-ink-mute)]"
+                    >{ct.pattern}</span
+                  >
+                </span>
+                <button
+                  class="flex-shrink-0 text-[color:var(--color-ink-mute)] transition-colors hover:text-[color:var(--color-danger)]"
+                  onclick={() => settingsStore.removeCustomType(i)}
+                  aria-label={loc(s.ctRemove).replace('{label}', ct.label)}
+                >
+                  ×
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </section>
 
       <hr class="my-7 border-[color:var(--color-rule)]" />

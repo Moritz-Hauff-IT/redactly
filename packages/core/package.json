@@ -78,6 +78,10 @@
     "./coreference": {
       "import": "./dist/coreference.js",
       "types": "./dist/coreference.d.ts"
+    },
+    "./customTypes": {
+      "import": "./dist/customTypes.js",
+      "types": "./dist/customTypes.d.ts"
     }
   },
   "main": "./dist/index.js",

@@ -1,5 +1,6 @@
 import type { EntityCategory } from '@redactly/core/types';
 import { normalizeSettings, type ProfileSettings } from '@redactly/core/profiles';
+import type { CustomType } from '@redactly/core/customTypes';
 
 const ALL_CATEGORIES: EntityCategory[] = [
   'person',
@@ -26,7 +27,30 @@ const LS_JSON_KEY_RULES_KEY = 'de-pii:settings:json-key-rules';
 const LS_REGEX_RULES_KEY = 'de-pii:settings:regex-rules';
 const LS_PLACEHOLDER_FORMAT_KEY = 'de-pii:settings:placeholder-format';
 const LS_FAKE_VALUES_KEY = 'de-pii:settings:fake-values';
+const LS_CUSTOM_TYPES_KEY = 'de-pii:settings:custom-types';
 const LS_PROFILES_KEY = 'de-pii:settings:profiles';
+
+function loadCustomTypes(): CustomType[] {
+  const raw = safeLocalStorageGet(LS_CUSTOM_TYPES_KEY);
+  if (raw === null) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      return parsed
+        .filter(
+          (t): t is CustomType =>
+            !!t &&
+            typeof t === 'object' &&
+            typeof (t as CustomType).label === 'string' &&
+            typeof (t as CustomType).pattern === 'string'
+        )
+        .map((t) => ({ label: t.label, pattern: t.pattern }));
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
 
 type PlaceholderFormat = 'brackets' | 'angle' | 'curly';
 
@@ -169,6 +193,7 @@ function createSettingsStore() {
   // Output customization: placeholder format + opt-in realistic fake values.
   let placeholderFormat = $state<PlaceholderFormat>(loadPlaceholderFormat());
   let fakeValues = $state<boolean>(safeLocalStorageGet(LS_FAKE_VALUES_KEY) === 'true');
+  let customTypes = $state<CustomType[]>(loadCustomTypes());
   // Named configuration snapshots (profiles), persisted as name → settings.
   let profiles = $state<Record<string, ProfileSettings>>(loadProfiles());
 
@@ -193,6 +218,7 @@ function createSettingsStore() {
       regexRules: [...regexRules],
       placeholderFormat,
       fakeValues,
+      customTypes: customTypes.map((t) => ({ ...t })),
     };
   }
 
@@ -240,6 +266,8 @@ function createSettingsStore() {
     safeLocalStorageSet(LS_PLACEHOLDER_FORMAT_KEY, placeholderFormat);
     fakeValues = s.fakeValues;
     safeLocalStorageSet(LS_FAKE_VALUES_KEY, fakeValues ? 'true' : 'false');
+    customTypes = s.customTypes.map((t) => ({ ...t }));
+    safeLocalStorageSet(LS_CUSTOM_TYPES_KEY, JSON.stringify(customTypes));
   }
 
   function addTerm(list: string[], term: string): string[] {
@@ -422,6 +450,23 @@ function createSettingsStore() {
     setFakeValues(b: boolean): void {
       fakeValues = b;
       safeLocalStorageSet(LS_FAKE_VALUES_KEY, b ? 'true' : 'false');
+    },
+
+    // ── Custom entity types ────────────────────────────────────────────────
+    /** User-defined {label, pattern} detection rules. */
+    get customTypes(): CustomType[] {
+      return customTypes;
+    },
+    addCustomType(label: string, pattern: string): void {
+      const l = label.trim();
+      const p = pattern.trim();
+      if (!l || !p) return;
+      customTypes = [...customTypes, { label: l, pattern: p }];
+      safeLocalStorageSet(LS_CUSTOM_TYPES_KEY, JSON.stringify(customTypes));
+    },
+    removeCustomType(index: number): void {
+      customTypes = customTypes.filter((_, i) => i !== index);
+      safeLocalStorageSet(LS_CUSTOM_TYPES_KEY, JSON.stringify(customTypes));
     },
 
     // ── Profiles ───────────────────────────────────────────────────────────

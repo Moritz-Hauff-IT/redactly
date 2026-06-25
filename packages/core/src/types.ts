@@ -85,6 +85,12 @@ export interface Entity {
    * "same person" while still round-tripping exactly.
    */
   canonical?: string;
+  /**
+   * Placeholder-prefix override. When set, the masker uses this prefix instead
+   * of the type→prefix lookup — used by user-defined custom entity types so a
+   * "Kundennummer" rule masks to [KUNDENNUMMER_1].
+   */
+  prefix?: string;
 }
 
 export interface DetectorHints {
