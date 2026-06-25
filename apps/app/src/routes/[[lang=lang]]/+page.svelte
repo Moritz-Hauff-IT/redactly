@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { untrack, onMount } from 'svelte';
   import InputPane from '$lib/components/InputPane.svelte';
   import MaskedPane from '$lib/components/MaskedPane.svelte';
   import DetectionReview from '$lib/components/DetectionReview.svelte';
@@ -148,6 +148,53 @@
         t('map_import_err', { message: err instanceof Error ? err.message : 'unbekannt' })
       );
     }
+  }
+
+  // ── Encrypted session persistence (opt-in) ──────────────────────────────
+  let sessSaveOpen = $state(false);
+  let sessRestoreOpen = $state(false);
+  let sessBanner = $state(false);
+  let sessError = $state<string | null>(null);
+
+  onMount(async () => {
+    try {
+      const { hasSavedSession } = await import('$lib/core/sessionPersistence.js');
+      sessBanner = await hasSavedSession();
+    } catch {
+      sessBanner = false;
+    }
+  });
+
+  async function saveSessionFlow(password: string) {
+    sessSaveOpen = false;
+    try {
+      const { saveSession } = await import('$lib/core/sessionPersistence.js');
+      await saveSession(password);
+      sessBanner = false;
+      errorStore.show(t('sess_saved'));
+    } catch (err) {
+      errorStore.show(t('map_import_err', { message: err instanceof Error ? err.message : '?' }));
+    }
+  }
+
+  async function restoreSessionFlow(password: string) {
+    sessError = null;
+    try {
+      const { restoreSession } = await import('$lib/core/sessionPersistence.js');
+      await restoreSession(password);
+      sessRestoreOpen = false;
+      sessBanner = false;
+      hasMasked = true;
+      errorStore.show(t('sess_restored'));
+    } catch (err) {
+      sessError = err instanceof Error ? err.message : 'unbekannt';
+    }
+  }
+
+  async function dismissSavedSession() {
+    sessBanner = false;
+    const { clearSession } = await import('$lib/core/sessionPersistence.js');
+    await clearSession();
   }
 
   function clearZipResult() {
@@ -401,6 +448,16 @@
 
 <div class="flex flex-col gap-3.5">
   <CautionBanner />
+
+  {#if sessBanner}
+    <div class="sess-banner" role="note">
+      <span class="flex-1 text-[13px] text-[color:var(--color-ink)]">🔒 {t('sess_found')}</span>
+      <button class="actionbtn restore" onclick={() => (sessRestoreOpen = true)}
+        >{t('sess_restore')}</button
+      >
+      <button class="btn-ghost" onclick={dismissSavedSession}>{t('sess_dismiss')}</button>
+    </div>
+  {/if}
 
   {#if residualPii.length > 0 || !roundTripOk}
     <div class="safety-warn" role="alert">
@@ -676,6 +733,11 @@
           🔒 {t('map_export_enc')}
         </button>
       {/if}
+      {#if inputStore.text.trim().length > 0}
+        <button class="actionbtn" onclick={() => (sessSaveOpen = true)} title={t('sess_intro')}>
+          🔒 {t('sess_save')}
+        </button>
+      {/if}
       <button
         class="actionbtn mask"
         data-testid="mask-button"
@@ -766,7 +828,38 @@
   oncancel={() => (pwDialogOpen = false)}
 />
 
+<PasswordDialog
+  open={sessSaveOpen}
+  title={t('sess_save_title')}
+  body={t('sess_save_body')}
+  confirm
+  onsubmit={saveSessionFlow}
+  oncancel={() => (sessSaveOpen = false)}
+/>
+
+<PasswordDialog
+  open={sessRestoreOpen}
+  title={t('sess_restore_title')}
+  body={t('sess_restore_body')}
+  error={sessError}
+  onsubmit={restoreSessionFlow}
+  oncancel={() => {
+    sessRestoreOpen = false;
+    sessError = null;
+  }}
+/>
+
 <style>
+  .sess-banner {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 14px;
+    border: 1px solid var(--color-accent);
+    border-left: 3px solid var(--color-accent);
+    border-radius: var(--r-md);
+    background: var(--color-accent-soft);
+  }
   .safety-warn {
     display: flex;
     align-items: flex-start;
