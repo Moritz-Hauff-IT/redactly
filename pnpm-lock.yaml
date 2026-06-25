@@ -79,6 +79,19 @@ importers:
         specifier: ^6.3.0
         version: 6.4.2(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)
 
+  apps/extension:
+    dependencies:
+      '@redactly/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vite:
+        specifier: ^6.3.0
+        version: 6.4.2(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)
+
   packages/core:
     dependencies:
       '@huggingface/transformers':
