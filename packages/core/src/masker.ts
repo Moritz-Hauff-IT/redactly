@@ -63,6 +63,12 @@ export interface MaskOptions {
    */
   replacement?: ReplacementFn;
   /**
+   * Collision-proofing nonce appended to placeholders (`PERSON_1_k7a2`). Use
+   * when the input might already contain placeholder-shaped strings, so the
+   * round-trip stays exact. Ignored when a custom `replacement` is given.
+   */
+  nonce?: string;
+  /**
    * If provided, the masker reuses its forward/reverse entries
    * (same original -> same placeholder) and extends it.
    * Use for incremental re-masking when the user toggles entities or
@@ -163,10 +169,13 @@ function nextCounter(forward: Map<string, string>, prefix: string): number {
 }
 
 /**
- * Build a placeholder string from the format template.
+ * Build a placeholder string from the format template. When a `nonce` is given
+ * it is appended to the number (`PERSON_1` → `PERSON_1_k7a2`) so the placeholder
+ * cannot collide with arbitrary input text.
  */
-function buildPlaceholder(format: string, prefix: string, n: number): string {
-  return format.replace('{PREFIX}', prefix).replace('{N}', String(n));
+function buildPlaceholder(format: string, prefix: string, n: number, nonce?: string): string {
+  const num = nonce ? `${n}_${nonce}` : String(n);
+  return format.replace('{PREFIX}', prefix).replace('{N}', num);
 }
 
 /**
@@ -240,9 +249,14 @@ export function mask(text: string, entities: Entity[], options?: MaskOptions): M
     }
   }
 
-  const generate = options?.replacement;
-  // Per-prefix counter for the fake-value path (the placeholder path derives
-  // its counter from the forward map instead). Seeded lazily at 1.
+  // A nonce reuses the custom-replacement machinery: it generates collision-
+  // proof placeholders with the same per-call counter + collision-skip path.
+  const nonce = options?.nonce;
+  const generate: ReplacementFn | undefined =
+    options?.replacement ??
+    (nonce ? ({ prefix, n }) => buildPlaceholder(format, prefix, n, nonce) : undefined);
+  // Per-prefix counter for the generator path (the plain placeholder path
+  // derives its counter from the forward map instead). Seeded lazily at 1.
   const fakeCounters = new Map<string, number>();
 
   // Pass 1 (left-to-right): allocate placeholders in document order so that
