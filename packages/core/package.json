@@ -71,6 +71,10 @@
       "import": "./dist/cryptoBox.js",
       "types": "./dist/cryptoBox.d.ts"
     },
+    "./networkClassify": {
+      "import": "./dist/networkClassify.js",
+      "types": "./dist/networkClassify.d.ts"
+    },
     "./fakeValues": {
       "import": "./dist/fakeValues.js",
       "types": "./dist/fakeValues.d.ts"

@@ -38,6 +38,10 @@ export { encryptMapping, decryptMapping, isEncryptedMapping } from './mappingCry
 // Generic password box (encrypted session persistence)
 export { sealBox, openBox } from './cryptoBox.js';
 
+// Network request classification (self-audit indicator)
+export { classifyRequest } from './networkClassify.js';
+export type { RequestInfo, RequestKind } from './networkClassify.js';
+
 // Output safety checks (residual-PII scan + round-trip integrity)
 export { findResidualPii, verifyRoundTrip } from './safety.js';
 
