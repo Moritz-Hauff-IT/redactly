@@ -108,7 +108,12 @@
       if (seg.entity) {
         const isActive = detectionStore.enabledIds.has(seg.entity.id);
         const cls = isActive ? 'ent' : 'ent disabled';
-        html += `<span class="${cls}" data-cat="${seg.entity.category}">${safe}</span>`;
+        // Security: escape the category before interpolating into the data-cat
+        // attribute — it is currently a fixed enum, but escape to defend against
+        // any future category source becoming attacker-influenced (attribute
+        // injection / CSP-quote breakout). (Security review 2026-08.)
+        const cat = escapeHtml(String(seg.entity.category ?? ''));
+        html += `<span class="${cls}" data-cat="${cat}">${safe}</span>`;
       } else {
         html += safe;
       }

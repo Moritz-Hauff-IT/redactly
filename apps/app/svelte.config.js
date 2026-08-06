@@ -35,14 +35,21 @@ const config = {
           'https://cdn-lfs-us-1.huggingface.co',
           'https://cas-bridge.xethub.hf.co',
           'https://raw.githubusercontent.com',
+          // Security: keep the specific s3.amazonaws.com host (HuggingFace LFS
+          // sometimes redirects model-weight fetches here, path-style) but drop
+          // the *.s3.amazonaws.com wildcard — that allowed ANY S3 bucket, so an
+          // attacker who achieved script execution could exfil masked/original
+          // PII to an attacker-controlled <bucket>.s3.amazonaws.com via CORS PUT.
+          // (Security review 2026-08.)
           'https://s3.amazonaws.com',
-          'https://*.s3.amazonaws.com',
           // Tesseract assets + onnxruntime-web WASM are self-hosted under
           // 'self' above. NER model weights still fetched from HuggingFace
           // by default; WebLLM models too. CDN paths kept so existing
           // self-hosters who haven't pre-downloaded model weights still work.
           'https://cdn.jsdelivr.net',
         ],
+        // Clickjacking: belt-and-suspenders alongside the X-Frame-Options: DENY header.
+        'frame-ancestors': ['none'],
         'worker-src': ['self', 'blob:'],
         'object-src': ['none'],
         'base-uri': ['self'],
