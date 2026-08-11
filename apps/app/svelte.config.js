@@ -13,18 +13,16 @@ const config = {
       directives: {
         'default-src': ['self'],
         // 'wasm-unsafe-eval' for ONNX/WebLLM/Tesseract WASM execution.
-        // Tesseract + onnxruntime-web WASM are self-hosted. But transformers.js
-        // still does dynamic-import() of some JS modules from jsdelivr at
-        // runtime (the ESM loader for the bundled ort core), so jsdelivr +
-        // unpkg stay in script-src as a fallback. Without these, NER model
-        // initialisation fails with a CSP-blocked dynamic import.
-        'script-src': [
-          'self',
-          'wasm-unsafe-eval',
-          'blob:',
-          'https://cdn.jsdelivr.net',
-          'https://unpkg.com',
-        ],
+        // NER + Tesseract are fully self-hosted: setupNer() (apps/app/src/lib/setup/ner.ts)
+        // sets onnxruntime-web `wasm.wasmPaths = '/ort/'` and setupTesseract() points at
+        // '/tesseract/…' — the JSEP .mjs loader, .wasm binaries and Tesseract worker/core/
+        // lang are all served from our origin (apps/app/static/{ort,tesseract}/). transformers.js
+        // only falls back to a jsdelivr wasmPaths default when wasmPaths is unset, and we
+        // set it before the pipeline reads it, so no JS/WASM is ever loaded from a CDN.
+        // Security: keep script-src to 'self' so an injected/compromised script cannot load
+        // arbitrary packages from cdn.jsdelivr.net / unpkg.com (which would bypass the
+        // privacy promise). (Security review 2026-08.)
+        'script-src': ['self', 'wasm-unsafe-eval', 'blob:'],
         'style-src': ['self', 'unsafe-inline'],
         'img-src': ['self', 'data:'],
         'connect-src': [
