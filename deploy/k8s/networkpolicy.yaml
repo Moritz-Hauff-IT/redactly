@@ -1,7 +1,7 @@
 ---
 # NetworkPolicy for redactly-app
-# Allows ingress only from ingress-nginx; egress only to DNS.
-# These are static SPAs — the server process cannot phone home.
+# Allows ingress from ingress-nginx AND nginx-gateway (NGF — NGF-Migration);
+# egress only to DNS. These are static SPAs — the server process cannot phone home.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -18,11 +18,16 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow traffic only from ingress-nginx pods
+    # Allow traffic from ingress-nginx (legacy) AND nginx-gateway (NGF) pods.
+    # NGF-Cutover: nginx-gateway ersetzt ingress-nginx host-by-host; beide
+    # Controller koexistieren parallel bis zur Decommission.
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nginx-gateway
       ports:
         - port: 8080
           protocol: TCP
@@ -52,11 +57,16 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow traffic only from ingress-nginx pods
+    # Allow traffic from ingress-nginx (legacy) AND nginx-gateway (NGF) pods.
+    # NGF-Cutover: nginx-gateway ersetzt ingress-nginx host-by-host; beide
+    # Controller koexistieren parallel bis zur Decommission.
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nginx-gateway
       ports:
         - port: 8080
           protocol: TCP
